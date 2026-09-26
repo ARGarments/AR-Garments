@@ -20,6 +20,10 @@ export interface Product {
   numericPrice?: number;
   category?: string;
   image: string;
+  images?: string[];
+  description?: string;
+  specification?: string;
+  shippingCare?: string;
   stock?: number;
   active: boolean;
   isNewArrival?: boolean; // Direct flag for New Arrivals

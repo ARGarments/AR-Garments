@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShoppingCart, Heart } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export interface Product {
   id: number | string;
@@ -11,6 +12,8 @@ export interface Product {
   numericPrice?: number;
   category?: string;
   image: string;
+  images?: string[];
+  description?: string;
   badge?: string;
 }
 
@@ -23,20 +26,28 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [added, setAdded] = useState(false);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setAdded(true);
     if (onAddToCart) onAddToCart(product);
     setTimeout(() => setAdded(false), 1500);
   };
 
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsWishlisted(!isWishlisted);
+  };
+
   return (
     <div className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
-      <div>
+      <Link href={`/product/${product.id}`} className="block flex-1">
         {/* Image area — fills edge-to-edge */}
         <div className="relative bg-[#EDE8DF] w-full" style={{ height: '260px' }}>
           {/* Wishlist Button */}
           <button
-            onClick={() => setIsWishlisted(!isWishlisted)}
+            onClick={handleWishlist}
             className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white/95 backdrop-blur-xs rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition-colors"
             aria-label="Wishlist"
           >
@@ -74,17 +85,17 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               {product.category}
             </p>
           )}
-          <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2">
+          <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2 group-hover:text-[#083028] transition-colors">
             {product.name}
           </h3>
           <p className="text-lg font-bold text-[#083028] mb-3">
             {product.price}
           </p>
         </div>
-      </div>
+      </Link>
 
       <div className="px-4 pb-4">
-        {/* Outlined Add to Cart button matching exact screenshot style */}
+        {/* Outlined Add to Cart button */}
         <button
           onClick={handleAddToCart}
           className={`w-full border border-gray-300 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${

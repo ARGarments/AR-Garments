@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Phone, Mail, MapPin } from 'lucide-react';
 
 export default function Footer() {
@@ -7,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Logo & Tagline */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-3">
+            <Link href="/" className="inline-flex items-center gap-2 mb-3">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-[#083028] font-bold text-sm">AR</span>
               </div>
@@ -15,9 +16,9 @@ export default function Footer() {
                 <h3 className="font-bold text-white leading-tight">AR Garment</h3>
                 <p className="text-xs text-white/50 leading-tight">Ethnic Wear for Every You</p>
               </div>
-            </div>
-            <p className="text-white/60 text-sm mb-4">
-              Tradition In Every Thread. Your trusted destination for premium ethnic wear.
+            </Link>
+            <p className="text-white/60 text-sm mb-4 max-w-sm">
+              Tradition In Every Thread. Your trusted destination for handpicked, authentic Indian ethnic wear.
             </p>
           </div>
 
@@ -25,10 +26,10 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold mb-4 text-white uppercase tracking-wide">Quick Links</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Home</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Sarees</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">About Us</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Buying Guide</a></li>
+              <li><Link href="/" className="text-white/60 hover:text-white transition-colors text-sm">Home</Link></li>
+              <li><Link href="/category" className="text-white/60 hover:text-white transition-colors text-sm">All Collections</Link></li>
+              <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About Us</Link></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Contact Us</Link></li>
             </ul>
           </div>
 
@@ -36,11 +37,11 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold mb-4 text-white uppercase tracking-wide">Our Categories</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Sarees</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Suits &amp; Dress Material</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Dupatta Sets</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Men Fashion</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Kids Fashion</a></li>
+              <li><Link href="/category?category=Sarees" className="text-white/60 hover:text-white transition-colors text-sm">Sarees</Link></li>
+              <li><Link href="/category?category=Suits+%26+Dress+Material" className="text-white/60 hover:text-white transition-colors text-sm">Suits &amp; Dress Material</Link></li>
+              <li><Link href="/category?category=Dupatta+Sets" className="text-white/60 hover:text-white transition-colors text-sm">Dupatta Sets</Link></li>
+              <li><Link href="/category?category=Men+Fashion" className="text-white/60 hover:text-white transition-colors text-sm">Men Fashion</Link></li>
+              <li><Link href="/category?category=Kids+Fashion" className="text-white/60 hover:text-white transition-colors text-sm">Kids Fashion</Link></li>
             </ul>
           </div>
 
@@ -48,10 +49,10 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold mb-4 text-white uppercase tracking-wide">Customer Support</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">FAQ</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Shipping Policy</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Return &amp; Refund</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors text-sm">Track Order</a></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Help &amp; Support</Link></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Shipping Policy</Link></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Return &amp; Refund</Link></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Track Order</Link></li>
             </ul>
           </div>
 
@@ -73,11 +74,11 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2 text-white/60 text-sm">
                 <Mail size={13} className="text-white/80 flex-shrink-0" />
-                info@argarment.com
+                support@argarments.com
               </li>
               <li className="flex items-start gap-2 text-white/60 text-sm">
                 <MapPin size={13} className="text-white/80 mt-0.5 flex-shrink-0" />
-                <span>Ramlal, Prayagraj, UP India</span>
+                <span>Textile Market, Surat, Gujarat India</span>
               </li>
             </ul>
           </div>
@@ -88,11 +89,11 @@ export default function Footer() {
       <div className="bg-[#051e19] py-3">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-white/40">
-            <p>© 2024 AR Garment. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} AR Garment. All rights reserved.</p>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-white transition-colors">SiteMap</a>
-              <a href="#" className="hover:text-white transition-colors">HTML</a>
-              <a href="#" className="hover:text-white transition-colors">Prayagraj</a>
+              <Link href="/about" className="hover:text-white transition-colors">About</Link>
+              <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="/category" className="hover:text-white transition-colors">Shop</Link>
             </div>
             <div className="flex gap-3 items-center">
               <span>We Accept:</span>

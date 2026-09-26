@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS public.products (
     numeric_price  INTEGER NOT NULL DEFAULT 0,
     category       TEXT NOT NULL,
     image          TEXT NOT NULL,
+    images         TEXT[] DEFAULT '{}',
+    description    TEXT DEFAULT '',
+    specification  TEXT DEFAULT '',
+    shipping_care  TEXT DEFAULT '',
     stock          INTEGER NOT NULL DEFAULT 10,
     active         BOOLEAN NOT NULL DEFAULT true,
     is_new_arrival BOOLEAN NOT NULL DEFAULT false,
@@ -34,6 +38,13 @@ CREATE TABLE IF NOT EXISTS public.products (
     sort_order     INTEGER NOT NULL DEFAULT 0,
     created_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Migration for existing installations (Run this in Supabase SQL Editor)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS specification TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS shipping_care TEXT DEFAULT '';
+
 
 -- ─── 3. HERO SLIDES TABLE ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.hero_slides (

@@ -104,14 +104,14 @@ export default function Header() {
             </div>
 
             <Link
-              href="/#about"
+              href="/about"
               className="text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
             >
               About Us
             </Link>
 
             <Link
-              href="/#contact"
+              href="/contact"
               className="text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
             >
               Contact Us
@@ -196,7 +196,7 @@ export default function Header() {
               </div>
 
               <Link
-                href="/#about"
+                href="/about"
                 className="text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -204,7 +204,7 @@ export default function Header() {
               </Link>
 
               <Link
-                href="/#contact"
+                href="/contact"
                 className="text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg"
                 onClick={() => setMobileMenuOpen(false)}
               >

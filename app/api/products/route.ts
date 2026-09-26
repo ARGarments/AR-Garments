@@ -14,17 +14,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const isNewArrival = searchParams.get('is_new_arrival');
   const isBestSeller = searchParams.get('is_best_seller');
+  const category = searchParams.get('category');
 
   const supabase = getAdminClient();
-  let query = supabase.from('products').select('*').order('sort_order');
+  let query = supabase.from('products').select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at').order('sort_order');
 
   if (isNewArrival === 'true') query = query.eq('is_new_arrival', true);
   if (isBestSeller === 'true') query = query.eq('is_best_seller', true);
+  if (category && category !== 'All') query = query.eq('category', category);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, {
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
+  });
 }
 
 // POST /api/products — create a new product
@@ -34,22 +38,42 @@ export async function POST(request: Request) {
 
   const numericPrice = parseInt(body.price?.replace(/[^\d]/g, '') || '0', 10);
 
+  const record: Record<string, unknown> = {
+    id: body.id || `prod-${Date.now()}`,
+    name: body.name,
+    price: body.price,
+    numeric_price: numericPrice,
+    category: body.category,
+    image: body.image,
+    stock: body.stock ?? 10,
+    active: body.active ?? true,
+    is_new_arrival: body.isNewArrival ?? false,
+    is_best_seller: body.isBestSeller ?? false,
+    sort_order: body.order ?? 0,
+  };
+
+  if (Array.isArray(body.images)) {
+    record.images = body.images;
+  }
+  if (typeof body.description === 'string') {
+    record.description = body.description;
+  }
+  if (typeof body.specification === 'string') {
+    record.specification = body.specification;
+  }
+  if (typeof body.shippingCare === 'string') {
+    record.shipping_care = body.shippingCare;
+  } else if (typeof body.shipping_care === 'string') {
+    record.shipping_care = body.shipping_care;
+  }
+
+  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at';
+
+  // Attempt insert
   const { data, error } = await supabase
     .from('products')
-    .insert({
-      id: body.id || `prod-${Date.now()}`,
-      name: body.name,
-      price: body.price,
-      numeric_price: numericPrice,
-      category: body.category,
-      image: body.image,
-      stock: body.stock ?? 10,
-      active: body.active ?? true,
-      is_new_arrival: body.isNewArrival ?? false,
-      is_best_seller: body.isBestSeller ?? false,
-      sort_order: body.order ?? 0,
-    })
-    .select()
+    .insert(record)
+    .select(COLS)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -79,15 +103,23 @@ export async function PATCH(request: Request) {
   if (body.isNewArrival !== undefined) patch.is_new_arrival = body.isNewArrival;
   if (body.isBestSeller !== undefined) patch.is_best_seller = body.isBestSeller;
   if (body.order !== undefined) patch.sort_order = body.order;
+  if (body.images !== undefined) patch.images = body.images;
+  if (body.description !== undefined) patch.description = body.description;
+  if (body.specification !== undefined) patch.specification = body.specification;
+  if (body.shippingCare !== undefined) patch.shipping_care = body.shippingCare;
+  if (body.shipping_care !== undefined) patch.shipping_care = body.shipping_care;
+
+  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at';
 
   const { data, error } = await supabase
     .from('products')
     .update(patch)
     .eq('id', id)
-    .select()
+    .select(COLS)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
   return NextResponse.json(data);
 }
 

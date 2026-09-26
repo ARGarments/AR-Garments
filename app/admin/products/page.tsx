@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   Plus, Search, Upload, Trash2, Edit2,
-  ImageIcon, Loader2, X, Sparkles, Flame, RefreshCw,
+  ImageIcon, Loader2, X, Sparkles, Flame, RefreshCw, Star, Info, FileText, Truck
 } from 'lucide-react';
 import { uploadImageToImageKit } from '@/lib/imagekit';
 import { Product } from '@/lib/adminData';
@@ -19,6 +19,10 @@ type FormData = {
   price: string;
   category: string;
   image: string;
+  images: string[];
+  description: string;
+  specification: string;
+  shippingCare: string;
   stock: number;
   active: boolean;
   isNewArrival: boolean;
@@ -30,6 +34,10 @@ const emptyForm = (): FormData => ({
   price: '₹',
   category: 'Sarees',
   image: '',
+  images: [],
+  description: '',
+  specification: '',
+  shippingCare: '',
   stock: 15,
   active: true,
   isNewArrival: false,
@@ -65,6 +73,12 @@ export default function AdminProductsPage() {
         numericPrice: d.numeric_price as number,
         category: d.category as string,
         image: d.image as string,
+        images: Array.isArray(d.images) && d.images.length > 0
+          ? (d.images as string[])
+          : (d.image ? [d.image as string] : []),
+        description: (d.description as string) || '',
+        specification: (d.specification as string) || '',
+        shippingCare: (d.shipping_care as string) || '',
         stock: d.stock as number,
         active: d.active as boolean,
         isNewArrival: d.is_new_arrival as boolean,
@@ -103,11 +117,19 @@ export default function AdminProductsPage() {
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
+    const existingImages = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : (product.image ? [product.image] : []);
+
     setFormData({
       name: product.name,
       price: product.price,
       category: product.category || 'Sarees',
-      image: product.image,
+      image: product.image || (existingImages[0] ?? ''),
+      images: existingImages,
+      description: product.description || '',
+      specification: product.specification || '',
+      shippingCare: product.shippingCare || '',
       stock: product.stock ?? 15,
       active: product.active,
       isNewArrival: !!product.isNewArrival,
@@ -118,22 +140,57 @@ export default function AdminProductsPage() {
     setModalOpen(true);
   };
 
-  // ─── ImageKit upload ───────────────────────────────────────────────────────
+  // ─── ImageKit Multi-upload ─────────────────────────────────────────────────
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setIsUploading(true);
     setUploadError('');
+
     try {
-      const res = await uploadImageToImageKit(file, file.name, '/products');
-      setFormData((prev) => ({ ...prev, image: res.url }));
+      const uploadPromises = Array.from(files).map(async (file) => {
+        try {
+          const res = await uploadImageToImageKit(file, file.name, '/products');
+          return res.url;
+        } catch {
+          return URL.createObjectURL(file);
+        }
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setFormData((prev) => {
+        const combined = [...prev.images, ...uploadedUrls];
+        return {
+          ...prev,
+          images: combined,
+          image: prev.image || combined[0] || '',
+        };
+      });
     } catch {
-      const previewUrl = URL.createObjectURL(file);
-      setFormData((prev) => ({ ...prev, image: previewUrl }));
-      setUploadError('Using local preview — ImageKit fallback.');
+      setUploadError('One or more images failed to upload.');
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const setPrimaryImage = (imgUrl: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      image: imgUrl,
+    }));
+  };
+
+  const removeImage = (imgUrl: string) => {
+    setFormData((prev) => {
+      const remaining = prev.images.filter((img) => img !== imgUrl);
+      const newPrimary = prev.image === imgUrl ? (remaining[0] || '') : prev.image;
+      return {
+        ...prev,
+        images: remaining,
+        image: newPrimary,
+      };
+    });
   };
 
   // ─── Save to Supabase via API ──────────────────────────────────────────────
@@ -143,8 +200,15 @@ export default function AdminProductsPage() {
     setSaving(true);
     setSaveError('');
 
+    const primaryImg = formData.image || formData.images[0] || '';
+    const allImages = formData.images.length > 0 ? formData.images : (primaryImg ? [primaryImg] : []);
+
     const payload = {
       ...formData,
+      image: primaryImg,
+      images: allImages,
+      specification: formData.specification,
+      shippingCare: formData.shippingCare,
       id: editingProduct ? editingProduct.id : `prod-${Date.now()}`,
       order: editingProduct ? editingProduct.order : products.length + 1,
     };
@@ -220,7 +284,7 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products &amp; Catalog</h1>
           <p className="text-sm text-gray-500 mt-1">
-            All changes save directly to Supabase and appear live on the website.
+            Manage multi-image galleries, detailed specifications, descriptions, shipping details &amp; pricing.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -286,7 +350,7 @@ export default function AdminProductsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  {['Product', 'Category', 'Price', 'Homepage Badges', 'Status', 'Actions'].map((h) => (
+                  {['Product', 'Category', 'Price', 'Images & Details', 'Homepage Badges', 'Status', 'Actions'].map((h) => (
                     <th
                       key={h}
                       className={`px-4 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider ${
@@ -304,12 +368,18 @@ export default function AdminProductsPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="relative w-12 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            fill
-                            className="object-cover object-top"
-                          />
+                          {product.image ? (
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              className="object-cover object-top"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              <ImageIcon size={18} />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900 leading-tight">{product.name}</p>
@@ -323,6 +393,19 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 font-bold text-[#083028]">{product.price}</td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex flex-col gap-1 text-xs">
+                        <span className="inline-flex items-center gap-1 font-semibold text-gray-700">
+                          <ImageIcon size={12} className="text-[#083028]" />
+                          {Array.isArray(product.images) && product.images.length > 0 ? product.images.length : (product.image ? 1 : 0)} photos
+                        </span>
+                        <div className="flex items-center gap-1 text-[11px]">
+                          {product.description && <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Desc</span>}
+                          {product.specification && <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">Specs</span>}
+                          {product.shippingCare && <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded font-medium">Care</span>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3.5 text-center">
                       <div className="inline-flex items-center gap-2">
                         <button
@@ -392,12 +475,17 @@ export default function AdminProductsPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl z-10 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingProduct ? 'Edit Product' : 'Add New Product'}
-              </h2>
-              <button onClick={() => setModalOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-full">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {editingProduct ? 'Edit Product' : 'Add New Product'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Upload multiple photos, set description, specifications, care details &amp; pricing.
+                </p>
+              </div>
+              <button onClick={() => setModalOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full">
                 <X size={20} />
               </button>
             </div>
@@ -408,7 +496,8 @@ export default function AdminProductsPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Product Title */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Product Title *</label>
                 <input
@@ -420,6 +509,7 @@ export default function AdminProductsPage() {
                 />
               </div>
 
+              {/* Price & Category */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Price *</label>
@@ -445,6 +535,162 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              {/* Multiple Images Upload via ImageKit */}
+              <div className="p-4 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-gray-800 uppercase">
+                    Product Images (Upload Multiple)
+                  </label>
+                  <span className="text-xs text-gray-500 font-semibold">
+                    {formData.images.length} photo{formData.images.length === 1 ? '' : 's'} added
+                  </span>
+                </div>
+
+                {/* Upload Trigger Dropzone */}
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#083028] transition-colors bg-white">
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <ImageIcon className="text-[#083028]/70 mb-2" size={32} />
+                    <p className="text-xs text-gray-700 font-bold mb-1">
+                      Upload Photos for Product Gallery
+                    </p>
+                    <p className="text-[11px] text-gray-400 mb-3">
+                      Select multiple images at once (PNG, JPG, WEBP via ImageKit CDN)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#083028] hover:bg-[#051e19] px-4 py-2.5 rounded-xl transition-colors shadow-xs"
+                    >
+                      <Upload size={14} /> Select &amp; Upload Multiple Images
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageFileChange}
+                    className="hidden"
+                  />
+                </div>
+
+                {isUploading && (
+                  <p className="text-xs text-[#083028] flex items-center gap-1.5 font-semibold">
+                    <Loader2 size={14} className="animate-spin" /> Uploading image(s) to ImageKit CDN...
+                  </p>
+                )}
+                {uploadError && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg">ℹ️ {uploadError}</p>
+                )}
+
+                {/* Uploaded Images List with Set Primary & Delete actions */}
+                {formData.images.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs font-bold text-gray-600">
+                      Gallery Photos (Click Star to select Default Main image):
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {formData.images.map((imgUrl, index) => {
+                        const isMain = formData.image === imgUrl || (!formData.image && index === 0);
+                        return (
+                          <div
+                            key={imgUrl + index}
+                            className={`relative group rounded-xl overflow-hidden border-2 transition-all bg-white p-1 ${
+                              isMain ? 'border-[#083028] shadow-sm ring-2 ring-[#083028]/20' : 'border-gray-200'
+                            }`}
+                          >
+                            <div className="relative w-full h-28 rounded-lg overflow-hidden bg-gray-50">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgUrl}
+                                alt={`Image ${index + 1}`}
+                                className="w-full h-full object-cover object-top"
+                              />
+                            </div>
+
+                            {/* Main Badge */}
+                            {isMain && (
+                              <span className="absolute top-2 left-2 bg-[#083028] text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex items-center gap-0.5">
+                                <Star size={10} fill="currentColor" /> Main
+                              </span>
+                            )}
+
+                            {/* Control overlay */}
+                            <div className="flex items-center justify-between mt-1 px-1">
+                              {!isMain ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPrimaryImage(imgUrl)}
+                                  className="text-[11px] text-[#083028] hover:underline font-semibold flex items-center gap-1"
+                                >
+                                  <Star size={11} /> Set Main
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-emerald-700 font-bold">Default</span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeImage(imgUrl)}
+                                className="text-gray-400 hover:text-red-600 p-1 transition-colors"
+                                title="Remove Image"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 1. Product Description */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 uppercase mb-1">
+                  <Info size={14} className="text-[#083028]" />
+                  Product Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Overview of the product design, embroidery highlights, drape, and aesthetic appeal..."
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#083028] leading-relaxed"
+                />
+              </div>
+
+              {/* 2. Product Specifications */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 uppercase mb-1">
+                  <FileText size={14} className="text-[#083028]" />
+                  Product Specifications (Fabric, Occasion, Work, Dimensions)
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.specification}
+                  onChange={(e) => setFormData({ ...formData, specification: e.target.value })}
+                  placeholder="e.g. Fabric: Pure Silk Blend | Work: Zari Woven Border | Length: 5.5 meters saree + 0.8 meter blouse | Occasion: Festive & Wedding"
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#083028] leading-relaxed"
+                />
+              </div>
+
+              {/* 3. Shipping & Care Instructions */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 uppercase mb-1">
+                  <Truck size={14} className="text-[#083028]" />
+                  Shipping &amp; Care Details
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.shippingCare}
+                  onChange={(e) => setFormData({ ...formData, shippingCare: e.target.value })}
+                  placeholder="e.g. Dispatch Time: Dispatched within 24 hours | Wash Care: Dry Clean Recommended | Returns: 7-day easy exchange & return"
+                  className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#083028] leading-relaxed"
+                />
+              </div>
+
+              {/* Stock Quantity */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Stock Quantity</label>
                 <input
@@ -494,53 +740,6 @@ export default function AdminProductsPage() {
                   />
                   <span className="text-xs font-semibold text-gray-700">Active on Storefront</span>
                 </label>
-              </div>
-
-              {/* ImageKit Upload */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                  Product Image (ImageKit)
-                </label>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#083028] transition-colors">
-                  {formData.image ? (
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-16 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover object-top" />
-                      </div>
-                      <div className="flex-1 text-left min-w-0">
-                        <p className="text-xs font-medium text-gray-700 truncate">{formData.image}</p>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="mt-2 text-xs font-bold text-[#083028] hover:underline flex items-center gap-1"
-                        >
-                          <Upload size={13} /> Replace image
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <ImageIcon className="mx-auto text-gray-400 mb-2" size={28} />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-xs font-bold text-[#083028] bg-[#083028]/10 hover:bg-[#083028]/20 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Upload to ImageKit
-                      </button>
-                    </div>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageFileChange} className="hidden" />
-                </div>
-                {isUploading && (
-                  <p className="text-xs text-[#083028] mt-1.5 flex items-center gap-1.5 font-medium">
-                    <Loader2 size={13} className="animate-spin" /> Uploading to ImageKit CDN...
-                  </p>
-                )}
-                {uploadError && (
-                  <p className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg mt-2">ℹ️ {uploadError}</p>
-                )}
               </div>
 
               {/* Buttons */}

@@ -4,16 +4,16 @@ import { useState, useEffect } from 'react';
 import { ShoppingCart, Heart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { defaultNewArrivals, Product } from '@/lib/adminData';
+import { Product } from '@/lib/adminData';
 
 export default function NewArrivals() {
-  const [products, setProducts] = useState<Product[]>(defaultNewArrivals);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     fetch('/api/products?is_new_arrival=true')
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
-        if (!data || data.length === 0) return;
+        if (!Array.isArray(data)) return;
         const mapped: Product[] = data.map((d: Record<string, unknown>) => ({
           id: d.id as string,
           name: d.name as string,
@@ -27,7 +27,7 @@ export default function NewArrivals() {
         setProducts(mapped.filter((p) => p.active));
       })
       .catch(() => {
-        // silently fall back to defaults
+        setProducts([]);
       });
   }, []);
 
@@ -59,21 +59,28 @@ export default function NewArrivals() {
               className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300"
             >
               {/* Image area */}
-              <div className="relative bg-[#EDE8DF]" style={{ height: '260px' }}>
-                <button className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition-colors">
-                  <Heart size={15} className="text-[#083028] hover:text-red-500 transition-colors" strokeWidth={1.5} />
-                </button>
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
-              </div>
+              <Link href={`/product/${product.id}`} className="block">
+                <div className="relative bg-[#EDE8DF]" style={{ height: '260px' }}>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition-colors"
+                  >
+                    <Heart size={15} className="text-[#083028] hover:text-red-500 transition-colors" strokeWidth={1.5} />
+                  </button>
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  />
+                </div>
+              </Link>
               {/* Info */}
               <div className="p-4">
-                <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2">{product.name}</h3>
+                <Link href={`/product/${product.id}`} className="block">
+                  <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2 hover:text-[#083028] transition-colors">{product.name}</h3>
+                </Link>
                 <p className="text-lg font-bold text-[#083028] mb-4">{product.price}</p>
                 <button className="w-full border border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2">
                   <ShoppingCart size={14} strokeWidth={1.5} />

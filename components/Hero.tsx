@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
-import { HeroSlide, defaultHeroSlides } from '@/lib/adminData';
+import { HeroSlide } from '@/lib/adminData';
 
 export default function Hero() {
-  const [slides, setSlides] = useState<HeroSlide[]>(defaultHeroSlides);
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     // Fetch live slides from Supabase via API
     fetch('/api/hero-slides')
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
-        if (!data || data.length === 0) return;
+        if (!Array.isArray(data)) return;
         const mapped: HeroSlide[] = data.map((d: Record<string, unknown>) => ({
           id: d.id as string,
           title: d.title as string,
@@ -27,10 +27,10 @@ export default function Hero() {
           order: d.sort_order as number,
         }));
         const active = mapped.filter((s) => s.active).sort((a, b) => a.order - b.order);
-        if (active.length > 0) setSlides(active);
+        setSlides(active);
       })
       .catch(() => {
-        // silently fall back to defaults
+        setSlides([]);
       });
   }, []);
 
