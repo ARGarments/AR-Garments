@@ -8,7 +8,6 @@ import CollectionBanners from "@/components/CollectionBanners";
 import BestSellers from "@/components/BestSellers";
 import PromotionalBanners from "@/components/PromotionalBanners";
 import WhyChooseUs from "@/components/WhyChooseUs";
-import Testimonials from "@/components/Testimonials";
 import Newsletter from "@/components/Newsletter";
 import Footer from "@/components/Footer";
 
@@ -25,7 +24,6 @@ export default function Home() {
       <BestSellers />
       <PromotionalBanners />
       <WhyChooseUs />
-      <Testimonials />
       <Newsletter />
       <Footer />
     </main>

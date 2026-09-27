@@ -5,9 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  ShoppingCart, Heart, Share2, ShieldCheck, Truck, RotateCcw,
+  ShoppingCart, Share2, ShieldCheck, Truck, RotateCcw,
   CheckCircle2, ChevronRight, ArrowLeft, Loader2, Sparkles,
-  Minus, Plus, CreditCard, Tag
+  Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -41,10 +41,24 @@ export default function ProductDetailPage() {
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'shipping'>('description');
   const [copiedShare, setCopiedShare] = useState(false);
+
+  // Coupon & Discount states
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: number;
+    applicableCategory: string;
+    discountAmount: number;
+    isFreeShipping?: boolean;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [couponSuccess, setCouponSuccess] = useState('');
+  const [availableOffers, setAvailableOffers] = useState<any[]>([]);
 
   useEffect(() => {
     if (!productId) return;
@@ -80,6 +94,27 @@ export default function ProductDetailPage() {
         setProduct(mapped);
         setSelectedImage(mapped.images?.[0] || mapped.image || '');
 
+        // Fetch coupons applicable to this product category & storewide
+        fetch('/api/coupons?active=true', { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((list) => {
+            if (Array.isArray(list)) {
+              const cat = mapped.category.toLowerCase();
+              const applicable = list.filter((c: Record<string, unknown>) => {
+                const cCat = String(c.applicableCategory || '').toLowerCase();
+                return cCat === 'all' || cCat === cat;
+              });
+              // Sort category-specific to the top
+              applicable.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+                if (a.applicableCategory !== 'All' && b.applicableCategory === 'All') return -1;
+                if (b.applicableCategory !== 'All' && a.applicableCategory === 'All') return 1;
+                return 0;
+              });
+              setAvailableOffers(applicable);
+            }
+          })
+          .catch(() => {});
+
         // Fetch related products from DB from same category — no-store
         fetch('/api/products', { cache: 'no-store' })
           .then((r) => (r.ok ? r.json() : []))
@@ -105,6 +140,88 @@ export default function ProductDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [productId]);
+
+  // Handle Apply Coupon with category validation
+  const handleApplyCoupon = async (codeToUse?: string) => {
+    if (!product) return;
+    const targetCode = (codeToUse || couponInput).trim();
+    if (!targetCode) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError('');
+    setCouponSuccess('');
+
+    const unitPrice = product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10);
+    const orderTotal = unitPrice * quantity;
+
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: targetCode,
+          category: product.category,
+          orderAmount: orderTotal,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.valid) {
+        setAppliedCoupon({
+          code: result.coupon.code,
+          discountType: result.coupon.discountType,
+          discountValue: result.coupon.discountValue,
+          applicableCategory: result.coupon.applicableCategory,
+          discountAmount: result.discountAmount,
+          isFreeShipping: result.isFreeShipping,
+        });
+        setCouponSuccess(result.message);
+        setCouponInput(result.coupon.code);
+        setCouponError('');
+      } else {
+        setCouponError(result.message || 'Coupon could not be applied.');
+        setCouponSuccess('');
+      }
+    } catch {
+      setCouponError('Failed to validate coupon. Please try again.');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponSuccess('');
+    setCouponError('');
+    setCouponInput('');
+  };
+
+  const handleRefreshCoupons = async () => {
+    if (!product) return;
+    try {
+      const res = await fetch('/api/coupons?active=true', { cache: 'no-store' });
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          const cat = product.category.toLowerCase();
+          const applicable = list.filter((c: Record<string, unknown>) => {
+            const cCat = String(c.applicableCategory || '').toLowerCase();
+            return cCat === 'all' || cCat === cat;
+          });
+          applicable.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+            if (a.applicableCategory !== 'All' && b.applicableCategory === 'All') return -1;
+            if (b.applicableCategory !== 'All' && a.applicableCategory === 'All') return 1;
+            return 0;
+          });
+          setAvailableOffers(applicable);
+        }
+      }
+    } catch {}
+  };
 
   const handleAddToCart = () => {
     setAddedToCart(true);
@@ -217,18 +334,6 @@ export default function ProductDetailPage() {
                   </span>
                 )}
               </div>
-
-              {/* Wishlist Button Overlay */}
-              <button
-                onClick={() => setIsWishlisted(!isWishlisted)}
-                className="absolute top-4 right-4 z-10 w-11 h-11 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white hover:scale-105 transition-all"
-                aria-label="Wishlist"
-              >
-                <Heart
-                  size={20}
-                  className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-[#083028]'}
-                />
-              </button>
             </div>
 
             {/* Thumbnail Row (Multiple Images from DB) */}
@@ -300,13 +405,40 @@ export default function ProductDetailPage() {
               <p className="text-xs text-gray-400 font-mono mt-1">Product ID: {product.id}</p>
             </div>
 
-            {/* Price Showcase from DB */}
+            {/* Price Showcase from DB with Dynamic Coupon Discount */}
             <div className="p-4 bg-[#FAF8F3] rounded-2xl border border-[#EDE8DF] flex items-baseline justify-between">
               <div>
-                <p className="text-3xl font-black text-[#083028]">
-                  {product.price}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">Inclusive of all taxes</p>
+                {appliedCoupon ? (
+                  <div>
+                    <div className="flex items-baseline gap-2.5">
+                      <p className="text-3xl font-black text-[#083028]">
+                        ₹{Math.max(
+                          0,
+                          (product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10)) * quantity - appliedCoupon.discountAmount
+                        ).toLocaleString('en-IN')}
+                      </p>
+                      <span className="text-sm line-through text-gray-400 font-semibold">
+                        ₹{(
+                          (product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10)) * quantity
+                        ).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <Sparkles size={11} /> Saved ₹{appliedCoupon.discountAmount} ({appliedCoupon.code})
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-3xl font-black text-[#083028]">
+                      {quantity > 1
+                        ? `₹${((product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10)) * quantity).toLocaleString('en-IN')}`
+                        : product.price}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">Inclusive of all taxes</p>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
                 <CheckCircle2 size={13} />
@@ -326,7 +458,11 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center border border-gray-300 rounded-xl bg-gray-50 p-1">
                   <button
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    onClick={() => {
+                      const nextQ = Math.max(1, quantity - 1);
+                      setQuantity(nextQ);
+                      if (appliedCoupon) handleApplyCoupon(appliedCoupon.code);
+                    }}
                     disabled={quantity <= 1}
                     className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-colors"
                   >
@@ -334,7 +470,11 @@ export default function ProductDetailPage() {
                   </button>
                   <span className="w-12 text-center text-sm font-bold text-gray-900">{quantity}</span>
                   <button
-                    onClick={() => setQuantity((q) => Math.min(product.stock || 10, q + 1))}
+                    onClick={() => {
+                      const nextQ = Math.min(product.stock || 10, quantity + 1);
+                      setQuantity(nextQ);
+                      if (appliedCoupon) handleApplyCoupon(appliedCoupon.code);
+                    }}
                     disabled={quantity >= (product.stock || 10)}
                     className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-700 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs transition-colors"
                   >
@@ -345,7 +485,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
               <button
                 onClick={handleAddToCart}
                 className={`flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all duration-200 ${
@@ -368,6 +508,182 @@ export default function ProductDetailPage() {
                 Buy Now
               </button>
             </div>
+
+            {/* AVAILABLE DISCOUNT TICKETS SECTION — REALISTIC VOUCHER STUBS */}
+            <div className="space-y-4 pt-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#083028] text-amber-300 flex items-center justify-center shadow-xs">
+                    <Ticket size={17} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 leading-tight flex items-center gap-1.5">
+                      <span>Discount Tickets &amp; Vouchers</span>
+                      <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full">
+                        {product.category}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-gray-500">Apply active voucher tickets to save instantly</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleRefreshCoupons}
+                  title="Check for new coupons"
+                  className="p-1.5 text-gray-400 hover:text-[#083028] rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors shadow-2xs"
+                >
+                  <RefreshCw size={13} />
+                </button>
+              </div>
+
+              {/* Status & Error Alerts */}
+              {couponError && (
+                <div className="p-3 bg-red-50 text-red-700 text-xs font-semibold rounded-2xl border border-red-200 flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle size={15} className="mt-0.5 flex-shrink-0 text-red-600" />
+                  <span className="leading-tight">{couponError}</span>
+                </div>
+              )}
+
+              {couponSuccess && (
+                <div className="p-3 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-2xl border border-emerald-200 flex items-center justify-between animate-in fade-in shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <Check size={16} className="text-emerald-700" />
+                    <span>{couponSuccess}</span>
+                  </div>
+                  <button
+                    onClick={handleRemoveCoupon}
+                    className="text-xs text-red-600 hover:text-red-800 underline font-semibold ml-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              {/* LIST OF TICKET VOUCHERS */}
+              {availableOffers.length === 0 ? (
+                <div className="p-5 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <Ticket size={24} className="mx-auto text-gray-300 mb-1" />
+                  <p className="text-xs font-semibold text-gray-600">No active tickets for this collection</p>
+                  <p className="text-[11px] text-gray-400">You can still enter a custom coupon code below.</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {availableOffers.map((offer) => {
+                    const isCatMatch = offer.applicableCategory && offer.applicableCategory !== 'All';
+                    const isStorewide = offer.applicableCategory === 'All';
+                    const isCurrentlyApplied = appliedCoupon?.code === offer.code;
+
+                    return (
+                      <div
+                        key={offer.id || offer.code}
+                        className={`relative rounded-2xl border-2 transition-all duration-200 overflow-hidden ${
+                          isCurrentlyApplied
+                            ? 'bg-gradient-to-r from-emerald-50 via-white to-emerald-50/80 border-emerald-600 shadow-md ring-2 ring-emerald-500/20'
+                            : isCatMatch
+                            ? 'bg-gradient-to-r from-purple-50/70 via-white to-amber-50/40 border-dashed border-purple-300 hover:border-purple-400 shadow-xs hover:shadow-md'
+                            : 'bg-gradient-to-r from-amber-50/60 via-white to-emerald-50/40 border-dashed border-[#B8860B]/40 hover:border-[#B8860B]/70 shadow-xs hover:shadow-md'
+                        }`}
+                      >
+                        {/* Perforated Ticket Notches (Left & Right) */}
+                        <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-dashed border-gray-300 z-10" />
+                        <div className="absolute -right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-2 border-dashed border-gray-300 z-10" />
+
+                        <div className="px-5 py-3.5 sm:px-6 sm:py-4">
+                          {/* Ticket Top Ribbon */}
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            {isCatMatch ? (
+                              <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 bg-purple-100 border border-purple-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <Sparkles size={11} className="text-purple-600" />
+                                Exclusive for {offer.applicableCategory}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                                🌐 Storewide Voucher
+                              </span>
+                            )}
+
+                            {offer.minOrderValue > 0 && (
+                              <span className="text-[10px] font-semibold text-gray-500">
+                                Min. ₹{offer.minOrderValue}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Ticket Body: Discount & Code Button */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            {/* Left: Discount amount & info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-xl sm:text-2xl font-black text-[#083028] tracking-tight">
+                                  {offer.discountType === 'percentage'
+                                    ? `${offer.discountValue}% OFF`
+                                    : offer.discountType === 'flat'
+                                    ? `₹${offer.discountValue} FLAT OFF`
+                                    : 'FREE SHIPPING'}
+                                </span>
+                                {offer.maxDiscountAmount && (
+                                  <span className="text-[11px] font-medium text-gray-500">
+                                    (up to ₹{offer.maxDiscountAmount})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-semibold text-gray-800 line-clamp-1 mt-0.5">
+                                {offer.title}
+                              </p>
+                              {offer.description && (
+                                <p className="text-[11px] text-gray-500 line-clamp-1">
+                                  {offer.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Ticket Perforated Divider (Desktop) */}
+                            <div className="hidden sm:block border-l-2 border-dashed border-gray-200 h-10 mx-1" />
+
+                            {/* Right: Code Chip & Action Button */}
+                            <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 flex-shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                              {/* Monospace Code Pill */}
+                              <div className="inline-flex items-center gap-1.5 bg-[#083028]/10 border border-[#083028]/20 px-2.5 py-1 rounded-lg">
+                                <Tag size={11} className="text-[#083028]" />
+                                <span className="font-mono text-xs font-black text-[#083028] tracking-wider">
+                                  {offer.code}
+                                </span>
+                              </div>
+
+                              {/* Apply / Applied Button */}
+                              {isCurrentlyApplied ? (
+                                <button
+                                  onClick={handleRemoveCoupon}
+                                  className="inline-flex items-center gap-1 bg-emerald-700 hover:bg-red-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs group/btn"
+                                >
+                                  <Check size={13} className="group-hover/btn:hidden" />
+                                  <span className="group-hover/btn:hidden">Applied ✓</span>
+                                  <span className="hidden group-hover/btn:inline">Remove ×</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setCouponInput(offer.code);
+                                    handleApplyCoupon(offer.code);
+                                  }}
+                                  disabled={couponLoading}
+                                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] text-white px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs hover:scale-102 disabled:opacity-50"
+                                >
+                                  <Ticket size={12} />
+                                  Apply Coupon
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
+
 
             {/* Information Tabs — Completely rendered from DB */}
             <div className="pt-4 border-t border-gray-100">

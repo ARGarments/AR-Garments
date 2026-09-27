@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, User, Heart, ShoppingBag, Menu, X, Phone, ChevronDown } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, Phone, ChevronDown } from 'lucide-react';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -125,9 +125,6 @@ export default function Header() {
             </button>
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="User Account">
               <User size={21} />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="Wishlist">
-              <Heart size={21} />
             </button>
             <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="Shopping Bag">
               <ShoppingBag size={21} />

@@ -5,7 +5,7 @@ import {
   ShoppingBag, Users, TrendingUp, Package,
   ArrowUpRight, ArrowDownRight, Eye, Clock,
   CheckCircle, Truck, RotateCcw, AlertTriangle,
-  ExternalLink,
+  ExternalLink, Ticket,
 } from 'lucide-react';
 import Link from 'next/link';
 import { adminData } from '@/lib/adminData';
@@ -87,12 +87,20 @@ export default function AdminDashboard() {
   const [newArrivalsCount, setNewArrivalsCount] = useState(0);
   const [bestSellersCount, setBestSellersCount] = useState(0);
   const [testimonialsCount, setTestimonialsCount] = useState(0);
+  const [couponsCount, setCouponsCount] = useState(0);
 
   useEffect(() => {
     setHeroCount(adminData.getHeroSlides().filter(s => s.active).length);
     setNewArrivalsCount(adminData.getNewArrivals().filter(p => p.active).length);
     setBestSellersCount(adminData.getBestSellers().filter(p => p.active).length);
     setTestimonialsCount(adminData.getTestimonials().filter(t => t.active).length);
+
+    fetch('/api/coupons?active=true', { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) setCouponsCount(data.length);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -219,21 +227,29 @@ export default function AdminDashboard() {
             Manage <ExternalLink size={12} />
           </Link>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
             { label: 'Hero Slides', count: heroCount, desc: 'Active slides', icon: Eye, color: 'text-blue-500' },
             { label: 'New Arrivals', count: newArrivalsCount, desc: 'Active products', icon: ShoppingBag, color: 'text-green-500' },
             { label: 'Best Sellers', count: bestSellersCount, desc: 'Active products', icon: TrendingUp, color: 'text-purple-500' },
+            { label: 'Coupons', count: couponsCount, desc: 'Active discounts', icon: Ticket, color: 'text-emerald-600', link: '/admin/coupons' },
             { label: 'Testimonials', count: testimonialsCount, desc: 'Active reviews', icon: Users, color: 'text-amber-500' },
           ].map((item) => {
             const Icon = item.icon;
-            return (
-              <div key={item.label} className="bg-gray-50 rounded-xl p-4 text-center">
+            const content = (
+              <div key={item.label} className="bg-gray-50 rounded-xl p-4 text-center hover:bg-gray-100 transition-colors">
                 <Icon size={20} className={`mx-auto mb-2 ${item.color}`} />
                 <p className="text-2xl font-bold text-gray-900">{item.count}</p>
                 <p className="text-xs font-semibold text-gray-700 mt-0.5">{item.label}</p>
                 <p className="text-xs text-gray-400">{item.desc}</p>
               </div>
+            );
+            return item.link ? (
+              <Link key={item.label} href={item.link} className="block">
+                {content}
+              </Link>
+            ) : (
+              content
             );
           })}
         </div>

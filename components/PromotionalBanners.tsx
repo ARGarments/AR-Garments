@@ -25,11 +25,11 @@ export default function PromotionalBanners() {
   return (
     <section className="py-10 bg-white">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {banners.map((banner, index) => (
             <div
               key={index}
-              className="relative h-[200px] md:h-[220px] rounded-2xl overflow-hidden group cursor-pointer shadow-md"
+              className="relative h-[180px] sm:h-[200px] md:h-[240px] rounded-2xl overflow-hidden group cursor-pointer shadow-md"
             >
               <Image
                 src={banner.image}
@@ -37,15 +37,16 @@ export default function PromotionalBanners() {
                 fill
                 className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-[#083028]/65" />
-              <div className="absolute inset-0 p-5 flex flex-col justify-between">
+              {/* Minimal left gradient only for text readability */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/15 to-transparent" />
+              <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-white mb-0.5 drop-shadow">
                     {banner.title}
                   </h3>
-                  <p className="text-gray-300 text-xs">{banner.subtitle}</p>
+                  <p className="text-gray-200 text-xs drop-shadow">{banner.subtitle}</p>
                 </div>
-                <button className="self-start bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white px-5 py-2 rounded-md font-semibold transition-colors text-xs">
+                <button className="self-start bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white px-4 py-1.5 rounded-md font-semibold transition-colors text-xs">
                   {banner.buttonText} →
                 </button>
               </div>

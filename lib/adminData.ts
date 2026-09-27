@@ -40,6 +40,114 @@ export interface Testimonial {
   active: boolean;
 }
 
+export type DiscountType = 'percentage' | 'flat' | 'free_shipping';
+
+export interface Coupon {
+  id: string;
+  code: string;
+  title: string;
+  description?: string;
+  discountType: DiscountType;
+  discountValue: number;
+  applicableCategory: string; // 'All' or specific category
+  minOrderValue: number;
+  maxDiscountAmount?: number | null;
+  usageLimit?: number | null;
+  usedCount: number;
+  validFrom?: string;
+  validUntil?: string | null;
+  active: boolean;
+  createdAt?: string;
+}
+
+export const defaultCoupons: Coupon[] = [
+  {
+    id: 'coupon-1',
+    code: 'WELCOME10',
+    title: 'Welcome Offer',
+    description: 'Get 10% off on your first order across all collections',
+    discountType: 'percentage',
+    discountValue: 10,
+    applicableCategory: 'All',
+    minOrderValue: 499,
+    maxDiscountAmount: 300,
+    usageLimit: 500,
+    usedCount: 18,
+    active: true,
+  },
+  {
+    id: 'coupon-2',
+    code: 'SAREE20',
+    title: 'Saree Festive Special',
+    description: 'Exclusive 20% discount on all designer and embroidered Sarees',
+    discountType: 'percentage',
+    discountValue: 20,
+    applicableCategory: 'Sarees',
+    minOrderValue: 999,
+    maxDiscountAmount: 500,
+    usageLimit: 200,
+    usedCount: 34,
+    active: true,
+  },
+  {
+    id: 'coupon-3',
+    code: 'SUIT15',
+    title: 'Suits & Dress Material Discount',
+    description: 'Save 15% on any Suits & Dress Material outfit',
+    discountType: 'percentage',
+    discountValue: 15,
+    applicableCategory: 'Suits & Dress Material',
+    minOrderValue: 799,
+    maxDiscountAmount: 400,
+    usageLimit: 150,
+    usedCount: 12,
+    active: true,
+  },
+  {
+    id: 'coupon-4',
+    code: 'DUPATTA100',
+    title: 'Dupatta Flat ₹100 Off',
+    description: 'Flat ₹100 instant discount on Dupatta Sets',
+    discountType: 'flat',
+    discountValue: 100,
+    applicableCategory: 'Dupatta Sets',
+    minOrderValue: 699,
+    maxDiscountAmount: null,
+    usageLimit: 100,
+    usedCount: 7,
+    active: true,
+  },
+  {
+    id: 'coupon-5',
+    code: 'FLAT300',
+    title: 'Grand Shopping Discount',
+    description: 'Flat ₹300 off on any order above ₹1,999 across all categories',
+    discountType: 'flat',
+    discountValue: 300,
+    applicableCategory: 'All',
+    minOrderValue: 1999,
+    maxDiscountAmount: null,
+    usageLimit: 100,
+    usedCount: 23,
+    active: true,
+  },
+  {
+    id: 'coupon-6',
+    code: 'FREESHIP',
+    title: 'Free Express Shipping',
+    description: 'Complimentary shipping on all orders above ₹500',
+    discountType: 'free_shipping',
+    discountValue: 0,
+    applicableCategory: 'All',
+    minOrderValue: 500,
+    maxDiscountAmount: null,
+    usageLimit: null,
+    usedCount: 52,
+    active: true,
+  },
+];
+
+
 // ─── Default Data (Unified Canonical Source) ──────────────────────────────────
 
 export const defaultHeroSlides: HeroSlide[] = [

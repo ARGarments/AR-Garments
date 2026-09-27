@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Layers,
+  Ticket,
 } from 'lucide-react';
 import { useState } from 'react';
 import { adminAuth } from '@/lib/adminData';
@@ -20,6 +21,7 @@ const navItems = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Home Page', href: '/admin/homepage', icon: Home },
   { label: 'Products & Catalog', href: '/admin/products', icon: ShoppingBag },
+  { label: 'Coupons & Discounts', href: '/admin/coupons', icon: Ticket },
 ];
 
 export default function AdminSidebar() {
