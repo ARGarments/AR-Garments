@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useCart } from '@/context/CartContext';
 
 export interface Product {
   id: number | string;
@@ -24,11 +25,13 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [added, setAdded] = useState(false);
+  const { addToCart } = useCart();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setAdded(true);
+    addToCart(product, 1);
     if (onAddToCart) onAddToCart(product);
     setTimeout(() => setAdded(false), 1500);
   };

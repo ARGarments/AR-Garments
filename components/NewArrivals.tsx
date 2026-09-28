@@ -6,10 +6,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/adminData';
+import { useCart } from '@/context/CartContext';
 
 export default function NewArrivals() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [addedIds, setAddedIds] = useState<{ [id: string]: boolean }>({});
   const router = useRouter();
+  const { addToCart } = useCart();
 
   useEffect(() => {
     fetch('/api/products?is_new_arrival=true')
@@ -82,13 +85,29 @@ export default function NewArrivals() {
                 </div>
                 {/* Action buttons */}
                 <div className="flex flex-col gap-1.5 sm:gap-2">
-                  <button className="w-full border border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      addToCart(product, 1);
+                      setAddedIds((prev) => ({ ...prev, [product.id]: true }));
+                      setTimeout(() => {
+                        setAddedIds((prev) => ({ ...prev, [product.id]: false }));
+                      }, 1500);
+                    }}
+                    className={`w-full border py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                      addedIds[product.id]
+                        ? 'bg-[#083028] text-white border-[#083028]'
+                        : 'border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'
+                    }`}
+                  >
                     <ShoppingCart size={13} strokeWidth={1.5} />
-                    Add to Cart
+                    {addedIds[product.id] ? 'Added ✓' : 'Add to Cart'}
                   </button>
                   <button
-                    onClick={() => router.push(`/product/${product.id}`)}
-                    className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5"
+                    onClick={() => {
+                      addToCart(product, 1);
+                      router.push('/cart');
+                    }}
+                    className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     <CreditCard size={13} strokeWidth={1.5} />
                     Buy Now

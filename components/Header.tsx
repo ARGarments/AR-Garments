@@ -3,11 +3,16 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, User, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, ChevronDown, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+
+  const { user, logout } = useAuth();
+  const { totalCount } = useCart();
 
   const categories = [
     { name: 'Sarees', href: '/category?category=Sarees' },
@@ -93,18 +98,53 @@ export default function Header() {
 
           {/* Icons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="Search">
+            <Link
+              href="/category"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]"
+              aria-label="Search Catalog"
+            >
               <Search size={21} />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="User Account">
-              <User size={21} />
-            </button>
-            <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]" aria-label="Shopping Bag">
+            </Link>
+
+            {/* User Account — direct link, no dropdown */}
+            {user ? (
+              <div className="flex items-center gap-1.5">
+                <span className="hidden md:inline-block text-xs font-bold text-[#083028] bg-[#083028]/10 px-2.5 py-1 rounded-full max-w-[90px] truncate">
+                  {user.name.split(' ')[0]}
+                </span>
+                <button
+                  onClick={() => logout()}
+                  className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  aria-label="Sign Out"
+                  title="Sign Out"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="p-2 rounded-full transition-colors text-gray-700 hover:text-[#083028] hover:bg-gray-100"
+                aria-label="Sign In"
+              >
+                <User size={21} />
+              </Link>
+            )}
+
+            {/* Shopping Bag Button linking to /cart */}
+            <Link
+              href="/cart"
+              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028] flex items-center justify-center"
+              aria-label={`Shopping Bag with ${totalCount} items`}
+            >
               <ShoppingBag size={21} />
-              <span className="absolute top-1 right-1 w-4 h-4 bg-[#083028] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                0
-              </span>
-            </button>
+              {totalCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#083028] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-in zoom-in-75 duration-200">
+                  {totalCount > 99 ? '99+' : totalCount}
+                </span>
+              )}
+            </Link>
+
             <button
               className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -180,6 +220,57 @@ export default function Header() {
               >
                 Contact Us
               </Link>
+
+              {/* Mobile User & Cart Quick Links */}
+              <div className="pt-3 mt-1 border-t border-gray-100 flex flex-col gap-2">
+                <Link
+                  href="/cart"
+                  className="flex items-center justify-between text-[#083028] font-bold py-2 text-base bg-[#F5F1E8] px-3 rounded-xl"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="flex items-center gap-2">
+                    <ShoppingBag size={18} /> My Cart
+                  </span>
+                  <span className="bg-[#083028] text-white text-xs px-2 py-0.5 rounded-full">
+                    {totalCount}
+                  </span>
+                </Link>
+
+                {user ? (
+                  <div className="flex items-center justify-between py-2 px-1">
+                    <div className="text-sm">
+                      <p className="font-bold text-gray-900">{user.name}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200"
+                    >
+                      <LogOut size={14} /> Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link
+                      href="/login"
+                      className="text-center font-bold text-sm bg-[#083028] text-white py-2 rounded-xl"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="text-center font-bold text-sm bg-white border border-[#083028] text-[#083028] py-2 rounded-xl"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Register
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </nav>
         )}

@@ -12,6 +12,7 @@ import {
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
+import { useCart } from '@/context/CartContext';
 
 interface ProductData {
   id: string;
@@ -34,6 +35,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params?.id as string;
+  const { addToCart } = useCart();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
@@ -224,6 +226,15 @@ export default function ProductDetailPage() {
   };
 
   const handleAddToCart = () => {
+    if (!product) return;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      numericPrice: product.numericPrice,
+      image: product.image,
+      category: product.category,
+    }, quantity);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
@@ -500,7 +511,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => {
                   handleAddToCart();
-                  router.push('/category');
+                  router.push('/cart');
                 }}
                 className="flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm bg-[#F5F1E8] hover:bg-[#ebe4d5] text-[#083028] border border-[#083028]/20 flex items-center justify-center gap-2 transition-colors"
               >
