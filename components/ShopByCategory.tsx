@@ -41,21 +41,21 @@ export default function ShopByCategory() {
     <section className="py-10 bg-[#F5F1E8]">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-3xl font-bold text-gray-900">Shop by Category</h2>
-            <p className="text-base text-gray-400 hidden md:block">Explore our exclusive ethnic collections</p>
+        <div className="flex justify-between items-center mb-5 sm:mb-8">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Shop by Category</h2>
+            <p className="text-xs sm:text-sm text-gray-500 hidden md:block">Explore our exclusive ethnic collections</p>
           </div>
           <Link
             href="/category"
-            className="text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-4 py-2 rounded-md transition-colors flex-shrink-0"
+            className="text-xs sm:text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors flex-shrink-0"
           >
             View All →
           </Link>
         </div>
 
         {/* Category Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {categories.map((category, index) => (
             <Link
               key={index}
@@ -64,8 +64,7 @@ export default function ShopByCategory() {
             >
               {/* Card Image */}
               <div
-                className="relative w-full rounded-2xl overflow-hidden bg-[#EDE8DF] shadow-sm group-hover:shadow-md transition-shadow"
-                style={{ height: '280px' }}
+                className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-[#EDE8DF] shadow-xs group-hover:shadow-md transition-shadow h-[180px] sm:h-[220px] md:h-[260px]"
               >
                 <Image
                   src={category.image}
@@ -76,11 +75,11 @@ export default function ShopByCategory() {
               </div>
 
               {/* Card Text */}
-              <div className="mt-3 px-1">
-                <h3 className="font-bold text-gray-900 text-base leading-snug group-hover:text-[#083028] transition-colors">
+              <div className="mt-2 sm:mt-3 px-1">
+                <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base leading-snug group-hover:text-[#083028] transition-colors line-clamp-1">
                   {category.name}
                 </h3>
-                <p className="text-sm text-gray-500 mt-0.5">{category.subtitle}</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 mt-0.5">{category.subtitle}</p>
               </div>
             </Link>
           ))}

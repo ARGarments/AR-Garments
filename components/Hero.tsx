@@ -31,7 +31,7 @@ export default function Hero() {
       .catch(() => setSlides([]));
   }, []);
 
-  const activeSlides = slides.filter(s => s.active);
+  const activeSlides = slides.filter((s) => s.active);
 
   useEffect(() => {
     if (activeSlides.length === 0) return;
@@ -47,10 +47,7 @@ export default function Hero() {
   if (activeSlides.length === 0) return null;
 
   return (
-    <section
-      className="relative overflow-hidden bg-[#083028]"
-      style={{ height: 'clamp(240px, 52vw, 660px)' }}
-    >
+    <section className="relative overflow-hidden bg-[#083028] h-[300px] sm:h-[380px] md:h-[460px] lg:h-[540px]">
       {activeSlides.map((slide, index) => (
         <div
           key={slide.id}
@@ -58,70 +55,62 @@ export default function Hero() {
             index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          {/* Background Image */}
+          {/* Background Image: anchored to top so head/hair is never cut, and right-aligned so model is visible */}
           <div className="absolute inset-0">
             <Image
               src={slide.image}
               alt={slide.title}
               fill
-              className="object-cover object-top"
+              className="object-cover object-[85%_top] sm:object-[85%_top] md:object-[right_top]"
               priority={index === 0}
               sizes="100vw"
             />
-            {/* Very subtle left gradient — image visible on right side */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+            {/* Left-side subtle gradient only for text readability — leaves model bright & clear */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent w-[65%] sm:w-full" />
           </div>
 
-          {/* Text Content — left side, never overflows into image area */}
+          {/* Text Content */}
           <div className="relative h-full flex items-center">
-            <div className="w-1/2 sm:w-[45%] md:w-2/5 lg:w-1/3 pl-4 sm:pl-8 md:pl-14 lg:pl-20 pr-2">
-              {/* Label */}
-              <p className="text-[10px] sm:text-xs md:text-sm font-semibold text-white/80 uppercase tracking-widest mb-1.5 sm:mb-2">
+            <div className="w-[54%] sm:w-[48%] md:w-[42%] lg:w-[38%] pl-4 sm:pl-8 md:pl-14 lg:pl-20 pr-2 pb-6 sm:pb-0">
+              {/* Category / Collection Label */}
+              <p className="text-[9px] sm:text-xs md:text-sm font-semibold text-white/90 uppercase tracking-widest mb-1 sm:mb-1.5">
                 {slide.label || 'Timeless Ethnic Wear'}
               </p>
 
               {/* Main Title */}
-              <h2
-                className="font-bold text-white leading-tight mb-2 sm:mb-3 drop-shadow-lg"
-                style={{ fontSize: 'clamp(1.4rem, 4.5vw, 3.5rem)' }}
-              >
+              <h2 className="text-lg sm:text-2xl md:text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-1 sm:mb-2.5 drop-shadow-md">
                 {slide.title}
               </h2>
 
               {/* Subtitle */}
-              <p
-                className="text-gray-200 mb-3 sm:mb-6 leading-relaxed"
-                style={{ fontSize: 'clamp(0.78rem, 1.5vw, 1rem)' }}
-              >
+              <p className="text-[11px] sm:text-xs md:text-sm text-gray-200 mb-2.5 sm:mb-4 leading-snug sm:leading-relaxed line-clamp-2 max-w-sm">
                 {slide.subtitle}
               </p>
 
               {/* CTA Button */}
-              <button
-                className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white font-semibold rounded-md transition-all duration-200 shadow-lg"
-                style={{
-                  padding: 'clamp(5px, 1vw, 12px) clamp(10px, 2vw, 28px)',
-                  fontSize: 'clamp(0.6rem, 1.2vw, 0.875rem)',
-                }}
-              >
-                {slide.buttonText}
-                <span>→</span>
-              </button>
+              <div>
+                <a
+                  href={slide.buttonLink || '/category'}
+                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] border border-white/40 text-white font-semibold rounded-lg px-3 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm transition-all duration-200 shadow-md whitespace-nowrap"
+                >
+                  <span>{slide.buttonText || 'Shop Now'}</span>
+                  <span>→</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
       ))}
 
-      {/* Bottom controls row: prev · dots · next */}
-      <div className="absolute bottom-3 sm:bottom-5 left-0 right-0 z-20 flex items-center justify-center gap-3 px-4">
+      {/* Bottom controls: prev · dots · next */}
+      <div className="absolute bottom-2.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center gap-2 sm:gap-2.5">
         {/* Prev Arrow */}
         <button
           onClick={prevSlide}
           aria-label="Previous slide"
-          className="w-7 h-7 sm:w-9 sm:h-9 bg-white/25 hover:bg-white/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 shadow flex-shrink-0"
+          className="w-6 h-6 sm:w-8 sm:h-8 bg-black/35 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-all duration-200 shadow flex-shrink-0 cursor-pointer backdrop-blur-xs"
         >
-          <ChevronLeft size={16} className="text-white sm:hidden" />
-          <ChevronLeft size={20} className="text-white hidden sm:block" />
+          <ChevronLeft size={15} />
         </button>
 
         {/* Dot Indicators */}
@@ -131,10 +120,10 @@ export default function Hero() {
               key={index}
               onClick={() => setCurrentSlide(index)}
               aria-label={`Go to slide ${index + 1}`}
-              className={`rounded-full transition-all duration-300 ${
+              className={`rounded-full transition-all duration-300 cursor-pointer ${
                 index === currentSlide
-                  ? 'bg-white w-5 sm:w-7 h-2'
-                  : 'bg-white/40 hover:bg-white/70 w-2 h-2'
+                  ? 'bg-white w-5 sm:w-7 h-1.5 sm:h-2'
+                  : 'bg-white/40 hover:bg-white/70 w-1.5 sm:w-2 h-1.5 sm:h-2'
               }`}
             />
           ))}
@@ -144,10 +133,9 @@ export default function Hero() {
         <button
           onClick={nextSlide}
           aria-label="Next slide"
-          className="w-7 h-7 sm:w-9 sm:h-9 bg-white/25 hover:bg-white/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 shadow flex-shrink-0"
+          className="w-6 h-6 sm:w-8 sm:h-8 bg-black/35 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition-all duration-200 shadow flex-shrink-0 cursor-pointer backdrop-blur-xs"
         >
-          <ChevronRight size={16} className="text-white sm:hidden" />
-          <ChevronRight size={20} className="text-white hidden sm:block" />
+          <ChevronRight size={15} />
         </button>
       </div>
     </section>

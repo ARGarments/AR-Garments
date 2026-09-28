@@ -121,33 +121,33 @@ function CategoryContent() {
       <Header />
 
       {/* HERO BANNER */}
-      <section className="relative overflow-hidden bg-[#083028] py-14 sm:py-20 md:py-24">
+      <section className="relative overflow-hidden bg-[#083028] py-8 sm:py-16 md:py-20">
         <div className="absolute inset-0">
           <Image
             src="/home-images/hero-image1.jpg"
             alt="Category Banner"
             fill
-            className="object-cover object-center opacity-30"
+            className="object-cover object-[85%_center] sm:object-center opacity-30"
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#083028] via-[#083028]/90 to-[#083028]/60" />
         </div>
         <div className="relative z-10 container mx-auto px-4 text-center sm:text-left">
-          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs sm:text-sm text-gray-300 mb-3">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-[11px] sm:text-sm text-gray-300 mb-2 sm:mb-3">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <ChevronRight size={14} />
+            <ChevronRight size={12} className="sm:w-3.5 sm:h-3.5" />
             <Link href="/category" className="hover:text-white transition-colors">Collections</Link>
             {selectedCategory !== 'All' && (
               <>
-                <ChevronRight size={14} />
+                <ChevronRight size={12} className="sm:w-3.5 sm:h-3.5" />
                 <span className="text-white font-medium">{selectedCategory}</span>
               </>
             )}
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-3">
+          <h1 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white tracking-tight mb-1.5 sm:mb-3">
             {selectedCategory === 'All' ? 'Explore Our Collections' : selectedCategory}
           </h1>
-          <p className="text-sm sm:text-base text-gray-300 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm md:text-base text-gray-300 max-w-2xl leading-relaxed">
             Discover exquisite handcrafted ethnic wear designed with premium fabrics,
             timeless tradition, and effortless modern elegance.
           </p>
@@ -155,42 +155,43 @@ function CategoryContent() {
       </section>
 
       {/* MAIN CONTENT */}
-      <div className="container mx-auto px-4 py-8 md:py-12">
+      <div className="container mx-auto px-3 sm:px-4 py-5 sm:py-8 md:py-12">
 
-        {/* Control Bar */}
-        <div className="bg-white rounded-2xl p-4 mb-8 shadow-sm border border-gray-200/80 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        {/* Control Bar — 1 single responsive line on all screen sizes */}
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 mb-4 sm:mb-8 shadow-xs border border-gray-200/80 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setMobileFilterOpen(true)}
-              className="lg:hidden flex items-center gap-2 bg-[#083028] text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
+              className="lg:hidden flex items-center gap-1.5 bg-[#083028] text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex-shrink-0"
             >
-              <Filter size={16} />
+              <Filter size={13} className="sm:w-4 sm:h-4" />
               <span>Filters</span>
             </button>
-            <p className="text-sm text-gray-600 font-medium">
+            <p className="text-xs sm:text-sm text-gray-600 font-medium truncate">
               {loading ? (
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <Loader2 size={14} className="animate-spin" /> Loading products...
+                <span className="flex items-center gap-1 text-gray-400">
+                  <Loader2 size={12} className="animate-spin" /> Loading...
                 </span>
               ) : (
                 <>
-                  Showing{' '}
+                  <span className="hidden sm:inline">Showing </span>
                   <span className="font-bold text-gray-900">
                     {filteredProducts.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}
                     -{Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)}
                   </span>{' '}
-                  of <span className="font-bold text-gray-900">{filteredProducts.length}</span> products
+                  of <span className="font-bold text-gray-900">{filteredProducts.length}</span>
+                  <span className="hidden sm:inline"> products</span>
                 </>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <ArrowUpDown size={16} className="text-gray-400 hidden sm:block" />
-            <span className="text-sm text-gray-500 hidden sm:block">Sort by:</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <ArrowUpDown size={14} className="text-gray-400 hidden sm:block" />
+            <span className="text-xs sm:text-sm text-gray-500 hidden sm:block">Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
-              className="bg-gray-50 border border-gray-300 text-gray-800 text-sm font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#083028]"
+              className="bg-gray-50 border border-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 focus:outline-none focus:ring-1 focus:ring-[#083028]"
             >
               <option value="featured">Featured</option>
               <option value="price-low">Price: Low to High</option>
@@ -202,25 +203,25 @@ function CategoryContent() {
 
         {/* Active Filter Badges */}
         {(selectedCategory !== 'All' || selectedPriceRange !== 0) && (
-          <div className="flex items-center gap-2 flex-wrap mb-6">
-            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Active Filters:</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-4 sm:mb-6">
+            <span className="text-[11px] sm:text-xs text-gray-400 font-semibold uppercase tracking-wider">Active:</span>
             {selectedCategory !== 'All' && (
-              <span className="inline-flex items-center gap-1.5 bg-[#083028] text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="inline-flex items-center gap-1 bg-[#083028] text-white text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full">
                 {selectedCategory}
                 <button onClick={() => handleCategoryChange('All')} className="hover:bg-white/20 rounded-full p-0.5">
-                  <X size={12} />
+                  <X size={11} />
                 </button>
               </span>
             )}
             {selectedPriceRange !== 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-[#083028] text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="inline-flex items-center gap-1 bg-[#083028] text-white text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full">
                 {PRICE_RANGES[selectedPriceRange].label}
                 <button onClick={() => setSelectedPriceRange(0)} className="hover:bg-white/20 rounded-full p-0.5">
-                  <X size={12} />
+                  <X size={11} />
                 </button>
               </span>
             )}
-            <button onClick={resetFilters} className="text-xs font-bold text-[#083028] underline ml-2 hover:opacity-80">
+            <button onClick={resetFilters} className="text-[11px] sm:text-xs font-bold text-[#083028] underline ml-1 hover:opacity-80">
               Clear All
             </button>
           </div>
@@ -301,7 +302,7 @@ function CategoryContent() {
               </div>
             ) : paginatedProducts.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
                   {paginatedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

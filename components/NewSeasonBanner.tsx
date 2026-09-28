@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function NewSeasonBanner() {
   return (
@@ -17,20 +18,21 @@ export default function NewSeasonBanner() {
 
           {/* Content */}
           <div className="relative h-full flex items-center">
-            <div className="px-6 sm:px-10 md:px-16">
+            <div className="px-5 sm:px-10 md:px-16">
               {/* Left Text */}
               <div className="max-w-xs sm:max-w-sm md:max-w-xl">
-                <h2 className="font-bold text-white leading-tight mb-2 sm:mb-3"
-                  style={{ fontSize: 'clamp(1.2rem, 4vw, 3rem)' }}>
+                <h2 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-2 sm:mb-3 drop-shadow-md">
                   New Season<br />New Styles
                 </h2>
-                <p className="text-gray-200 mb-4 sm:mb-7 hidden sm:block text-sm md:text-base">
+                <p className="text-gray-200 mb-3 sm:mb-5 hidden sm:block text-xs sm:text-sm md:text-base max-w-sm">
                   Discover elegant ethnic wear crafted for your special moments.
                 </p>
-                <button className="bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white rounded-md font-semibold transition-colors shadow-lg"
-                  style={{ padding: 'clamp(6px, 1.2vw, 12px) clamp(14px, 2.5vw, 28px)', fontSize: 'clamp(0.7rem, 1.3vw, 0.875rem)' }}>
+                <Link
+                  href="/category"
+                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white rounded-lg font-semibold transition-colors shadow-lg px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm"
+                >
                   Shop Collection →
-                </button>
+                </Link>
               </div>
             </div>
           </div>

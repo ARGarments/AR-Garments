@@ -25,36 +25,41 @@ const features = [
 
 export default function WhyChooseUs() {
   return (
-    <section className="py-14 bg-white">
+    <section className="py-8 sm:py-14 bg-white border-t border-gray-100">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-6 sm:mb-12">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
             Why Choose AR Garment
           </h2>
-          <p className="text-sm text-gray-400">
-            You&apos;re trusted destination for ethnic fashion
+          <p className="text-xs sm:text-sm text-gray-400">
+            Your trusted destination for ethnic fashion
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="text-center group"
+              className="text-center group p-2"
             >
               {/* Icon circle */}
-              <div className="w-20 h-20 mx-auto mb-5 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-[#083028] transition-colors duration-300">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2.5 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-[#083028] transition-colors duration-300">
                 <feature.icon
-                  size={34}
-                  className="text-[#083028] group-hover:text-white transition-colors duration-300"
+                  size={20}
+                  className="text-[#083028] group-hover:text-white transition-colors duration-300 sm:hidden"
+                  strokeWidth={1.5}
+                />
+                <feature.icon
+                  size={28}
+                  className="text-[#083028] group-hover:text-white transition-colors duration-300 hidden sm:block"
                   strokeWidth={1.5}
                 />
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-2">
+              <h3 className="text-xs sm:text-sm md:text-base font-bold text-gray-900 mb-1 sm:mb-1.5">
                 {feature.title}
               </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
+              <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 leading-normal sm:leading-relaxed">
                 {feature.description}
               </p>
             </div>

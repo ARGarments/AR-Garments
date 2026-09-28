@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -23,7 +23,6 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [added, setAdded] = useState(false);
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -34,37 +33,14 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     setTimeout(() => setAdded(false), 1500);
   };
 
-  const handleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
-  };
-
   return (
-    <div className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+    <div className="group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
       <Link href={`/product/${product.id}`} className="block flex-1">
-        {/* Image area — fills edge-to-edge */}
-        <div className="relative bg-[#EDE8DF] w-full" style={{ height: '260px' }}>
-          {/* Wishlist Button */}
-          <button
-            onClick={handleWishlist}
-            className="absolute top-2.5 right-2.5 z-10 w-8 h-8 bg-white/95 backdrop-blur-xs rounded-full flex items-center justify-center shadow-sm hover:bg-red-50 transition-colors"
-            aria-label="Wishlist"
-          >
-            <Heart
-              size={15}
-              className={`transition-colors ${
-                isWishlisted
-                  ? 'fill-red-500 text-red-500'
-                  : 'text-[#083028] hover:text-red-500'
-              }`}
-              strokeWidth={1.5}
-            />
-          </button>
-
+        {/* Image area */}
+        <div className="relative bg-[#EDE8DF] w-full h-[180px] sm:h-[220px] md:h-[260px]">
           {/* Optional Badge */}
           {product.badge && (
-            <span className="absolute top-2.5 left-2.5 z-10 bg-[#083028] text-white text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+            <span className="absolute top-2.5 left-2.5 z-10 bg-[#083028] text-white text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md uppercase tracking-wider">
               {product.badge}
             </span>
           )}
@@ -79,32 +55,32 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         {/* Content area */}
-        <div className="p-4">
+        <div className="p-2.5 sm:p-4">
           {product.category && (
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+            <p className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5 sm:mb-1">
               {product.category}
             </p>
           )}
-          <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 line-clamp-2 group-hover:text-[#083028] transition-colors">
+          <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base leading-snug mb-1 sm:mb-2 line-clamp-2 group-hover:text-[#083028] transition-colors">
             {product.name}
           </h3>
-          <p className="text-lg font-bold text-[#083028] mb-3">
+          <p className="text-xs sm:text-sm md:text-base font-bold text-[#083028] mb-1 sm:mb-2">
             {product.price}
           </p>
         </div>
       </Link>
 
-      <div className="px-4 pb-4">
+      <div className="px-2.5 pb-2.5 sm:px-4 sm:pb-4">
         {/* Outlined Add to Cart button */}
         <button
           onClick={handleAddToCart}
-          className={`w-full border border-gray-300 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+          className={`w-full border border-gray-300 py-1.5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
             added
               ? 'bg-[#083028] text-white border-[#083028]'
               : 'bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'
           }`}
         >
-          <ShoppingCart size={14} strokeWidth={1.5} />
+          <ShoppingCart size={13} strokeWidth={1.5} />
           {added ? 'Added to Cart ✓' : 'Add to Cart'}
         </button>
       </div>

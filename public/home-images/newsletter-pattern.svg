@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="nlBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#051e19" />
+      <stop offset="40%" stop-color="#083028" />
+      <stop offset="70%" stop-color="#0a3d33" />
+      <stop offset="100%" stop-color="#06251f" />
+    </linearGradient>
+
+    <!-- Golden Glow on Left -->
+    <radialGradient id="leftGoldGlow" cx="10%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.22" />
+      <stop offset="60%" stop-color="#D4AF37" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#D4AF37" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Golden Glow on Right -->
+    <radialGradient id="rightGoldGlow" cx="90%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.18" />
+      <stop offset="60%" stop-color="#D4AF37" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#D4AF37" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Leaf Gradient -->
+    <linearGradient id="goldLeaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5E6BE" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#997722" />
+    </linearGradient>
+
+    <!-- Emerald Leaf Silhouette Gradient -->
+    <linearGradient id="emeraldLeaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#145a49" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#0b382e" stop-opacity="0.2" />
+    </linearGradient>
+  </defs>
+
+  <!-- Base Card Background -->
+  <rect width="1200" height="400" fill="url(#nlBg)" />
+  <rect width="1200" height="400" fill="url(#leftGoldGlow)" />
+  <rect width="1200" height="400" fill="url(#rightGoldGlow)" />
+
+  <!-- Subtle Ambient Circles -->
+  <circle cx="1150" cy="80" r="220" fill="#0f4a3c" opacity="0.3" />
+  <circle cx="50" cy="350" r="180" fill="#0d4034" opacity="0.3" />
+  <circle cx="1000" cy="380" r="140" fill="#135243" opacity="0.25" />
+
+  <!-- ================= LEFT BOTANICAL BRANCH ================= -->
+  <g transform="translate(-30, 20)">
+    <!-- Soft background silhouette leaves -->
+    <path d="M 90 280 C 60 210, 100 130, 160 110 C 180 160, 150 240, 90 280 Z" fill="url(#emeraldLeaf)" />
+    <path d="M 120 340 C 70 300, 70 230, 130 190 C 170 230, 170 300, 120 340 Z" fill="url(#emeraldLeaf)" />
+    <path d="M 40 180 C 10 120, 50 50, 110 30 C 130 80, 100 150, 40 180 Z" fill="url(#emeraldLeaf)" />
+
+    <!-- Main Golden Stem -->
+    <path d="M 30 380 Q 90 250 140 140 T 170 10" fill="none" stroke="url(#goldLeaf)" stroke-width="2.5" stroke-linecap="round" opacity="0.85" />
+    <path d="M 80 270 Q 140 230 180 210" fill="none" stroke="url(#goldLeaf)" stroke-width="1.8" stroke-linecap="round" opacity="0.75" />
+    <path d="M 115 190 Q 60 160 30 140" fill="none" stroke="url(#goldLeaf)" stroke-width="1.5" stroke-linecap="round" opacity="0.75" />
+    <path d="M 145 130 Q 200 95 230 70" fill="none" stroke="url(#goldLeaf)" stroke-width="1.5" stroke-linecap="round" opacity="0.75" />
+
+    <!-- Detailed Golden Leaves -->
+    <!-- Leaf 1 -->
+    <g transform="translate(170, 10) rotate(-25)">
+      <path d="M 0 0 C -25 -40, -10 -90, 0 -110 C 10 -90, 25 -40, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.8" opacity="0.9" />
+      <path d="M 0 0 L 0 -105" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.6" />
+      <path d="M 0 -30 Q -10 -40 -15 -45 M 0 -50 Q -10 -60 -12 -65 M 0 -70 Q -8 -78 -10 -82" stroke="url(#goldLeaf)" stroke-width="0.8" opacity="0.5" />
+      <path d="M 0 -30 Q 10 -40 15 -45 M 0 -50 Q 10 -60 12 -65 M 0 -70 Q 8 -78 10 -82" stroke="url(#goldLeaf)" stroke-width="0.8" opacity="0.5" />
+    </g>
+
+    <!-- Leaf 2 -->
+    <g transform="translate(180, 210) rotate(35)">
+      <path d="M 0 0 C -20 -30, -8 -70, 0 -85 C 8 -70, 20 -30, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.6" opacity="0.85" />
+      <path d="M 0 0 L 0 -80" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.6" />
+      <path d="M 0 -25 Q -8 -35 -12 -40 M 0 -45 Q -8 -52 -10 -58" stroke="url(#goldLeaf)" stroke-width="0.8" opacity="0.5" />
+      <path d="M 0 -25 Q 8 -35 12 -40 M 0 -45 Q 8 -52 10 -58" stroke="url(#goldLeaf)" stroke-width="0.8" opacity="0.5" />
+    </g>
+
+    <!-- Leaf 3 -->
+    <g transform="translate(30, 140) rotate(-65)">
+      <path d="M 0 0 C -18 -25, -6 -60, 0 -75 C 6 -60, 18 -25, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.6" opacity="0.85" />
+      <path d="M 0 0 L 0 -70" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.6" />
+    </g>
+
+    <!-- Leaf 4 -->
+    <g transform="translate(230, 70) rotate(45)">
+      <path d="M 0 0 C -18 -25, -6 -55, 0 -70 C 6 -55, 18 -25, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.5" opacity="0.8" />
+      <path d="M 0 0 L 0 -65" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.6" />
+    </g>
+
+    <!-- Small Golden Berry Dots -->
+    <circle cx="75" cy="275" r="3" fill="#D4AF37" opacity="0.8" />
+    <circle cx="112" cy="195" r="2.5" fill="#F5E6BE" opacity="0.85" />
+    <circle cx="142" cy="133" r="3" fill="#D4AF37" opacity="0.8" />
+    <circle cx="165" cy="50" r="2.5" fill="#F5E6BE" opacity="0.85" />
+  </g>
+
+  <!-- ================= RIGHT BOTANICAL ACCENTS ================= -->
+  <g transform="translate(1220, 20) scale(-1, 1)">
+    <!-- Soft background silhouette leaves -->
+    <path d="M 90 280 C 60 210, 100 130, 160 110 C 180 160, 150 240, 90 280 Z" fill="url(#emeraldLeaf)" />
+    <path d="M 120 340 C 70 300, 70 230, 130 190 C 170 230, 170 300, 120 340 Z" fill="url(#emeraldLeaf)" />
+    <path d="M 40 180 C 10 120, 50 50, 110 30 C 130 80, 100 150, 40 180 Z" fill="url(#emeraldLeaf)" />
+
+    <!-- Main Golden Stem -->
+    <path d="M 30 380 Q 90 250 140 140 T 170 10" fill="none" stroke="url(#goldLeaf)" stroke-width="2.5" stroke-linecap="round" opacity="0.75" />
+    <path d="M 80 270 Q 140 230 180 210" fill="none" stroke="url(#goldLeaf)" stroke-width="1.8" stroke-linecap="round" opacity="0.65" />
+    <path d="M 115 190 Q 60 160 30 140" fill="none" stroke="url(#goldLeaf)" stroke-width="1.5" stroke-linecap="round" opacity="0.65" />
+    <path d="M 145 130 Q 200 95 230 70" fill="none" stroke="url(#goldLeaf)" stroke-width="1.5" stroke-linecap="round" opacity="0.65" />
+
+    <!-- Detailed Golden Leaves -->
+    <g transform="translate(170, 10) rotate(-25)">
+      <path d="M 0 0 C -25 -40, -10 -90, 0 -110 C 10 -90, 25 -40, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.8" opacity="0.8" />
+      <path d="M 0 0 L 0 -105" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.5" />
+    </g>
+    <g transform="translate(180, 210) rotate(35)">
+      <path d="M 0 0 C -20 -30, -8 -70, 0 -85 C 8 -70, 20 -30, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.6" opacity="0.75" />
+      <path d="M 0 0 L 0 -80" stroke="url(#goldLeaf)" stroke-width="1" opacity="0.5" />
+    </g>
+    <g transform="translate(30, 140) rotate(-65)">
+      <path d="M 0 0 C -18 -25, -6 -60, 0 -75 C 6 -60, 18 -25, 0 0 Z" fill="none" stroke="url(#goldLeaf)" stroke-width="1.6" opacity="0.75" />
+    </g>
+
+    <!-- Small Golden Berry Dots -->
+    <circle cx="75" cy="275" r="3" fill="#D4AF37" opacity="0.7" />
+    <circle cx="112" cy="195" r="2.5" fill="#F5E6BE" opacity="0.75" />
+    <circle cx="142" cy="133" r="3" fill="#D4AF37" opacity="0.7" />
+  </g>
+
+  <!-- Tiny Stardust sparkle points -->
+  <circle cx="280" cy="120" r="1.5" fill="#F5E6BE" opacity="0.6" />
+  <circle cx="250" cy="280" r="1.2" fill="#D4AF37" opacity="0.5" />
+  <circle cx="920" cy="140" r="1.5" fill="#F5E6BE" opacity="0.6" />
+  <circle cx="960" cy="290" r="1.2" fill="#D4AF37" opacity="0.5" />
+</svg>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Phone, Mail, MapPin } from 'lucide-react';
 
 export default function Footer() {
@@ -8,16 +9,19 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Logo & Tagline */}
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-[#083028] font-bold text-sm">AR</span>
-              </div>
-              <div>
-                <h3 className="font-bold text-white leading-tight">AR Garment</h3>
-                <p className="text-xs text-white/50 leading-tight">Ethnic Wear for Every You</p>
+            <Link href="/" className="inline-flex items-center gap-3 mb-3 group">
+              <div className="h-12 w-24 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                <div className="relative w-full h-full">
+                  <Image
+                    src="/home-images/logo.png"
+                    alt="AR Garment"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
               </div>
             </Link>
-            <p className="text-white/60 text-sm mb-4 max-w-sm">
+            <p className="text-white/60 text-xs sm:text-sm mb-4 max-w-sm">
               Tradition In Every Thread. Your trusted destination for handpicked, authentic Indian ethnic wear.
             </p>
           </div>

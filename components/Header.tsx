@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, User, ShoppingBag, Menu, X, Phone, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
+import { Search, User, ShoppingBag, Menu, X, ChevronDown } from 'lucide-react';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,50 +19,23 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
-      {/* Top Bar */}
-      <div className="bg-[#083028] text-white py-1.5">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center text-xs">
-            <div className="hidden md:flex items-center gap-4 text-gray-200">
-              <span>🚚 Free Shipping on All Orders</span>
-              <span className="text-white/30">|</span>
-              <span>🔄 7 Days Returns | Easy &amp; Hassle Free</span>
-              <span className="text-white/30">|</span>
-              <span>💰 Cash on Delivery Available</span>
-            </div>
-            <div className="flex items-center gap-3 ml-auto">
-              <span className="flex items-center gap-1 text-gray-200">
-                <Phone size={12} />
-                +91 98765 43210
-              </span>
-              <div className="flex items-center gap-1.5">
-                <a href="#" className="w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center transition-colors text-xs font-bold">f</a>
-                <a href="#" className="w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center transition-colors text-xs">in</a>
-                <a href="#" className="w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center transition-colors text-xs font-bold">▶</a>
-                <a href="#" className="w-6 h-6 bg-white/20 hover:bg-white/40 rounded-full flex items-center justify-center transition-colors text-xs font-bold">P</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Navigation */}
-      <div className="container mx-auto px-4 py-3.5">
+      <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-11 h-11 bg-[#083028] rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-              <span className="text-white font-bold text-base tracking-wider">AR</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold text-[#083028] leading-tight">
-                AR <span className="text-[#083028]">GARMENT</span>
-              </h1>
-              <p className="text-[11px] text-gray-400 font-medium tracking-wide leading-tight">Ethnic Wear for Every You</p>
+          <Link href="/" className="flex items-center group py-0.5">
+            <div className="relative h-10 sm:h-12 w-20 sm:w-24 flex-shrink-0">
+              <Image
+                src="/home-images/logo.png"
+                alt="AR Garment"
+                fill
+                className="object-contain group-hover:scale-105 transition-transform"
+                priority
+              />
             </div>
           </Link>
 
-          {/* Desktop Menu - with increased text size */}
+          {/* Desktop Menu */}
           <nav className="hidden lg:flex items-center gap-9">
             <Link
               href="/"
@@ -81,7 +55,6 @@ export default function Header() {
                 <ChevronDown size={18} className="text-gray-500 group-hover:text-[#083028] transition-transform duration-200 group-hover:rotate-180" />
               </div>
 
-              {/* Dropdown Menu */}
               <div className="absolute top-full left-0 pt-2 w-64 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2.5 overflow-hidden">
                   <Link
