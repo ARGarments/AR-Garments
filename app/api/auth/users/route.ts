@@ -12,6 +12,8 @@ interface UserOutput {
   orderCount: number;
 }
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/auth/users — list all registered users with their order count (admin use)
 export async function GET() {
   try {

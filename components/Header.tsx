@@ -1,26 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, User, ShoppingBag, Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import SearchModal from '@/components/SearchModal';
+
+interface NavCategory {
+  name: string;
+  href: string;
+}
+
+const DEFAULT_CATEGORIES: NavCategory[] = [
+  { name: 'Sarees', href: '/category?category=Sarees' },
+  { name: 'Suits & Dress Material', href: '/category?category=Suits+%26+Dress+Material' },
+  { name: 'Dupatta Sets', href: '/category?category=Dupatta+Sets' },
+  { name: 'Men Fashion', href: '/category?category=Men+Fashion' },
+  { name: 'Kids Fashion', href: '/category?category=Kids+Fashion' },
+];
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [categories, setCategories] = useState<NavCategory[]>(DEFAULT_CATEGORIES);
 
   const { user, logout } = useAuth();
   const { totalCount } = useCart();
 
-  const categories = [
-    { name: 'Sarees', href: '/category?category=Sarees' },
-    { name: 'Suits & Dress Material', href: '/category?category=Suits+%26+Dress+Material' },
-    { name: 'Dupatta Sets', href: '/category?category=Dupatta+Sets' },
-    { name: 'Men Fashion', href: '/category?category=Men+Fashion' },
-    { name: 'Kids Fashion', href: '/category?category=Kids+Fashion' },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/categories?active=true')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0 && isMounted) {
+          const mapped: NavCategory[] = data.map((c: { name: string }) => ({
+            name: c.name,
+            href: `/category?category=${encodeURIComponent(c.name)}`,
+          }));
+          setCategories(mapped);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Listen for Ctrl+K or Cmd+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -98,13 +138,15 @@ export default function Header() {
 
           {/* Icons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/category"
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]"
               aria-label="Search Catalog"
+              title="Search products (Ctrl+K)"
             >
               <Search size={21} />
-            </Link>
+            </button>
 
             {/* User Account — direct link, no dropdown */}
             {user ? (
@@ -169,6 +211,18 @@ export default function Header() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <nav className="lg:hidden mt-3 pb-3 border-t pt-3">
+            {/* Mobile Search Trigger */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setSearchModalOpen(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 hover:text-[#083028] hover:border-[#083028]/30 transition mb-3"
+            >
+              <Search size={16} className="text-[#083028]" />
+              <span>Search sarees, suits, fabrics...</span>
+            </button>
+
             <div className="flex flex-col gap-2">
               <Link
                 href="/"
@@ -289,6 +343,13 @@ export default function Header() {
           </nav>
         )}
       </div>
+
+      {/* Interactive Live Search Modal */}
+      <SearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        categories={categories}
+      />
     </header>
   );
 }

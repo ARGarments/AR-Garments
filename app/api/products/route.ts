@@ -15,6 +15,7 @@ export async function GET(request: Request) {
   const isNewArrival = searchParams.get('is_new_arrival');
   const isBestSeller = searchParams.get('is_best_seller');
   const category = searchParams.get('category');
+  const search = searchParams.get('search');
 
   const supabase = getAdminClient();
   let query = supabase.from('products').select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at').order('sort_order');
@@ -22,6 +23,10 @@ export async function GET(request: Request) {
   if (isNewArrival === 'true') query = query.eq('is_new_arrival', true);
   if (isBestSeller === 'true') query = query.eq('is_best_seller', true);
   if (category && category !== 'All') query = query.eq('category', category);
+  if (search && search.trim()) {
+    const s = search.trim();
+    query = query.or(`name.ilike.%${s}%,category.ilike.%${s}%,description.ilike.%${s}%`);
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

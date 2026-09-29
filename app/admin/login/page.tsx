@@ -18,13 +18,24 @@ export default function AdminLoginPage() {
     setError('');
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800)); // simulate async
-
-    const success = adminAuth.login(email.trim(), password);
-    if (success) {
-      router.push('/admin');
-    } else {
-      setError('Invalid email or password. Please try again.');
+    try {
+      const success = await adminAuth.login(email.trim(), password);
+      if (success) {
+        let destination = '/admin';
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const redirect = params.get('redirect');
+          if (redirect && redirect.startsWith('/admin') && redirect !== '/admin/login') {
+            destination = redirect;
+          }
+        }
+        window.location.href = destination;
+      } else {
+        setError('Invalid email or password. Please try again.');
+        setLoading(false);
+      }
+    } catch {
+      setError('An error occurred during login. Please try again.');
       setLoading(false);
     }
   };
@@ -93,13 +104,6 @@ export default function AdminLoginPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-              </div>
-
-              {/* Credentials hint */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700">
-                <p className="font-semibold mb-0.5">Demo Credentials</p>
-                <p>Email: <span className="font-mono">admin@argarment.com</span></p>
-                <p>Password: <span className="font-mono">admin@123</span></p>
               </div>
 
               {/* Submit */}

@@ -6,14 +6,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Filter, X, ChevronRight, SlidersHorizontal,
-  ArrowUpDown, ChevronLeft, Loader2,
+  ArrowUpDown, ChevronLeft, Loader2, SearchX,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import { Product } from '@/components/ProductCard';
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'All',
   'Sarees',
   'Suits & Dress Material',
@@ -40,15 +40,30 @@ function CategoryContent() {
   const router = useRouter();
 
   const initialCategory = searchParams.get('category') || 'All';
+  const initialSearch = searchParams.get('search') || '';
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [selectedPriceRange, setSelectedPriceRange] = useState<number>(0);
   const [sortBy, setSortBy] = useState<string>('featured');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
+  const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
 
   // Live products from Supabase
   const [allProducts, setAllProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch dynamic categories
+  useEffect(() => {
+    fetch('/api/categories?active=true')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { name: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategoriesList(['All', ...data.map((c) => c.name)]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch all active products from DB on mount
   useEffect(() => {
@@ -75,14 +90,17 @@ function CategoryContent() {
   // Sync URL param → filter state
   useEffect(() => {
     const cat = searchParams.get('category');
+    const s = searchParams.get('search') || '';
     setSelectedCategory(cat || 'All');
+    setSearchQuery(s);
     setCurrentPage(1);
   }, [searchParams]);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     setCurrentPage(1);
-    router.push(category === 'All' ? '/category' : `/category?category=${encodeURIComponent(category)}`);
+    const searchPart = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+    router.push(category === 'All' ? `/category${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}` : `/category?category=${encodeURIComponent(category)}${searchPart}`);
   };
 
   // Filter + Sort
@@ -92,7 +110,9 @@ function CategoryContent() {
         const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
         const priceConfig = PRICE_RANGES[selectedPriceRange];
         const matchesPrice = p.numericPrice >= priceConfig.min && p.numericPrice <= priceConfig.max;
-        return matchesCategory && matchesPrice;
+        const q = searchQuery.trim().toLowerCase();
+        const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+        return matchesCategory && matchesPrice && matchesSearch;
       })
       .sort((a, b) => {
         if (sortBy === 'price-low') return a.numericPrice - b.numericPrice;
@@ -100,7 +120,7 @@ function CategoryContent() {
         if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
         return 0;
       });
-  }, [allProducts, selectedCategory, selectedPriceRange, sortBy]);
+  }, [allProducts, selectedCategory, selectedPriceRange, sortBy, searchQuery]);
 
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
@@ -110,10 +130,12 @@ function CategoryContent() {
   }, [filteredProducts, currentPage]);
 
   const resetFilters = () => {
-    handleCategoryChange('All');
+    setSelectedCategory('All');
+    setSearchQuery('');
     setSelectedPriceRange(0);
     setSortBy('featured');
     setCurrentPage(1);
+    router.push('/category');
   };
 
   return (
@@ -248,7 +270,7 @@ function CategoryContent() {
             <div className="mb-6">
               <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider mb-3">Categories</h3>
               <div className="space-y-1.5">
-                {CATEGORIES.map((cat) => {
+                {categoriesList.map((cat) => {
                   const count = cat === 'All'
                     ? allProducts.length
                     : allProducts.filter((p) => p.category === cat).length;
@@ -295,6 +317,27 @@ function CategoryContent() {
 
           {/* PRODUCTS GRID */}
           <div className="lg:col-span-3">
+            {searchQuery && (
+              <div className="mb-4 p-3.5 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-500">Searching for:</span>
+                  <span className="text-xs font-bold text-[#083028] bg-[#083028]/10 px-3 py-1 rounded-full">
+                    &ldquo;{searchQuery}&rdquo;
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    router.push(selectedCategory === 'All' ? '/category' : `/category?category=${encodeURIComponent(selectedCategory)}`);
+                  }}
+                  className="text-xs font-semibold text-red-600 hover:underline flex items-center gap-1"
+                >
+                  <X size={14} />
+                  Clear Search
+                </button>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
                 <Loader2 size={36} className="animate-spin text-[#083028]" />
@@ -350,20 +393,50 @@ function CategoryContent() {
               </>
             ) : (
               /* Empty State */
-              <div className="bg-white rounded-2xl p-12 text-center border border-gray-200 shadow-sm">
-                <div className="w-16 h-16 bg-[#F5F1E8] text-[#083028] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Filter size={28} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No products found</h3>
-                <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
-                  No items match your selected filters. Try adjusting category or price range.
-                </p>
-                <button
-                  onClick={resetFilters}
-                  className="bg-[#083028] hover:bg-[#051e19] text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm"
-                >
-                  Reset All Filters
-                </button>
+              <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-gray-200 shadow-sm">
+                {searchQuery ? (
+                  <>
+                    <div className="w-16 h-16 bg-amber-50 text-amber-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200/50">
+                      <SearchX size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      No products found for &ldquo;{searchQuery}&rdquo;
+                    </h3>
+                    <p className="text-gray-500 text-sm max-w-md mx-auto mb-6 leading-relaxed">
+                      We couldn&apos;t find this item in our store. AR Garment specializes in authentic Indian ethnic wear, designer sarees, salwar suits, and traditional dupattas.
+                    </p>
+                    <div className="flex items-center justify-center gap-3 flex-wrap">
+                      <button
+                        onClick={resetFilters}
+                        className="bg-[#083028] hover:bg-[#051e19] text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm"
+                      >
+                        Clear Search &amp; View All
+                      </button>
+                      <button
+                        onClick={() => handleCategoryChange('Sarees')}
+                        className="bg-[#FAF8F3] hover:bg-[#F5F1E8] text-[#083028] px-5 py-2.5 rounded-xl font-semibold text-sm border border-gray-200 transition-colors"
+                      >
+                        Browse Sarees
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-[#F5F1E8] text-[#083028] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Filter size={28} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">No products found</h3>
+                    <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
+                      No items match your selected filters. Try adjusting category or price range.
+                    </p>
+                    <button
+                      onClick={resetFilters}
+                      className="bg-[#083028] hover:bg-[#051e19] text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm"
+                    >
+                      Reset All Filters
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -388,7 +461,7 @@ function CategoryContent() {
             <div className="mb-6">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</h3>
               <div className="space-y-1.5">
-                {CATEGORIES.map((cat) => (
+                {categoriesList.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => { handleCategoryChange(cat); setMobileFilterOpen(false); }}

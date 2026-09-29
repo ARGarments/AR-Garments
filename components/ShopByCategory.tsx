@@ -1,9 +1,17 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
-const categories = [
+interface CategoryItem {
+  name: string;
+  subtitle?: string;
+  image: string;
+  href: string;
+}
+
+const DEFAULT_CATEGORIES: CategoryItem[] = [
   {
     name: 'Sarees',
     subtitle: 'Elegant Drapes',
@@ -37,6 +45,24 @@ const categories = [
 ];
 
 export default function ShopByCategory() {
+  const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
+
+  useEffect(() => {
+    fetch('/api/categories?active=true')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: CategoryItem[] = data.map((c: { name: string; description?: string; image?: string }) => ({
+            name: c.name,
+            subtitle: c.description || 'Exclusive Collection',
+            image: c.image || '/home-images/Sarees.jpg',
+            href: `/category?category=${encodeURIComponent(c.name)}`,
+          }));
+          setCategories(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
   return (
     <section className="py-10 bg-[#F5F1E8]">
       <div className="container mx-auto px-4">

@@ -9,7 +9,7 @@ import {
 import { uploadImageToImageKit } from '@/lib/imagekit';
 import { Product } from '@/lib/adminData';
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'All', 'Sarees', 'Suits & Dress Material',
   'Dupatta Sets', 'Men Fashion', 'Kids Fashion',
 ];
@@ -46,6 +46,7 @@ const emptyForm = (): FormData => ({
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -95,6 +96,16 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     loadProducts();
+    // Load categories dynamically from database
+    fetch('/api/categories?active=true')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { name: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const names = ['All', ...data.map((c) => c.name)];
+          setCategoriesList(names);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // ─── Filtered list ─────────────────────────────────────────────────────────
@@ -318,7 +329,7 @@ export default function AdminProductsPage() {
           />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-          {CATEGORIES.map((cat) => (
+          {categoriesList.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -528,7 +539,7 @@ export default function AdminProductsPage() {
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#083028]"
                   >
-                    {CATEGORIES.filter((c) => c !== 'All').map((cat) => (
+                    {categoriesList.filter((c) => c !== 'All').map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>

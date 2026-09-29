@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { Coupon, DiscountType, defaultCoupons } from '@/lib/adminData';
 
-const AVAILABLE_CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'All',
   'Sarees',
   'Suits & Dress Material',
@@ -36,6 +36,7 @@ const AVAILABLE_CATEGORIES = [
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
@@ -84,6 +85,21 @@ export default function AdminCouponsPage() {
 
   useEffect(() => {
     fetchCoupons();
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories?active=true');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const names = data.map((c: { name: string }) => c.name);
+            setCategoriesList(['All', ...names]);
+          }
+        }
+      } catch {
+        // fallback to DEFAULT_CATEGORIES
+      }
+    }
+    fetchCategories();
   }, []);
 
   // Quick code generator
@@ -373,7 +389,7 @@ export default function AdminCouponsPage() {
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
             className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-[#083028]"
           >
-            {AVAILABLE_CATEGORIES.map((cat) => (
+            {categoriesList.map((cat) => (
               <option key={cat} value={cat}>
                 {cat === 'All' ? '🌐 All Categories' : `🎯 ${cat}`}
               </option>
@@ -751,7 +767,7 @@ export default function AdminCouponsPage() {
                   className="w-full px-4 py-2.5 rounded-xl border border-purple-300 text-sm font-bold bg-white text-purple-950 focus:outline-none focus:ring-2 focus:ring-purple-400"
                 >
                   <option value="All">🌐 All Categories (Storewide)</option>
-                  {AVAILABLE_CATEGORIES.filter((c) => c !== 'All').map((cat) => (
+                  {categoriesList.filter((c) => c !== 'All').map((cat) => (
                     <option key={cat} value={cat}>
                       🎯 {cat} Only
                     </option>

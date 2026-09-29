@@ -15,6 +15,9 @@ import {
   Ticket,
   Package,
   Users,
+  FolderTree,
+  Star,
+  Mail,
 } from 'lucide-react';
 import { useState } from 'react';
 import { adminAuth } from '@/lib/adminData';
@@ -24,7 +27,10 @@ const navItems = [
   { label: 'Orders', href: '/admin/orders', icon: Package },
   { label: 'Registered Users', href: '/admin/users', icon: Users },
   { label: 'Products & Catalog', href: '/admin/products', icon: ShoppingBag },
+  { label: 'Categories', href: '/admin/categories', icon: FolderTree },
+  { label: 'Product Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Coupons & Discounts', href: '/admin/coupons', icon: Ticket },
+  { label: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   { label: 'Home Page', href: '/admin/homepage', icon: Home },
 ];
 
@@ -33,9 +39,9 @@ export default function AdminSidebar() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
-    adminAuth.logout();
-    router.push('/admin/login');
+  const handleLogout = async () => {
+    await adminAuth.logout();
+    // adminAuth.logout() already redirects via window.location.href
   };
 
   const isActive = (href: string) => {

@@ -298,30 +298,44 @@ export const supabaseData = {
 };
 
 // ─── Admin Auth ────────────────────────────────────────────────────────────────
-export const ADMIN_CREDENTIALS = {
-  email: 'admin@argarment.com',
-  password: 'admin@123',
-};
+// Credentials are stored in .env (ADMIN_EMAIL / ADMIN_PASSWORD) and validated
+// server-side via /api/admin/login. This client helper just tracks session state
+// using the httpOnly cookie set by the server.
 
 export const adminAuth = {
-  login: (email: string, password: string): boolean => {
-    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('admin_logged_in', 'true');
-        sessionStorage.setItem('admin_login_time', Date.now().toString());
-      }
-      return true;
+  // Call the server-side API — credentials are NEVER compared client-side
+  login: async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      return res.ok;
+    } catch {
+      return false;
     }
-    return false;
   },
-  logout: () => {
+
+  logout: async (): Promise<void> => {
+    try {
+      await fetch('/api/admin/login', { method: 'DELETE' });
+    } catch {
+      // ignore
+    }
+    // Redirect to login after clearing cookie
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('admin_logged_in');
-      sessionStorage.removeItem('admin_login_time');
+      window.location.href = '/admin/login';
     }
   },
+
+  // isLoggedIn check is now handled by middleware on the server.
+  // This is kept for legacy client code that may call it.
   isLoggedIn: (): boolean => {
     if (typeof window === 'undefined') return false;
-    return sessionStorage.getItem('admin_logged_in') === 'true';
+    // Cookie is httpOnly — we can't read it from JS.
+    // Middleware already ensures we only reach admin pages when authenticated.
+    return true;
   },
 };
+

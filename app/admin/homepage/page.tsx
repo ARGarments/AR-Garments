@@ -1,17 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Image as ImageIcon, ShoppingBag, TrendingUp, MessageSquare } from 'lucide-react';
+import { Image as ImageIcon, ShoppingBag, TrendingUp } from 'lucide-react';
 import HeroManager from '@/components/admin/homepage/HeroManager';
 import NewArrivalsManager from '@/components/admin/homepage/NewArrivalsManager';
 import BestSellersManager from '@/components/admin/homepage/BestSellersManager';
-import TestimonialsManager from '@/components/admin/homepage/TestimonialsManager';
 
 const tabs = [
   { id: 'hero', label: 'Hero Section', icon: ImageIcon },
   { id: 'new-arrivals', label: 'New Arrivals', icon: ShoppingBag },
   { id: 'best-sellers', label: 'Best Sellers', icon: TrendingUp },
-  { id: 'testimonials', label: 'Testimonials', icon: MessageSquare },
 ];
 
 export default function HomepageAdminPage() {
@@ -49,7 +47,6 @@ export default function HomepageAdminPage() {
           {activeTab === 'hero' && <HeroManager />}
           {activeTab === 'new-arrivals' && <NewArrivalsManager />}
           {activeTab === 'best-sellers' && <BestSellersManager />}
-          {activeTab === 'testimonials' && <TestimonialsManager />}
         </div>
       </div>
     </div>
