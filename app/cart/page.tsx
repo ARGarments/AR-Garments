@@ -11,14 +11,13 @@ import {
   Minus,
   ArrowRight,
   Ticket,
-  CheckCircle2,
   ShieldCheck,
   Truck,
   RotateCcw,
   Sparkles,
+  ArrowLeft,
   X,
   Lock,
-  ArrowLeft,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -49,8 +48,6 @@ export default function CartPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [showCouponsList, setShowCouponsList] = useState(false);
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
 
   // Fetch available coupons
   useEffect(() => {
@@ -103,17 +100,10 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (!user) {
-      router.push('/login?redirect=/cart');
+      router.push('/login?redirect=/checkout');
       return;
     }
-    setCheckoutModalOpen(true);
-  };
-
-  const confirmOrder = () => {
-    setOrderPlaced(true);
-    setTimeout(() => {
-      clearCart();
-    }, 2000);
+    router.push('/checkout');
   };
 
   return (
@@ -512,75 +502,8 @@ export default function CartPage() {
         )}
       </main>
 
-      {/* Checkout Confirmation Modal */}
-      {checkoutModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-gray-100 relative">
-            <button
-              onClick={() => { setCheckoutModalOpen(false); setOrderPlaced(false); }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1"
-            >
-              <X size={20} />
-            </button>
 
-            {orderPlaced ? (
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                  <CheckCircle2 size={36} />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Thank you, <span className="font-semibold text-[#083028]">{user?.name || 'Valued Customer'}</span>! Your order of <span className="font-bold">₹{finalTotal.toLocaleString()}</span> has been placed successfully.
-                </p>
-                <button
-                  onClick={() => { setCheckoutModalOpen(false); router.push('/'); }}
-                  className="w-full bg-[#083028] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#051e19]"
-                >
-                  Return to Home
-                </button>
-              </div>
-            ) : (
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">
-                  Confirm Checkout
-                </h3>
-                <div className="space-y-3 mb-6 text-sm text-gray-600">
-                  <p><strong>Customer:</strong> {user?.name}</p>
-                  <p><strong>Email:</strong> {user?.email}</p>
-                  {user?.phone && <p><strong>Phone:</strong> {user?.phone}</p>}
-                  <div className="p-3 bg-gray-50 rounded-xl space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span>Items ({totalCount}):</span>
-                      <span>₹{subtotal.toLocaleString()}</span>
-                    </div>
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-700">
-                        <span>Discount:</span>
-                        <span>-₹{discountAmount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Shipping:</span>
-                      <span>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-sm text-gray-900 pt-1 border-t border-gray-200">
-                      <span>Grand Total:</span>
-                      <span className="text-[#083028]">₹{finalTotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400">Payment: Cash on Delivery (COD) / UPI at doorstep</p>
-                </div>
-                <button
-                  onClick={confirmOrder}
-                  className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-3 rounded-xl font-bold text-sm shadow-md"
-                >
-                  Place Order Now (COD)
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+
 
       <Footer />
     </div>

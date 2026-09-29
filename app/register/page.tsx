@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -12,7 +12,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
 
-  const { register, user } = useAuth();
+  const { register, user, loading: authLoading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -21,6 +21,21 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Auto redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user && !success) {
+      router.replace(redirectUrl);
+    }
+  }, [user, authLoading, redirectUrl, success, router]);
+
+  if (authLoading) {
+    return (
+      <div className="w-full max-w-md flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-[#083028] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // If already logged in, show redirect prompt
   if (user && !success) {

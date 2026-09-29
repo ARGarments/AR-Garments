@@ -109,9 +109,20 @@ export default function Header() {
             {/* User Account — direct link, no dropdown */}
             {user ? (
               <div className="flex items-center gap-1.5">
-                <span className="hidden md:inline-block text-xs font-bold text-[#083028] bg-[#083028]/10 px-2.5 py-1 rounded-full max-w-[90px] truncate">
+                <Link
+                  href="/account"
+                  className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-[#083028] bg-[#083028]/10 hover:bg-[#083028]/20 px-2.5 py-1 rounded-full max-w-[100px] truncate transition-colors"
+                >
+                  <User size={13} />
                   {user.name.split(' ')[0]}
-                </span>
+                </Link>
+                <Link
+                  href="/account"
+                  className="md:hidden p-2 rounded-full text-[#083028] hover:bg-[#083028]/10 transition-colors"
+                  aria-label="My Account"
+                >
+                  <User size={21} />
+                </Link>
                 <button
                   onClick={() => logout()}
                   className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -237,17 +248,20 @@ export default function Header() {
                 </Link>
 
                 {user ? (
-                  <div className="flex items-center justify-between py-2 px-1">
-                    <div className="text-sm">
-                      <p className="font-bold text-gray-900">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
+                  <div className="flex flex-col gap-2 pt-1">
+                    <Link
+                      href="/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 py-2 px-3 bg-[#F5F1E8] rounded-xl text-sm font-bold text-[#083028]"
+                    >
+                      <User size={15} /> {user.name} — My Account
+                    </Link>
                     <button
                       onClick={() => {
                         logout();
                         setMobileMenuOpen(false);
                       }}
-                      className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200"
+                      className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 w-fit"
                     >
                       <LogOut size={14} /> Sign Out
                     </button>

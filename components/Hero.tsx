@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
-import { HeroSlide } from '@/lib/adminData';
+import { HeroSlide, defaultHeroSlides } from '@/lib/adminData';
 
 export default function Hero() {
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  // Start with fallback slides immediately — no waiting, no blank screen
+  const [slides, setSlides] = useState<HeroSlide[]>(defaultHeroSlides);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     fetch('/api/hero-slides')
-      .then((res) => (res.ok ? res.json() : []))
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!Array.isArray(data)) return;
+        if (!Array.isArray(data) || data.length === 0) return; // keep fallback
         const mapped: HeroSlide[] = data.map((d: Record<string, unknown>) => ({
           id: d.id as string,
           title: d.title as string,
@@ -26,9 +27,12 @@ export default function Hero() {
           order: d.sort_order as number,
         }));
         const active = mapped.filter((s) => s.active).sort((a, b) => a.order - b.order);
-        setSlides(active);
+        if (active.length > 0) {
+          setSlides(active);
+          setCurrentSlide(0);
+        }
       })
-      .catch(() => setSlides([]));
+      .catch(() => {}); // keep showing fallback on error
   }, []);
 
   const activeSlides = slides.filter((s) => s.active);

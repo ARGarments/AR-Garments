@@ -181,4 +181,64 @@ CREATE POLICY "Public select users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Service role full access users" ON public.users FOR ALL USING (true);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 
+-- ─── 6. USER ADDRESSES TABLE ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.user_addresses (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id        TEXT NOT NULL,
+    full_name      TEXT NOT NULL,
+    phone          TEXT NOT NULL,
+    address_line1  TEXT NOT NULL,
+    address_line2  TEXT DEFAULT '',
+    city           TEXT NOT NULL,
+    state          TEXT NOT NULL,
+    pincode        TEXT NOT NULL,
+    is_default     BOOLEAN DEFAULT true,
+    created_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON public.user_addresses(user_id);
+ALTER TABLE public.user_addresses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public select user_addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Public insert user_addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Public update user_addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Service role full access user_addresses" ON public.user_addresses;
+CREATE POLICY "Public select user_addresses" ON public.user_addresses FOR SELECT USING (true);
+CREATE POLICY "Public insert user_addresses" ON public.user_addresses FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update user_addresses" ON public.user_addresses FOR UPDATE USING (true);
+CREATE POLICY "Service role full access user_addresses" ON public.user_addresses FOR ALL USING (true);
+
+-- ─── 7. ORDERS TABLE ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.orders (
+    id               TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL,
+    user_name        TEXT NOT NULL,
+    user_email       TEXT NOT NULL,
+    items            JSONB NOT NULL DEFAULT '[]'::jsonb,
+    shipping_address JSONB NOT NULL DEFAULT '{}'::jsonb,
+    payment_method   TEXT NOT NULL DEFAULT 'cod',
+    subtotal         NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    discount         NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    shipping         NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    total            NUMERIC(10, 2) NOT NULL DEFAULT 0,
+    coupon_code      TEXT DEFAULT NULL,
+    status           TEXT NOT NULL DEFAULT 'Pending',
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public select orders" ON public.orders;
+DROP POLICY IF EXISTS "Public insert orders" ON public.orders;
+DROP POLICY IF EXISTS "Public update orders" ON public.orders;
+DROP POLICY IF EXISTS "Service role full access orders" ON public.orders;
+CREATE POLICY "Public select orders" ON public.orders FOR SELECT USING (true);
+CREATE POLICY "Public insert orders" ON public.orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public update orders" ON public.orders FOR UPDATE USING (true);
+CREATE POLICY "Service role full access orders" ON public.orders FOR ALL USING (true);
+
+
 

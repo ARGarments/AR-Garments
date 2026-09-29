@@ -14,16 +14,7 @@ export interface StoredUser extends AuthUser {
   passwordHash: string;
 }
 
-export const memoryUsers: StoredUser[] = [
-  {
-    id: 'usr-demo-1',
-    name: 'Pankaj Sharma',
-    email: 'pankaj@example.com',
-    phone: '+91 98765 43210',
-    passwordHash: hashPassword('password123'),
-    createdAt: new Date().toISOString(),
-  },
-];
+export const memoryUsers: StoredUser[] = [];
 
 // ─── Password Hashing & Verification ──────────────────────────────────────────
 export function hashPassword(password: string): string {

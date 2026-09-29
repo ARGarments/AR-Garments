@@ -36,8 +36,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        const headers: Record<string, string> = {};
+        const savedToken = localStorage.getItem('ar_token');
+        if (savedToken) {
+          headers['Authorization'] = `Bearer ${savedToken}`;
+        }
+
         // Verify with server endpoint
-        const res = await fetch('/api/auth/me', { cache: 'no-store' });
+        const res = await fetch('/api/auth/me', { headers, cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated && data.user) {
@@ -46,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setUser(null);
             localStorage.removeItem('ar_user');
+            localStorage.removeItem('ar_token');
           }
         }
       } catch (err) {
@@ -74,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user);
       localStorage.setItem('ar_user', JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem('ar_token', data.token);
+      }
       return { success: true };
     } catch {
       return { success: false, error: 'Network error. Please try again.' };
@@ -96,6 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user);
       localStorage.setItem('ar_user', JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem('ar_token', data.token);
+      }
       return { success: true };
     } catch {
       return { success: false, error: 'Network error. Please try again.' };
@@ -110,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('ar_user');
+      localStorage.removeItem('ar_token');
     }
   };
 
