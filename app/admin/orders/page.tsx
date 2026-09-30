@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, Mail, CreditCard, Package, MapPin, Phone } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 type OrderStatus = 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 
@@ -112,6 +113,7 @@ function StatusDropdown({
 }
 
 export default function AdminOrdersPage() {
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +146,7 @@ export default function AdminOrdersPage() {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     );
+    toast.success(`Order ${orderId} status updated to ${newStatus}`, { title: 'Order Status' });
 
     // 2. Persist to DB API
     try {

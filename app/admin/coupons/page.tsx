@@ -24,6 +24,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Coupon, DiscountType, defaultCoupons } from '@/lib/adminData';
+import { useToast } from '@/context/ToastContext';
 
 const DEFAULT_CATEGORIES = [
   'All',
@@ -35,6 +36,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function AdminCouponsPage() {
+  const { toast } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
@@ -187,6 +189,7 @@ export default function AdminCouponsPage() {
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error('Failed to update coupon');
+        toast.success(`Coupon "${payload.code}" updated successfully!`, { title: 'Coupons' });
       } else {
         // POST
         const res = await fetch('/api/coupons', {
@@ -195,12 +198,15 @@ export default function AdminCouponsPage() {
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error('Failed to create coupon');
+        toast.success(`Coupon "${payload.code}" created successfully!`, { title: 'Coupons' });
       }
 
       setIsModalOpen(false);
       fetchCoupons();
     } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : 'Error saving coupon');
+      const msg = err instanceof Error ? err.message : 'Error saving coupon';
+      setFormError(msg);
+      toast.error(msg, { title: 'Coupon Error' });
     } finally {
       setSaving(false);
     }
@@ -212,8 +218,9 @@ export default function AdminCouponsPage() {
     try {
       await fetch(`/api/coupons?id=${id}`, { method: 'DELETE' });
       setCoupons((prev) => prev.filter((c) => c.id !== id));
+      toast.success(`Coupon "${couponCode}" deleted`, { title: 'Coupons' });
     } catch (err) {
-      alert('Error deleting coupon');
+      toast.error('Error deleting coupon. Please try again.', { title: 'Delete Failed' });
     }
   };
 
@@ -223,6 +230,10 @@ export default function AdminCouponsPage() {
     // Optimistic update
     setCoupons((prev) =>
       prev.map((c) => (c.id === coupon.id ? { ...c, active: updatedStatus } : c))
+    );
+    toast.success(
+      updatedStatus ? `Coupon "${coupon.code}" activated` : `Coupon "${coupon.code}" deactivated`,
+      { title: 'Coupon Status' }
     );
 
     try {
@@ -240,6 +251,7 @@ export default function AdminCouponsPage() {
   const handleCopyCode = (c: string) => {
     navigator.clipboard?.writeText(c);
     setCopiedCode(c);
+    toast.info(`Copied code "${c}" to clipboard`, { title: 'Clipboard' });
     setTimeout(() => setCopiedCode(null), 2000);
   };
 

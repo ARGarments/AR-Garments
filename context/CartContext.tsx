@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Coupon } from '@/lib/adminData';
+import { useToast } from '@/context/ToastContext';
 
 export interface CartItem {
   id: string;
@@ -49,6 +50,7 @@ export function parsePrice(priceStr: string | number | undefined, fallback = 0):
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -137,12 +139,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
 
     showToast(`Added "${product.name}" to bag ✓`);
+    toast.success(`"${product.name}" added to bag`, { title: 'Shopping Bag' });
   };
 
   const removeFromCart = (productId: string | number) => {
     const pId = String(productId);
+    const item = items.find((i) => i.id === pId);
     setItems((prev) => prev.filter((item) => item.id !== pId));
     showToast('Item removed from bag');
+    toast.info(item ? `"${item.name}" removed from bag` : 'Item removed from bag', { title: 'Shopping Bag' });
   };
 
   const updateQuantity = (productId: string | number, quantity: number) => {
@@ -161,16 +166,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
     localStorage.removeItem('ar_cart');
     localStorage.removeItem('ar_applied_coupon');
+    toast.info('Cart has been cleared', { title: 'Shopping Bag' });
   };
 
   const applyCoupon = (coupon: Coupon) => {
     setAppliedCoupon(coupon);
     showToast(`Coupon "${coupon.code}" applied! ✓`);
+    toast.success(`Coupon code "${coupon.code}" applied successfully!`, { title: 'Discount Applied' });
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     showToast('Coupon removed');
+    toast.info('Coupon has been removed', { title: 'Discount' });
   };
 
   // Calculations
@@ -216,13 +224,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-[#083028] text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-sm font-semibold animate-bounce">
-          <span>🛍️</span>
-          <span>{toastMessage}</span>
-        </div>
-      )}
     </CartContext.Provider>
   );
 }

@@ -22,6 +22,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -327,6 +328,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, clearCart, subtotal, shipping, discountAmount, finalTotal } = useCart();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const [form, setForm] = useState<DeliveryForm>({
     fullName: '',
@@ -433,7 +435,11 @@ export default function CheckoutPage() {
     if (!form.state) newErrors.state = 'Please select a state.';
     if (!/^\d{6}$/.test(form.pincode)) newErrors.pincode = 'Enter a valid 6-digit pincode.';
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    if (!isValid) {
+      toast.warning('Please fill all required delivery details correctly.', { title: 'Incomplete Form' });
+    }
+    return isValid;
   }
 
   // ── Form update helper ────────────────────────────────────────────────────────
@@ -497,6 +503,7 @@ export default function CheckoutPage() {
 
       setOrderResult({ orderId });
       clearCart();
+      toast.success(`Order ${orderId} placed successfully! 🎉`, { title: 'Order Placed' });
     } finally {
       setLoading(false);
     }

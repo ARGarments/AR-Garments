@@ -14,6 +14,7 @@ import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 interface ProductData {
   id: string;
@@ -51,6 +52,7 @@ export default function ProductDetailPage() {
   const productId = params?.id as string;
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
@@ -233,9 +235,11 @@ export default function ProductDetailPage() {
       setReviewCommentInput('');
       setRatingInput(5);
       fetchReviews();
+      toast.success('Thank you! Your review has been submitted.', { title: 'Product Review' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error submitting review';
       setReviewError(msg);
+      toast.error(msg, { title: 'Review Error' });
     } finally {
       setSubmittingReview(false);
     }
@@ -247,6 +251,7 @@ export default function ProductDetailPage() {
     const targetCode = (codeToUse || couponInput).trim();
     if (!targetCode) {
       setCouponError('Please enter a coupon code.');
+      toast.error('Please enter a coupon code.', { title: 'Coupon' });
       return;
     }
 
@@ -282,12 +287,16 @@ export default function ProductDetailPage() {
         setCouponSuccess(result.message);
         setCouponInput(result.coupon.code);
         setCouponError('');
+        toast.success(result.message || `Coupon "${result.coupon.code}" applied!`, { title: 'Coupon Applied' });
       } else {
-        setCouponError(result.message || 'Coupon could not be applied.');
+        const msg = result.message || 'Coupon could not be applied.';
+        setCouponError(msg);
         setCouponSuccess('');
+        toast.error(msg, { title: 'Invalid Coupon' });
       }
     } catch {
       setCouponError('Failed to validate coupon. Please try again.');
+      toast.error('Failed to validate coupon. Please try again.', { title: 'Coupon Error' });
     } finally {
       setCouponLoading(false);
     }
@@ -298,6 +307,7 @@ export default function ProductDetailPage() {
     setCouponSuccess('');
     setCouponError('');
     setCouponInput('');
+    toast.info('Coupon has been removed', { title: 'Coupon' });
   };
 
   const handleRefreshCoupons = async () => {

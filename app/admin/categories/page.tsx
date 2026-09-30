@@ -20,6 +20,8 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 
+import { useToast } from '@/context/ToastContext';
+
 interface Category {
   id: string;
   name: string;
@@ -40,13 +42,13 @@ const PRESET_IMAGES = [
 ];
 
 export default function AdminCategoriesPage() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
@@ -63,9 +65,12 @@ export default function AdminCategoriesPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const showToast = (msg: string, isError = false) => {
+    if (isError) {
+      toast.error(msg, { title: 'Categories' });
+    } else {
+      toast.success(msg, { title: 'Categories' });
+    }
   };
 
   const loadCategories = async () => {
@@ -265,14 +270,6 @@ export default function AdminCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-[#083028] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-          <CheckCircle size={18} className="text-[#B8860B]" />
-          <span>{toast}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

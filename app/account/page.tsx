@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useToast } from '@/context/ToastContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -610,13 +611,13 @@ function OrdersSection({ userId }: { userId: string }) {
 
 function AccountContent() {
   const { user, loading, logout } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get('tab') as Tab) || 'profile';
   const [activeTab, setActiveTab] = useState<Tab>(
     ['profile', 'address', 'orders'].includes(initialTab) ? initialTab : 'profile'
   );
-  const [toast, setToast] = useState('');
 
   // Sync tab if URL param changes
   useEffect(() => {
@@ -633,8 +634,14 @@ function AccountContent() {
     }
   }, [user, loading, router]);
 
-  const showToast = useCallback((msg: string) => setToast(msg), []);
-  const clearToast = useCallback(() => setToast(''), []);
+  const showToast = useCallback((msg: string) => {
+    toast.success(msg, { title: 'Delivery Address' });
+  }, [toast]);
+
+  const handleLogout = async () => {
+    await logout();
+    toast.info('You have been signed out.', { title: 'Account' });
+  };
 
   if (loading || !user) {
     return (
@@ -691,7 +698,7 @@ function AccountContent() {
 
             <div className="mt-4 border-t border-gray-200 pt-4">
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition w-full text-left"
               >
                 <LogOut className="w-4 h-4" />
@@ -735,7 +742,7 @@ function AccountContent() {
             {/* Mobile Sign Out */}
             <div className="md:hidden mt-6">
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-2 text-sm text-red-500 font-medium px-4 py-2 rounded-xl border border-red-100 hover:bg-red-50 transition"
               >
                 <LogOut className="w-4 h-4" />
@@ -747,9 +754,6 @@ function AccountContent() {
       </main>
 
       <Footer />
-
-      {/* Toast */}
-      {toast && <Toast message={toast} onClose={clearToast} />}
     </div>
   );
 }

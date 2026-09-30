@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail, User, Phone, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 function RegisterForm() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function RegisterForm() {
   const redirectUrl = searchParams.get('redirect') || '/';
 
   const { register, user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -65,7 +67,9 @@ function RegisterForm() {
     setError(null);
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      const msg = 'Password must be at least 6 characters long.';
+      setError(msg);
+      toast.warning(msg, { title: 'Weak Password' });
       return;
     }
 
@@ -75,11 +79,14 @@ function RegisterForm() {
 
     if (res.success) {
       setSuccess(true);
+      toast.success('Account created! Welcome to AR Garment.', { title: 'Registration Successful' });
       setTimeout(() => {
         router.push(redirectUrl);
       }, 800);
     } else {
-      setError(res.error || 'Failed to create account.');
+      const errMsg = res.error || 'Failed to create account.';
+      setError(errMsg);
+      toast.error(errMsg, { title: 'Registration Failed' });
     }
   };
 

@@ -15,6 +15,7 @@ import {
   Users,
   Check,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 interface Subscriber {
   id: string;
@@ -35,16 +36,19 @@ function formatDate(iso: string) {
 }
 
 export default function AdminNewsletterPage() {
+  const { toast } = useToast();
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const showToast = (msg: string, isError = false) => {
+    if (isError) {
+      toast.error(msg, { title: 'Newsletter' });
+    } else {
+      toast.success(msg, { title: 'Newsletter' });
+    }
   };
 
   const fetchSubscribers = async () => {
@@ -124,14 +128,6 @@ export default function AdminNewsletterPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-[#083028] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium animate-in fade-in">
-          <CheckCircle size={18} className="text-[#B8860B]" />
-          <span>{toast}</span>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

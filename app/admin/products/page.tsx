@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { uploadImageToImageKit } from '@/lib/imagekit';
 import { Product } from '@/lib/adminData';
+import { useToast } from '@/context/ToastContext';
 
 const DEFAULT_CATEGORIES = [
   'All', 'Sarees', 'Suits & Dress Material',
@@ -45,6 +46,7 @@ const emptyForm = (): FormData => ({
 });
 
 export default function AdminProductsPage() {
+  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function AdminProductsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Load products from Supabase via API ──────────────────────────────────
@@ -151,7 +154,7 @@ export default function AdminProductsPage() {
     setModalOpen(true);
   };
 
-  // ─── ImageKit Multi-upload ─────────────────────────────────────────────────
+  // ─── ImageKit Multi-upload via Server API ─────────────────────────────────
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -160,12 +163,26 @@ export default function AdminProductsPage() {
 
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        try {
-          const res = await uploadImageToImageKit(file, file.name, '/products');
-          return res.url;
-        } catch {
-          return URL.createObjectURL(file);
+        // Send file to server-side /api/upload which uploads to ImageKit with private key
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+        uploadData.append('folder', '/products');
+        const cleanName = (formData.name || 'product')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-');
+        uploadData.append('fileName', `${cleanName}_${Date.now()}`);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadData,
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || 'Failed to upload image to ImageKit');
         }
+
+        return data.url as string;
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);
@@ -177,12 +194,41 @@ export default function AdminProductsPage() {
           image: prev.image || combined[0] || '',
         };
       });
-    } catch {
-      setUploadError('One or more images failed to upload.');
+
+      toast.success(
+        uploadedUrls.length === 1
+          ? 'Image uploaded to ImageKit CDN!'
+          : `${uploadedUrls.length} images uploaded to ImageKit CDN!`,
+        { title: 'ImageKit Upload' }
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'One or more images failed to upload.';
+      setUploadError(msg);
+      toast.error(msg, { title: 'Upload Failed' });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleAddImageUrl = () => {
+    const trimmed = imageUrlInput.trim();
+    if (!trimmed) return;
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) {
+      toast.error('Please enter a valid image URL starting with http://, https://, or /');
+      return;
+    }
+
+    setFormData((prev) => {
+      const combined = [...prev.images, trimmed];
+      return {
+        ...prev,
+        images: combined,
+        image: prev.image || trimmed,
+      };
+    });
+    setImageUrlInput('');
+    toast.success('Image URL added to gallery', { title: 'Product Gallery' });
   };
 
   const setPrimaryImage = (imgUrl: string) => {
@@ -190,6 +236,7 @@ export default function AdminProductsPage() {
       ...prev,
       image: imgUrl,
     }));
+    toast.info('Primary cover image selected', { title: 'Product Gallery' });
   };
 
   const removeImage = (imgUrl: string) => {
@@ -202,12 +249,16 @@ export default function AdminProductsPage() {
         image: newPrimary,
       };
     });
+    toast.info('Photo removed from gallery', { title: 'Product Gallery' });
   };
 
   // ─── Save to Supabase via API ──────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      toast.error('Please enter a product title');
+      return;
+    }
     setSaving(true);
     setSaveError('');
 
@@ -247,8 +298,16 @@ export default function AdminProductsPage() {
 
       setModalOpen(false);
       await loadProducts(); // Refresh from DB
+
+      if (editingProduct) {
+        toast.success(`"${formData.name}" updated successfully!`, { title: 'Product Updated' });
+      } else {
+        toast.success(`"${formData.name}" added to catalog!`, { title: 'Product Created' });
+      }
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save product.');
+      const msg = err instanceof Error ? err.message : 'Failed to save product.';
+      setSaveError(msg);
+      toast.error(msg, { title: 'Save Failed' });
     } finally {
       setSaving(false);
     }
@@ -256,13 +315,17 @@ export default function AdminProductsPage() {
 
   // ─── Delete from Supabase ──────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    const prod = products.find((p) => p.id === id);
+    const prodName = prod ? prod.name : 'product';
+    if (!confirm(`Are you sure you want to delete "${prodName}"? This action cannot be undone.`)) return;
+
     try {
       const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       await loadProducts();
+      toast.success(`"${prodName}" deleted successfully`, { title: 'Product Deleted' });
     } catch {
-      alert('Failed to delete product.');
+      toast.error('Failed to delete product. Please try again.', { title: 'Delete Failed' });
     }
   };
 
@@ -272,6 +335,7 @@ export default function AdminProductsPage() {
     flag: 'isNewArrival' | 'isBestSeller' | 'active'
   ) => {
     const updated = { [flag]: !product[flag] };
+    const label = flag === 'isNewArrival' ? 'New Arrival' : flag === 'isBestSeller' ? 'Best Seller' : 'Active Status';
     try {
       const res = await fetch(`/api/products?id=${product.id}`, {
         method: 'PATCH',
@@ -282,8 +346,14 @@ export default function AdminProductsPage() {
       setProducts((prev) =>
         prev.map((p) => (p.id === product.id ? { ...p, ...updated } : p))
       );
+      toast.success(
+        updated[flag]
+          ? `Enabled ${label} for "${product.name}"`
+          : `Disabled ${label} for "${product.name}"`,
+        { title: 'Status Updated' }
+      );
     } catch {
-      alert('Failed to update. Please try again.');
+      toast.error('Failed to update status. Please try again.', { title: 'Update Failed' });
     }
   };
 
@@ -583,6 +653,30 @@ export default function AdminProductsPage() {
                     onChange={handleImageFileChange}
                     className="hidden"
                   />
+                </div>
+
+                {/* Alternative: Paste Image URL */}
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="Or paste image URL (https://...)"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#083028]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddImageUrl();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    className="px-3.5 py-2 bg-gray-100 hover:bg-[#083028] hover:text-white text-gray-700 text-xs font-semibold rounded-xl transition-colors whitespace-nowrap"
+                  >
+                    Add URL
+                  </button>
                 </div>
 
                 {isUploading && (

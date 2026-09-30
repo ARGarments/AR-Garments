@@ -15,6 +15,7 @@ import {
   MessageSquare,
   AlertCircle,
 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 interface Review {
   id: string;
@@ -30,16 +31,19 @@ interface Review {
 }
 
 export default function AdminReviewsPage() {
+  const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const showToast = (msg: string, isError = false) => {
+    if (isError) {
+      toast.error(msg, { title: 'Reviews' });
+    } else {
+      toast.success(msg, { title: 'Reviews' });
+    }
   };
 
   const loadReviews = async () => {
@@ -128,14 +132,6 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 bg-[#083028] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-          <CheckCircle size={18} className="text-[#B8860B]" />
-          <span>{toast}</span>
-        </div>
-      )}
-
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 
 function LoginForm() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function LoginForm() {
   const redirectUrl = searchParams.get('redirect') || '/';
 
   const { login, user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -76,11 +78,14 @@ function LoginForm() {
 
     if (res.success) {
       setSuccess(true);
+      toast.success('Welcome back! Signed in successfully.', { title: 'Login Successful' });
       setTimeout(() => {
         router.push(redirectUrl);
       }, 800);
     } else {
-      setError(res.error || 'Invalid credentials');
+      const errMsg = res.error || 'Invalid credentials';
+      setError(errMsg);
+      toast.error(errMsg, { title: 'Login Failed' });
     }
   };
 

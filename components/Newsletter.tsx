@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 export default function Newsletter() {
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -33,15 +35,19 @@ export default function Newsletter() {
       }
 
       if (data.alreadySubscribed) {
+        const msg = data.message || 'You are already subscribed to our newsletter!';
         setFeedback({
           type: 'info',
-          message: data.message || 'You are already subscribed to our newsletter!',
+          message: msg,
         });
+        toast.info(msg, { title: 'Newsletter' });
       } else {
+        const msg = data.message || 'Thank you for joining our fashion family!';
         setFeedback({
           type: 'success',
-          message: data.message || 'Thank you for joining our fashion family!',
+          message: msg,
         });
+        toast.success(msg, { title: 'Newsletter Subscribed' });
         setEmail('');
       }
     } catch (err: unknown) {
@@ -50,6 +56,7 @@ export default function Newsletter() {
         type: 'error',
         message: msg,
       });
+      toast.error(msg, { title: 'Newsletter Error' });
     } finally {
       setLoading(false);
     }
