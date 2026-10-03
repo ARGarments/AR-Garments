@@ -18,6 +18,7 @@ import {
   FolderTree,
   Star,
   Mail,
+  MessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import { adminAuth } from '@/lib/adminData';
@@ -25,6 +26,7 @@ import { adminAuth } from '@/lib/adminData';
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Orders', href: '/admin/orders', icon: Package },
+  { label: 'Customer Queries', href: '/admin/contacts', icon: MessageSquare },
   { label: 'Registered Users', href: '/admin/users', icon: Users },
   { label: 'Products & Catalog', href: '/admin/products', icon: ShoppingBag },
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },

@@ -18,6 +18,7 @@ import {
   Inbox,
   ArrowRight,
   Mail,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -64,6 +65,8 @@ export default function AdminDashboard() {
   const [reviewsCount, setReviewsCount] = useState(0);
   const [productsCount, setProductsCount] = useState(0);
   const [subscribersCount, setSubscribersCount] = useState(0);
+  const [queriesCount, setQueriesCount] = useState(0);
+  const [unreadQueriesCount, setUnreadQueriesCount] = useState(0);
   const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
 
   useEffect(() => {
@@ -159,6 +162,21 @@ export default function AdminDashboard() {
           const data = await res.json();
           const list = Array.isArray(data?.subscribers) ? data.subscribers : [];
           if (isMounted) setSubscribersCount(list.length);
+        }
+      } catch {
+        // ignore
+      }
+
+      // 8. Fetch customer inquiries
+      try {
+        const res = await fetch('/api/contact', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data?.messages) ? data.messages : [];
+          if (isMounted) {
+            setQueriesCount(data?.counts?.total ?? list.length);
+            setUnreadQueriesCount(data?.counts?.unread ?? list.filter((m: { status: string }) => m.status === 'unread').length);
+          }
         }
       } catch {
         // ignore
@@ -486,7 +504,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
           {[
             {
               label: 'Orders',
@@ -495,6 +513,14 @@ export default function AdminDashboard() {
               icon: ShoppingBag,
               color: 'text-indigo-600',
               link: '/admin/orders',
+            },
+            {
+              label: 'Queries',
+              count: queriesCount,
+              desc: unreadQueriesCount > 0 ? `${unreadQueriesCount} unread` : 'Customer messages',
+              icon: MessageSquare,
+              color: 'text-amber-600',
+              link: '/admin/contacts',
             },
             {
               label: 'Customers',

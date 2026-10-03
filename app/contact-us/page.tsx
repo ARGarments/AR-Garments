@@ -4,20 +4,45 @@ import { useState } from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useToast } from '@/context/ToastContext';
 
 export default function ContactUs() {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     message: '',
   });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    alert('Thank you for your message! We will get back to you soon.');
-    setFormData({ name: '', email: '', phone: '', message: '' });
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          subject: 'General Inquiry',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit inquiry');
+
+      toast.success('Thank you! Your message has been sent successfully.', {
+        title: 'Message Received',
+      });
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error sending message';
+      toast.error(msg, { title: 'Submission Error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
