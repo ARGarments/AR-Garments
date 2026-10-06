@@ -84,7 +84,7 @@ export default function ContactUs() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Address</h3>
-                    <p className="text-gray-600">123 Fashion Street, Mumbai, India</p>
+                    <p className="text-gray-600">Building 11A/14A, K.P. Kakkad Road, Eidgah, Prayagraj, UP - 211003, India</p>
                   </div>
                 </div>
               </div>

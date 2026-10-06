@@ -79,9 +79,9 @@ export default function ContactPage() {
     },
     {
       icon: <MapPin className="text-[#083028]" size={22} />,
-      title: 'Store & Head Office',
-      detail: 'AR Garments, Ring Road Textile Market',
-      sub: 'Surat, Gujarat - 395002, India',
+      title: 'Store & Principal Office',
+      detail: 'Building 11A/14A, K.P. Kakkad Road, Eidgah',
+      sub: 'Prayagraj, Uttar Pradesh - 211003, India',
       action: '#map',
       actionLabel: 'View on Map',
     },

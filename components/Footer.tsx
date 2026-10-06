@@ -22,7 +22,7 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-white/60 text-xs sm:text-sm mb-4 max-w-sm">
-              Tradition In Every Thread. Your trusted destination for handpicked, authentic Indian ethnic wear.
+              Wholesale Garments for Men, Women &amp; Kids. Quality apparel at competitive wholesale rates, based in Prayagraj, Uttar Pradesh.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2 text-white/60 text-sm">
                 <MapPin size={13} className="text-white/80 mt-0.5 flex-shrink-0" />
-                <span>Textile Market, Surat, Gujarat India</span>
+                <span>11A/14A, K.P. Kakkad Road, Eidgah, Prayagraj, UP - 211003, India</span>
               </li>
             </ul>
           </div>
