@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, User, ShoppingBag, Menu, X, ChevronDown, LogOut } from 'lucide-react';
+import { Search, User, ShoppingBag, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 import SearchModal from '@/components/SearchModal';
 
 interface NavCategory {
@@ -22,13 +23,13 @@ const DEFAULT_CATEGORIES: NavCategory[] = [
 ];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [categories, setCategories] = useState<NavCategory[]>(DEFAULT_CATEGORIES);
 
   const { user, logout } = useAuth();
   const { totalCount } = useCart();
+  const { wishlistCount } = useWishlist();
 
   useEffect(() => {
     let isMounted = true;
@@ -136,212 +137,63 @@ export default function Header() {
             </Link>
           </nav>
 
-          {/* Icons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Right items: About Us, Contact Us, Search, Wishlist, Account, Cart */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Mobile About Us & Contact Us links (on desktop they appear in main nav) */}
+
+
+            {/* Search Button */}
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028]"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
               aria-label="Search Catalog"
               title="Search products (Ctrl+K)"
             >
-              <Search size={21} />
+              <Search size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
 
-            {/* User Account — direct link, no dropdown */}
-            {user ? (
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href="/account"
-                  className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-[#083028] bg-[#083028]/10 hover:bg-[#083028]/20 px-2.5 py-1 rounded-full max-w-[100px] truncate transition-colors"
-                >
-                  <User size={13} />
-                  {user.name.split(' ')[0]}
-                </Link>
-                <Link
-                  href="/account"
-                  className="md:hidden p-2 rounded-full text-[#083028] hover:bg-[#083028]/10 transition-colors"
-                  aria-label="My Account"
-                >
-                  <User size={21} />
-                </Link>
-                <button
-                  onClick={() => logout()}
-                  className="p-2 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  aria-label="Sign Out"
-                  title="Sign Out"
-                >
-                  <LogOut size={20} />
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                className="p-2 rounded-full transition-colors text-gray-700 hover:text-[#083028] hover:bg-gray-100"
-                aria-label="Sign In"
-              >
-                <User size={21} />
-              </Link>
-            )}
-
-            {/* Shopping Bag Button linking to /cart */}
+            {/* Wishlist Button with live counter badge */}
             <Link
-              href="/cart"
-              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700 hover:text-[#083028] flex items-center justify-center"
-              aria-label={`Shopping Bag with ${totalCount} items`}
+              href="/wishlist"
+              className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-rose-600 transition-colors shadow-xs flex-shrink-0"
+              aria-label={`Wishlist with ${wishlistCount} items`}
+              title="My Wishlist"
             >
-              <ShoppingBag size={21} />
-              {totalCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 bg-[#083028] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-in zoom-in-75 duration-200">
-                  {totalCount > 99 ? '99+' : totalCount}
+              <Heart size={16} className={`sm:w-[18px] sm:h-[18px] ${wishlistCount > 0 ? 'text-rose-600 fill-rose-50' : ''}`} />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] sm:min-w-[17px] sm:h-[17px] px-1 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in-75 duration-200">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
                 </span>
               )}
             </Link>
 
-            <button
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-700"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle Menu"
+            {/* User Account Button */}
+            <Link
+              href={user ? '/account' : '/login'}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
+              aria-label={user ? `Account: ${user.name}` : 'Sign In'}
+              title={user ? `My Account (${user.name})` : 'Sign In'}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+              <User size={16} className="sm:w-[18px] sm:h-[18px]" />
+            </Link>
+
+            {/* Shopping Bag Button (Desktop only, mobile has bottom widget) */}
+            <Link
+              href="/cart"
+              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 hidden lg:flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
+              aria-label={`Shopping Bag with ${totalCount} items`}
+              title="Shopping Bag"
+            >
+              <ShoppingBag size={18} />
+              {totalCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 bg-[#083028] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in-75 duration-200">
+                  {totalCount > 99 ? '99+' : totalCount}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <nav className="lg:hidden mt-3 pb-3 border-t pt-3">
-            {/* Mobile Search Trigger */}
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setSearchModalOpen(true);
-              }}
-              className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500 hover:text-[#083028] hover:border-[#083028]/30 transition mb-3"
-            >
-              <Search size={16} className="text-[#083028]" />
-              <span>Search sarees, suits, fabrics...</span>
-            </button>
-
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/"
-                className="text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-
-              {/* Mobile Category Dropdown */}
-              <div>
-                <button
-                  className="w-full text-left text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg flex items-center justify-between"
-                  onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                >
-                  <span>Category</span>
-                  <ChevronDown
-                    size={20}
-                    className={`transition-transform duration-200 ${categoryDropdownOpen ? 'rotate-180 text-[#083028]' : ''}`}
-                  />
-                </button>
-                {categoryDropdownOpen && (
-                  <div className="pl-4 py-1 flex flex-col gap-1 border-l-2 border-[#083028]/20 my-1">
-                    <Link
-                      href="/category"
-                      className="text-[#083028] font-bold py-2 text-sm"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      All Categories
-                    </Link>
-                    {categories.map((category) => (
-                      <Link
-                        key={category.name}
-                        href={category.href}
-                        className="text-gray-600 hover:text-[#083028] font-medium py-2 text-base"
-                        onClick={() => {
-                          setCategoryDropdownOpen(false);
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        {category.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <Link
-                href="/about"
-                className="text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                About Us
-              </Link>
-
-              <Link
-                href="/contact"
-                className="text-gray-800 hover:text-[#083028] transition-colors font-semibold py-2 text-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Contact Us
-              </Link>
-
-              {/* Mobile User & Cart Quick Links */}
-              <div className="pt-3 mt-1 border-t border-gray-100 flex flex-col gap-2">
-                <Link
-                  href="/cart"
-                  className="flex items-center justify-between text-[#083028] font-bold py-2 text-base bg-[#F5F1E8] px-3 rounded-xl"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="flex items-center gap-2">
-                    <ShoppingBag size={18} /> My Cart
-                  </span>
-                  <span className="bg-[#083028] text-white text-xs px-2 py-0.5 rounded-full">
-                    {totalCount}
-                  </span>
-                </Link>
-
-                {user ? (
-                  <div className="flex flex-col gap-2 pt-1">
-                    <Link
-                      href="/account"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 py-2 px-3 bg-[#F5F1E8] rounded-xl text-sm font-bold text-[#083028]"
-                    >
-                      <User size={15} /> {user.name} — My Account
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 w-fit"
-                    >
-                      <LogOut size={14} /> Sign Out
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <Link
-                      href="/login"
-                      className="text-center font-bold text-sm bg-[#083028] text-white py-2 rounded-xl"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Sign In
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="text-center font-bold text-sm bg-white border border-[#083028] text-[#083028] py-2 rounded-xl"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Register
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </nav>
-        )}
       </div>
 
       {/* Interactive Live Search Modal */}

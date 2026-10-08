@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const search = searchParams.get('search');
 
   const supabase = getAdminClient();
-  let query = supabase.from('products').select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at').order('sort_order');
+  let query = supabase.from('products').select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, youtube_url, facebook_url, instagram_url, created_at').order('sort_order');
 
   if (isNewArrival === 'true') query = query.eq('is_new_arrival', true);
   if (isBestSeller === 'true') query = query.eq('is_best_seller', true);
@@ -55,6 +55,9 @@ export async function POST(request: Request) {
     is_new_arrival: body.isNewArrival ?? false,
     is_best_seller: body.isBestSeller ?? false,
     sort_order: body.order ?? 0,
+    youtube_url: body.youtubeUrl || body.youtube_url || '',
+    facebook_url: body.facebookUrl || body.facebook_url || '',
+    instagram_url: body.instagramUrl || body.instagram_url || '',
   };
 
   if (Array.isArray(body.images)) {
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
     record.shipping_care = body.shipping_care;
   }
 
-  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at';
+  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, youtube_url, facebook_url, instagram_url, created_at';
 
   // Attempt insert
   const { data, error } = await supabase
@@ -113,8 +116,14 @@ export async function PATCH(request: Request) {
   if (body.specification !== undefined) patch.specification = body.specification;
   if (body.shippingCare !== undefined) patch.shipping_care = body.shippingCare;
   if (body.shipping_care !== undefined) patch.shipping_care = body.shipping_care;
+  if (body.youtubeUrl !== undefined) patch.youtube_url = body.youtubeUrl;
+  if (body.youtube_url !== undefined) patch.youtube_url = body.youtube_url;
+  if (body.facebookUrl !== undefined) patch.facebook_url = body.facebookUrl;
+  if (body.facebook_url !== undefined) patch.facebook_url = body.facebook_url;
+  if (body.instagramUrl !== undefined) patch.instagram_url = body.instagramUrl;
+  if (body.instagram_url !== undefined) patch.instagram_url = body.instagram_url;
 
-  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at';
+  const COLS = 'id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, youtube_url, facebook_url, instagram_url, created_at';
 
   const { data, error } = await supabase
     .from('products')

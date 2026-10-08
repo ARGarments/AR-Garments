@@ -29,6 +29,9 @@ export interface Product {
   isNewArrival?: boolean; // Direct flag for New Arrivals
   isBestSeller?: boolean; // Direct flag for Best Sellers
   order: number;
+  youtubeUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
 }
 
 export interface Testimonial {

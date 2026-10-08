@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, CreditCard } from 'lucide-react';
+import { ShoppingCart, CreditCard, Heart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/adminData';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 export default function BestSellers() {
   const [products, setProducts] = useState<Product[]>([]);
   const [addedIds, setAddedIds] = useState<{ [id: string]: boolean }>({});
   const router = useRouter();
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   useEffect(() => {
     fetch('/api/products?is_best_seller=true')
@@ -23,6 +25,8 @@ export default function BestSellers() {
           id: d.id as string,
           name: d.name as string,
           price: d.price as string,
+          numericPrice: d.numeric_price as number,
+          category: d.category as string,
           image: d.image as string,
           active: d.active as boolean,
           isNewArrival: d.is_new_arrival as boolean,
@@ -58,64 +62,87 @@ export default function BestSellers() {
 
         {/* Product Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {activeProducts.map((product) => (
-            <div
-              key={product.id}
-              className="group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
-            >
-              {/* Image area */}
-              <Link href={`/product/${product.id}`} className="block">
+          {activeProducts.map((product) => {
+            const wishlisted = isInWishlist(product.id);
+            return (
+              <div
+                key={product.id}
+                className="group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+              >
+                {/* Image area */}
                 <div className="relative bg-[#EDE8DF] h-[170px] sm:h-[200px] md:h-[220px]">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                  />
-                </div>
-              </Link>
-              {/* Info */}
-              <div className="p-2.5 sm:p-4 flex flex-col justify-between flex-1">
-                <div>
-                  <Link href={`/product/${product.id}`} className="block">
-                    <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base leading-snug mb-1 line-clamp-2 hover:text-[#083028] transition-colors">{product.name}</h3>
+                  <Link href={`/product/${product.id}`} className="block w-full h-full">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    />
                   </Link>
-                  <p className="text-xs sm:text-sm md:text-base font-bold text-[#083028] mb-2 sm:mb-3">{product.price}</p>
-                </div>
-                {/* Action buttons */}
-                <div className="flex flex-col gap-1.5 sm:gap-2">
+                  {/* Wishlist Heart Button */}
                   <button
-                    onClick={() => {
-                      addToCart(product, 1);
-                      setAddedIds((prev) => ({ ...prev, [product.id]: true }));
-                      setTimeout(() => {
-                        setAddedIds((prev) => ({ ...prev, [product.id]: false }));
-                      }, 1500);
-                    }}
-                    className={`w-full border py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                      addedIds[product.id]
-                        ? 'bg-[#083028] text-white border-[#083028]'
-                        : 'border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'
+                    onClick={() => toggleWishlist({
+                      id: product.id,
+                      name: product.name,
+                      price: product.price,
+                      numericPrice: product.numericPrice,
+                      image: product.image,
+                      category: product.category,
+                    })}
+                    className={`absolute top-2 right-2 w-7 h-7 rounded-full shadow flex items-center justify-center transition-colors ${
+                      wishlisted
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-white/90 hover:bg-white text-gray-500 hover:text-rose-600'
                     }`}
+                    aria-label="Toggle wishlist"
                   >
-                    <ShoppingCart size={13} strokeWidth={1.5} />
-                    {addedIds[product.id] ? 'Added ✓' : 'Add to Cart'}
+                    <Heart size={13} className={wishlisted ? 'fill-white' : ''} />
                   </button>
-                  <button
-                    onClick={() => {
-                      addToCart(product, 1);
-                      router.push('/cart');
-                    }}
-                    className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs"
-                  >
-                    <CreditCard size={13} strokeWidth={1.5} />
-                    Buy Now
-                  </button>
+                </div>
+
+                {/* Info */}
+                <div className="p-2.5 sm:p-4 flex flex-col justify-between flex-1">
+                  <div>
+                    <Link href={`/product/${product.id}`} className="block">
+                      <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base leading-snug mb-1 line-clamp-2 hover:text-[#083028] transition-colors">{product.name}</h3>
+                    </Link>
+                    <p className="text-xs sm:text-sm md:text-base font-bold text-[#083028] mb-2 sm:mb-3">{product.price}</p>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex flex-col gap-1.5 sm:gap-2">
+                    <button
+                      onClick={() => {
+                        addToCart(product, 1);
+                        setAddedIds((prev) => ({ ...prev, [product.id]: true }));
+                        setTimeout(() => {
+                          setAddedIds((prev) => ({ ...prev, [product.id]: false }));
+                        }, 1500);
+                      }}
+                      className={`w-full border py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                        addedIds[product.id]
+                          ? 'bg-[#083028] text-white border-[#083028]'
+                          : 'border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'
+                      }`}
+                    >
+                      <ShoppingCart size={13} strokeWidth={1.5} />
+                      {addedIds[product.id] ? 'Added ✓' : 'Add to Cart'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        addToCart(product, 1);
+                        router.push('/cart');
+                      }}
+                      className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <CreditCard size={13} strokeWidth={1.5} />
+                      Buy Now
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

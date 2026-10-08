@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { WishlistProvider } from "@/context/WishlistContext";
+import BottomWidgetsNav from "@/components/BottomWidgetsNav";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -23,7 +25,10 @@ export default function RootLayout({
         <ToastProvider>
           <AuthProvider>
             <CartProvider>
-              {children}
+              <WishlistProvider>
+                {children}
+                <BottomWidgetsNav />
+              </WishlistProvider>
             </CartProvider>
           </AuthProvider>
         </ToastProvider>

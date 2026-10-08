@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ShoppingCart, Share2, ShieldCheck, Truck, RotateCcw,
   CheckCircle2, ChevronRight, ArrowLeft, Loader2, Sparkles,
-  Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw, Star, User
+  Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw, Star, User, Heart
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -15,6 +15,7 @@ import ProductCard from '@/components/ProductCard';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 interface ProductData {
   id: string;
@@ -31,6 +32,9 @@ interface ProductData {
   active: boolean;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
+  youtubeUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
 }
 
 interface ProductReview {
@@ -53,6 +57,7 @@ export default function ProductDetailPage() {
   const { addToCart } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
@@ -127,6 +132,9 @@ export default function ProductDetailPage() {
           active: (data.active as boolean) ?? true,
           isNewArrival: (data.is_new_arrival as boolean) ?? false,
           isBestSeller: (data.is_best_seller as boolean) ?? false,
+          youtubeUrl: (data.youtube_url as string) || (data.youtubeUrl as string) || '',
+          facebookUrl: (data.facebook_url as string) || (data.facebookUrl as string) || '',
+          instagramUrl: (data.instagram_url as string) || (data.instagramUrl as string) || '',
         };
 
         setProduct(mapped);
@@ -480,6 +488,87 @@ export default function ProductDetailPage() {
               </div>
             )}
 
+            {/* Social Media Channels Bar (YouTube, Facebook, Instagram) */}
+            <div className="bg-gradient-to-r from-[#FFF9EE] via-[#FFFCF6] to-[#FFF9EE] rounded-2xl border border-[#EFE3CF] shadow-xs p-2.5 sm:p-3.5 grid grid-cols-3 divide-x divide-[#EFE3CF]">
+              {/* YouTube */}
+              <a
+                href={product.youtubeUrl && product.youtubeUrl.trim() ? product.youtubeUrl : 'https://www.youtube.com'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 sm:gap-2.5 px-1 sm:px-3 hover:opacity-85 transition-opacity group min-w-0"
+                title="Watch on YouTube"
+              >
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[#FF0000] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                    <path d="M10 8.5L15.5 12L10 15.5V8.5Z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                    YouTube
+                  </p>
+                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
+                    Subscribe &amp; Stay Updated
+                  </p>
+                </div>
+              </a>
+
+              {/* Facebook */}
+              <a
+                href={product.facebookUrl && product.facebookUrl.trim() ? product.facebookUrl : 'https://www.facebook.com'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 sm:gap-2.5 px-1.5 sm:px-3 hover:opacity-85 transition-opacity group min-w-0"
+                title="Follow on Facebook"
+              >
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#1877F2] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                    <path d="M13.5 12.5H15.5L16 9.5H13.5V8C13.5 7.2 13.8 6.5 15 6.5H16.2V4.1C15.6 4 14.8 4 14 4C11.5 4 10 5.5 10 8.3V9.5H7.5V12.5H10V20H13.5V12.5Z" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                    Facebook
+                  </p>
+                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
+                    Follow Us
+                  </p>
+                </div>
+              </a>
+
+              {/* Instagram */}
+              <a
+                href={product.instagramUrl && product.instagramUrl.trim() ? product.instagramUrl : 'https://www.instagram.com'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 sm:gap-2.5 px-1.5 sm:px-3 hover:opacity-85 transition-opacity group min-w-0"
+                title="Join on Instagram"
+              >
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  <svg
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white stroke-current"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                    Instagram
+                  </p>
+                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
+                    Join Our Community
+                  </p>
+                </div>
+              </a>
+            </div>
+
             {/* Trust Points */}
             <div className="grid grid-cols-3 gap-3 p-4 bg-white rounded-2xl border border-gray-200/80 text-center">
               <div className="flex flex-col items-center gap-1.5 p-2">
@@ -625,6 +714,29 @@ export default function ProductDetailPage() {
               >
                 <CreditCard size={18} />
                 Buy Now
+              </button>
+              {/* Wishlist Toggle */}
+              <button
+                onClick={() => product && toggleWishlist({
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  numericPrice: product.numericPrice,
+                  image: product.image,
+                  category: product.category,
+                })}
+                className={`w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 border transition-all flex-shrink-0 ${
+                  product && isInWishlist(product.id)
+                    ? 'bg-rose-600 text-white border-rose-600'
+                    : 'bg-white hover:bg-rose-50 text-gray-600 hover:text-rose-600 border-gray-200 hover:border-rose-300'
+                }`}
+                title={product && isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                aria-label="Toggle Wishlist"
+              >
+                <Heart
+                  size={18}
+                  className={product && isInWishlist(product.id) ? 'fill-white' : ''}
+                />
               </button>
             </div>
 

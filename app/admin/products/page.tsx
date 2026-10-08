@@ -28,6 +28,9 @@ type FormData = {
   active: boolean;
   isNewArrival: boolean;
   isBestSeller: boolean;
+  youtubeUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
 };
 
 const emptyForm = (): FormData => ({
@@ -43,6 +46,9 @@ const emptyForm = (): FormData => ({
   active: true,
   isNewArrival: false,
   isBestSeller: false,
+  youtubeUrl: '',
+  facebookUrl: '',
+  instagramUrl: '',
 });
 
 export default function AdminProductsPage() {
@@ -88,6 +94,9 @@ export default function AdminProductsPage() {
         isNewArrival: d.is_new_arrival as boolean,
         isBestSeller: d.is_best_seller as boolean,
         order: d.sort_order as number,
+        youtubeUrl: (d.youtube_url as string) || (d.youtubeUrl as string) || '',
+        facebookUrl: (d.facebook_url as string) || (d.facebookUrl as string) || '',
+        instagramUrl: (d.instagram_url as string) || (d.instagramUrl as string) || '',
       }));
       setProducts(mapped);
     } catch {
@@ -148,6 +157,9 @@ export default function AdminProductsPage() {
       active: product.active,
       isNewArrival: !!product.isNewArrival,
       isBestSeller: !!product.isBestSeller,
+      youtubeUrl: product.youtubeUrl || '',
+      facebookUrl: product.facebookUrl || '',
+      instagramUrl: product.instagramUrl || '',
     });
     setUploadError('');
     setSaveError('');
@@ -793,6 +805,67 @@ export default function AdminProductsPage() {
                   placeholder="e.g. Dispatch Time: Dispatched within 24 hours | Wash Care: Dry Clean Recommended | Returns: 7-day easy exchange & return"
                   className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#083028] leading-relaxed"
                 />
+              </div>
+
+              {/* Product Social Media Links (YouTube, Facebook, Instagram) */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
+                    Product Social Media Links
+                  </p>
+                  <span className="text-[11px] text-gray-500">Optional product video/post URLs</span>
+                </div>
+
+                {/* 1. YouTube Link */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                    <span className="w-5 h-5 rounded-md bg-[#FF0000] flex items-center justify-center text-white text-[10px]">
+                      ▶
+                    </span>
+                    <span>YouTube Video / Short URL</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.youtubeUrl}
+                    onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                    placeholder="https://www.youtube.com/watch?v=... or https://youtube.com/shorts/..."
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#083028]"
+                  />
+                </div>
+
+                {/* 2. Facebook Link */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                    <span className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px] font-bold">
+                      f
+                    </span>
+                    <span>Facebook Post / Reel URL</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.facebookUrl}
+                    onChange={(e) => setFormData({ ...formData, facebookUrl: e.target.value })}
+                    placeholder="https://www.facebook.com/reel/... or https://facebook.com/..."
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#083028]"
+                  />
+                </div>
+
+                {/* 3. Instagram Link */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700 mb-1">
+                    <span className="w-5 h-5 rounded-md bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center text-white text-[10px]">
+                      📷
+                    </span>
+                    <span>Instagram Reel / Post URL</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.instagramUrl}
+                    onChange={(e) => setFormData({ ...formData, instagramUrl: e.target.value })}
+                    placeholder="https://www.instagram.com/reel/... or https://instagram.com/p/..."
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#083028]"
+                  />
+                </div>
               </div>
 
               {/* Stock Quantity */}

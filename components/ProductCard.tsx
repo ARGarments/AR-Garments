@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Heart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 export interface Product {
   id: number | string;
@@ -26,6 +27,9 @@ interface ProductCardProps {
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [added, setAdded] = useState(false);
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
+  const isFavorited = isInWishlist(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,6 +38,19 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     addToCart(product, 1);
     if (onAddToCart) onAddToCart(product);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      numericPrice: product.numericPrice,
+      image: product.image,
+      category: product.category,
+    });
   };
 
   return (
@@ -47,6 +64,24 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               {product.badge}
             </span>
           )}
+
+          {/* Wishlist Button */}
+          <button
+            type="button"
+            onClick={handleToggleWishlist}
+            className={`absolute top-2.5 right-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-md ${
+              isFavorited
+                ? 'bg-rose-50 text-rose-600 scale-105'
+                : 'bg-white/90 text-gray-500 hover:text-rose-600 hover:bg-white hover:scale-105'
+            }`}
+            title={isFavorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
+            aria-label={isFavorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
+          >
+            <Heart
+              size={15}
+              className={`transition-colors ${isFavorited ? 'fill-rose-600 text-rose-600' : ''}`}
+            />
+          </button>
 
           <Image
             src={product.image}

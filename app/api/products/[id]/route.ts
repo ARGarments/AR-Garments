@@ -21,7 +21,7 @@ export async function GET(
   const supabase = getAdminClient();
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, created_at')
+    .select('id, name, price, numeric_price, category, image, images, stock, active, is_new_arrival, is_best_seller, sort_order, description, specification, shipping_care, youtube_url, facebook_url, instagram_url, created_at')
     .eq('id', id)
     .single();
 
