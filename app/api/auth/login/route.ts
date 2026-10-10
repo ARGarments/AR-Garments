@@ -60,8 +60,11 @@ export async function POST(req: NextRequest) {
     // If user not found
     if (!foundUser || !storedPasswordHash) {
       return NextResponse.json(
-        { error: 'Invalid email or password. Please try again.' },
-        { status: 401 }
+        {
+          code: 'ACCOUNT_NOT_FOUND',
+          error: 'No account exists with this email. Please register first.',
+        },
+        { status: 404 }
       );
     }
 

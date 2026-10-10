@@ -37,6 +37,9 @@ export interface Order {
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: 'cod' | 'online';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   subtotal: number;
   discount: number;
   shipping: number;

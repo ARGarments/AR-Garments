@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
 
       if (!checkError && existing) {
         return NextResponse.json(
-          { error: 'An account with this email already exists. Please log in.' },
+          {
+            code: 'ACCOUNT_EXISTS',
+            error: 'An account with this email already exists. Please log in.',
+          },
           { status: 409 }
         );
       }
@@ -45,7 +48,10 @@ export async function POST(req: NextRequest) {
     // Check memory fallback
     if (memoryUsers.some((u) => u.email.toLowerCase() === cleanEmail)) {
       return NextResponse.json(
-        { error: 'An account with this email already exists. Please log in.' },
+        {
+          code: 'ACCOUNT_EXISTS',
+          error: 'An account with this email already exists. Please log in.',
+        },
         { status: 409 }
       );
     }

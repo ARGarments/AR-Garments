@@ -52,10 +52,84 @@ interface OrderResult {
   orderId: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface RazorpayCheckoutResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
 
-function generateOrderId(): string {
-  return 'ARG' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+interface RazorpayCheckoutOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: { color: string };
+  handler: (response: RazorpayCheckoutResponse) => void;
+  modal: { ondismiss: () => void };
+}
+
+interface RazorpayCheckoutInstance {
+  open: () => void;
+  on: (
+    event: 'payment.failed',
+    callback: (response: { error?: { description?: string } }) => void
+  ) => void;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => RazorpayCheckoutInstance;
+  }
+}
+
+class PaymentCancelledError extends Error {}
+
+function loadRazorpayCheckout(): Promise<void> {
+  if (window.Razorpay) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener(
+        'error',
+        () => reject(new Error('Unable to load Razorpay Checkout.')),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Unable to load Razorpay Checkout.'));
+    document.body.appendChild(script);
+  });
+}
+
+function getJsonHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem('ar_token');
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  try {
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -326,7 +400,15 @@ function OrderConfirmation({
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, clearCart, subtotal, shipping, discountAmount, finalTotal } = useCart();
+  const {
+    items,
+    clearCart,
+    subtotal,
+    shipping,
+    discountAmount,
+    finalTotal,
+    appliedCoupon,
+  } = useCart();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -469,29 +551,91 @@ export default function CheckoutPage() {
       discount,
       shipping,
       total,
+      couponCode: appliedCoupon?.code,
       placedAt: new Date().toISOString(),
     };
 
     try {
       let orderId: string;
 
-      try {
-        const res = await fetch('/api/orders', {
+      if (paymentMethod === 'online') {
+        await loadRazorpayCheckout();
+
+        const createResponse = await fetch('/api/payments/razorpay/order', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderPayload),
+          headers: getJsonHeaders(),
+          body: JSON.stringify({
+            items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
+            couponCode: appliedCoupon?.code,
+            shippingAddress: form,
+            expectedTotal: total,
+          }),
+        });
+        const createData = await readJson(createResponse);
+        if (!createResponse.ok) {
+          throw new Error(String(createData.error || 'Unable to start Razorpay payment.'));
+        }
+
+        const keyId = String(createData.keyId || '');
+        const applicationOrderId = String(createData.applicationOrderId || '');
+        const razorpayOrderId = String(createData.razorpayOrderId || '');
+        const amount = Number(createData.amount);
+        const currency = String(createData.currency || 'INR');
+        if (!window.Razorpay || !keyId || !applicationOrderId || !razorpayOrderId || !amount) {
+          throw new Error('Razorpay returned an incomplete order response.');
+        }
+
+        const payment = await new Promise<RazorpayCheckoutResponse>((resolve, reject) => {
+          const checkout = new window.Razorpay!({
+            key: keyId,
+            amount,
+            currency,
+            name: 'AR Garments',
+            description: `Payment for ${applicationOrderId}`,
+            order_id: razorpayOrderId,
+            prefill: {
+              name: form.fullName,
+              email: user?.email || '',
+              contact: form.phone,
+            },
+            theme: { color: '#083028' },
+            handler: resolve,
+            modal: {
+              ondismiss: () => reject(new PaymentCancelledError('Payment was cancelled.')),
+            },
+          });
+          checkout.on('payment.failed', (response) => {
+            reject(new Error(response.error?.description || 'Razorpay payment failed.'));
+          });
+          checkout.open();
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          orderId = data.orderId ?? generateOrderId();
-        } else {
-          // Fallback: still proceed with a local ID
-          orderId = generateOrderId();
+        const verifyResponse = await fetch('/api/payments/razorpay/verify', {
+          method: 'POST',
+          headers: getJsonHeaders(),
+          body: JSON.stringify({
+            applicationOrderId,
+            razorpayOrderId: payment.razorpay_order_id,
+            razorpayPaymentId: payment.razorpay_payment_id,
+            razorpaySignature: payment.razorpay_signature,
+          }),
+        });
+        const verifyData = await readJson(verifyResponse);
+        if (!verifyResponse.ok || !verifyData.success) {
+          throw new Error(String(verifyData.error || 'Payment verification failed.'));
         }
-      } catch {
-        // Network error – fallback to local
-        orderId = generateOrderId();
+        orderId = String(verifyData.orderId || applicationOrderId);
+      } else {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: getJsonHeaders(),
+          body: JSON.stringify(orderPayload),
+        });
+        const data = await readJson(res);
+        if (!res.ok || !data.orderId) {
+          throw new Error(String(data.error || 'Unable to place the order.'));
+        }
+        orderId = String(data.orderId);
       }
 
       // Save address to localStorage
@@ -504,6 +648,15 @@ export default function CheckoutPage() {
       setOrderResult({ orderId });
       clearCart();
       toast.success(`Order ${orderId} placed successfully! 🎉`, { title: 'Order Placed' });
+    } catch (error) {
+      if (error instanceof PaymentCancelledError) {
+        toast.info('No payment was taken. You can try again when ready.', {
+          title: 'Payment Cancelled',
+        });
+      } else {
+        const message = error instanceof Error ? error.message : 'Unable to place the order.';
+        toast.error(message, { title: 'Checkout Failed' });
+      }
     } finally {
       setLoading(false);
     }
@@ -682,13 +835,18 @@ export default function CheckoutPage() {
 
                   {/* Online Payment */}
                   <label
-                    className="flex items-center gap-4 border-2 border-[#083028]/15 rounded-xl px-4 py-3.5 cursor-not-allowed opacity-60 select-none"
+                    className={`flex items-center gap-4 border-2 rounded-xl px-4 py-3.5 cursor-pointer transition-all select-none
+                      ${paymentMethod === 'online'
+                        ? 'border-[#083028] bg-[#083028]/5'
+                        : 'border-[#083028]/15 hover:border-[#083028]/40'
+                      }`}
                   >
                     <input
                       type="radio"
                       name="payment"
                       value="online"
-                      disabled
+                      checked={paymentMethod === 'online'}
+                      onChange={() => setPaymentMethod('online')}
                       className="accent-[#083028] w-4 h-4"
                     />
                     <CreditCard size={22} className="text-[#083028] shrink-0" />
@@ -696,9 +854,9 @@ export default function CheckoutPage() {
                       <p className="text-sm font-semibold text-[#083028]">Online Payment (UPI / Card)</p>
                       <p className="text-xs text-[#083028]/55">Secure digital payment</p>
                     </div>
-                    <span className="ml-auto bg-[#B8860B]/15 text-[#B8860B] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                      Coming Soon
-                    </span>
+                    {paymentMethod === 'online' && (
+                      <CheckCircle2 size={18} className="text-[#083028] ml-auto" />
+                    )}
                   </label>
                 </div>
               </div>
@@ -726,12 +884,12 @@ export default function CheckoutPage() {
                 {loading ? (
                   <>
                     <Loader2 size={20} className="animate-spin" />
-                    Placing Order…
+                    {paymentMethod === 'online' ? 'Starting Payment…' : 'Placing Order…'}
                   </>
                 ) : (
                   <>
-                    <ShoppingBag size={20} />
-                    Place Order · ₹{total.toLocaleString('en-IN')}
+                    {paymentMethod === 'online' ? <CreditCard size={20} /> : <ShoppingBag size={20} />}
+                    {paymentMethod === 'online' ? 'Pay Now' : 'Place Order'} · ₹{total.toLocaleString('en-IN')}
                   </>
                 )}
               </button>

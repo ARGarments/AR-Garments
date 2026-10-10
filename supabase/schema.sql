@@ -181,6 +181,31 @@ CREATE POLICY "Public select users" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Service role full access users" ON public.users FOR ALL USING (true);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 
+-- ─── 5B. EMAIL AUTHENTICATION CODES TABLE ─────────────────────────────────────
+-- Stores only HMAC hashes of short-lived, single-use login and registration codes.
+CREATE TABLE IF NOT EXISTS public.email_login_codes (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email       TEXT NOT NULL,
+    purpose     TEXT NOT NULL DEFAULT 'login' CHECK (purpose IN ('login', 'registration')),
+    code_hash   TEXT NOT NULL,
+    attempts    INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    expires_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    consumed_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.email_login_codes
+  ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'login';
+
+CREATE INDEX IF NOT EXISTS idx_email_login_codes_email_created
+  ON public.email_login_codes(email, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_login_codes_email_purpose_created
+  ON public.email_login_codes(email, purpose, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_login_codes_expiry
+  ON public.email_login_codes(expires_at);
+ALTER TABLE public.email_login_codes ENABLE ROW LEVEL SECURITY;
+-- No public policies: only the server-side service role may access OTP hashes.
+
 -- ─── 6. USER ADDRESSES TABLE ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_addresses (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -217,6 +242,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     items            JSONB NOT NULL DEFAULT '[]'::jsonb,
     shipping_address JSONB NOT NULL DEFAULT '{}'::jsonb,
     payment_method   TEXT NOT NULL DEFAULT 'cod',
+    payment_status   TEXT NOT NULL DEFAULT 'pending',
+    razorpay_order_id TEXT UNIQUE DEFAULT NULL,
+    razorpay_payment_id TEXT UNIQUE DEFAULT NULL,
     subtotal         NUMERIC(10, 2) NOT NULL DEFAULT 0,
     discount         NUMERIC(10, 2) NOT NULL DEFAULT 0,
     shipping         NUMERIC(10, 2) NOT NULL DEFAULT 0,
@@ -226,6 +254,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT DEFAULT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON public.orders(razorpay_order_id) WHERE razorpay_order_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id ON public.orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);

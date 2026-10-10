@@ -38,6 +38,12 @@ function mapDbOrder(row: Record<string, unknown>): Order {
       pincode: '',
     },
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
+    paymentStatus:
+      row.payment_status === 'paid' || row.payment_status === 'failed'
+        ? row.payment_status
+        : 'pending',
+    ...(row.razorpay_order_id ? { razorpayOrderId: String(row.razorpay_order_id) } : {}),
+    ...(row.razorpay_payment_id ? { razorpayPaymentId: String(row.razorpay_payment_id) } : {}),
     subtotal: Number(row.subtotal) || 0,
     discount: Number(row.discount) || 0,
     shipping: Number(row.shipping) || 0,
@@ -57,7 +63,10 @@ export async function GET(request: NextRequest) {
     // 1. Try querying Supabase
     try {
       const supabase = getServiceSupabase();
-      let query = supabase.from('orders').select('*');
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .or('payment_method.eq.cod,payment_status.eq.paid');
 
       if (all === 'true') {
         query = query.order('created_at', { ascending: false });
@@ -171,6 +180,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (paymentMethod === 'online') {
+      return NextResponse.json(
+        { success: false, error: 'Online orders must be created through Razorpay checkout.' },
+        { status: 400 }
+      );
+    }
+
     // --- Build order object ---
     const newOrder: Order = {
       id: generateOrderId(),
@@ -180,6 +196,7 @@ export async function POST(request: NextRequest) {
       items,
       shippingAddress: address,
       paymentMethod,
+      paymentStatus: 'pending',
       subtotal: Number(subtotal) || 0,
       discount: Number(discount) || 0,
       shipping: Number(shipping) || 0,
@@ -200,6 +217,7 @@ export async function POST(request: NextRequest) {
         items: newOrder.items,
         shipping_address: newOrder.shippingAddress,
         payment_method: newOrder.paymentMethod,
+        payment_status: newOrder.paymentStatus,
         subtotal: newOrder.subtotal,
         discount: newOrder.discount,
         shipping: newOrder.shipping,

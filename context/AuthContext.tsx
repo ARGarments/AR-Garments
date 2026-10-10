@@ -3,16 +3,39 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthUser } from '@/lib/auth';
 
+interface AuthActionResult {
+  success: boolean;
+  error?: string;
+  errorCode?: string;
+}
+
+interface EmailCodeRequestResult extends AuthActionResult {
+  retryAfterSeconds?: number;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<AuthActionResult>;
+  requestEmailCode: (email: string) => Promise<EmailCodeRequestResult>;
+  loginWithEmailCode: (email: string, code: string) => Promise<AuthActionResult>;
+  requestRegistrationCode: (
+    name: string,
+    email: string,
+    phone?: string
+  ) => Promise<EmailCodeRequestResult>;
+  registerWithEmailCode: (
+    name: string,
+    email: string,
+    code: string,
+    phone?: string
+  ) => Promise<AuthActionResult>;
   register: (
     name: string,
     email: string,
     password: string,
     phone?: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
 }
 
@@ -76,7 +99,126 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Failed to sign in.' };
+        return {
+          success: false,
+          error: data.error || 'Failed to sign in.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
+      }
+
+      setUser(data.user);
+      localStorage.setItem('ar_user', JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem('ar_token', data.token);
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
+  const requestEmailCode = async (email: string) => {
+    try {
+      const res = await fetch('/api/auth/email-login/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Failed to send the login code.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
+      }
+
+      return {
+        success: true,
+        retryAfterSeconds:
+          typeof data.retryAfterSeconds === 'number' ? data.retryAfterSeconds : undefined,
+      };
+    } catch {
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
+  const loginWithEmailCode = async (email: string, code: string) => {
+    try {
+      const res = await fetch('/api/auth/email-login/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Failed to verify the login code.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
+      }
+
+      setUser(data.user);
+      localStorage.setItem('ar_user', JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem('ar_token', data.token);
+      }
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
+  const requestRegistrationCode = async (name: string, email: string, phone?: string) => {
+    try {
+      const res = await fetch('/api/auth/email-register/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Failed to send the registration code.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
+      }
+
+      return {
+        success: true,
+        retryAfterSeconds:
+          typeof data.retryAfterSeconds === 'number' ? data.retryAfterSeconds : undefined,
+      };
+    } catch {
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
+  const registerWithEmailCode = async (
+    name: string,
+    email: string,
+    code: string,
+    phone?: string
+  ) => {
+    try {
+      const res = await fetch('/api/auth/email-register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, code, phone }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          error: data.error || 'Failed to verify the registration code.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
       }
 
       setUser(data.user);
@@ -101,7 +243,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Failed to create account.' };
+        return {
+          success: false,
+          error: data.error || 'Failed to create account.',
+          errorCode: typeof data.code === 'string' ? data.code : undefined,
+        };
       }
 
       setUser(data.user);
@@ -128,7 +274,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        requestEmailCode,
+        loginWithEmailCode,
+        requestRegistrationCode,
+        registerWithEmailCode,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS public.orders (
     items            JSONB NOT NULL DEFAULT '[]'::jsonb,
     shipping_address JSONB NOT NULL DEFAULT '{}'::jsonb,
     payment_method   TEXT NOT NULL DEFAULT 'cod',
+    payment_status   TEXT NOT NULL DEFAULT 'pending',
+    razorpay_order_id TEXT UNIQUE DEFAULT NULL,
+    razorpay_payment_id TEXT UNIQUE DEFAULT NULL,
     subtotal         NUMERIC(10, 2) NOT NULL DEFAULT 0,
     discount         NUMERIC(10, 2) NOT NULL DEFAULT 0,
     shipping         NUMERIC(10, 2) NOT NULL DEFAULT 0,
@@ -58,6 +61,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT DEFAULT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON public.orders(razorpay_order_id) WHERE razorpay_order_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id ON public.orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
@@ -133,3 +142,9 @@ VALUES
     NOW() - INTERVAL '4 hours'
   )
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE public.orders
+SET payment_status = 'paid'
+WHERE payment_method = 'online'
+  AND payment_status = 'pending'
+  AND razorpay_order_id IS NULL;

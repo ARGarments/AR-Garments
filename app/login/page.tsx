@@ -4,23 +4,75 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  KeyRound,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+
+type LoginMethod = 'password' | 'email-code';
+type RegistrationReason = 'account-not-found' | null;
+
+function buildRegisterHref(
+  email: string,
+  redirectUrl: string,
+  loginMethod: LoginMethod,
+  reason: RegistrationReason
+): string {
+  const params = new URLSearchParams();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (normalizedEmail) params.set('email', normalizedEmail);
+  if (redirectUrl !== '/') params.set('redirect', redirectUrl);
+  if (loginMethod === 'email-code') params.set('method', 'email-code');
+  if (reason) params.set('reason', reason);
+
+  const query = params.toString();
+  return query ? `/register?${query}` : '/register';
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
+  const initialEmail = searchParams.get('email')?.trim().toLowerCase() || '';
+  const initialLoginMethod: LoginMethod =
+    searchParams.get('method') === 'email-code' ? 'email-code' : 'password';
 
-  const { login, user, loading: authLoading } = useAuth();
+  const {
+    login,
+    requestEmailCode,
+    loginWithEmailCode,
+    user,
+    loading: authLoading,
+  } = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>(initialLoginMethod);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const registerHref = buildRegisterHref(email, redirectUrl, loginMethod, null);
+  const accountNotFoundRegisterHref = buildRegisterHref(
+    email,
+    redirectUrl,
+    loginMethod,
+    'account-not-found'
+  );
 
   // Auto redirect if already logged in
   useEffect(() => {
@@ -28,6 +80,14 @@ function LoginForm() {
       router.replace(redirectUrl);
     }
   }, [user, authLoading, redirectUrl, success, router]);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendSeconds]);
 
   if (authLoading) {
     return (
@@ -68,26 +128,95 @@ function LoginForm() {
     );
   }
 
+  function finishLogin(): void {
+    setSuccess(true);
+    toast.success('Welcome back! Signed in successfully.', { title: 'Login Successful' });
+    window.setTimeout(() => {
+      router.push(redirectUrl);
+    }, 800);
+  }
+
+  async function sendEmailCode(): Promise<void> {
+    const result = await requestEmailCode(email);
+    if (result.success) {
+      setEmailCodeSent(true);
+      setEmailCode('');
+      setError(null);
+      setErrorCode(null);
+      setResendSeconds(result.retryAfterSeconds || 60);
+      toast.success('A login code was sent to your email.', {
+        title: 'Check Your Email',
+      });
+      return;
+    }
+
+    const message = result.error || 'Unable to send the login code.';
+    setError(message);
+    setErrorCode(result.errorCode || null);
+    setEmailCodeSent(false);
+    setEmailCode('');
+    setResendSeconds(0);
+    if (result.errorCode === 'ACCOUNT_NOT_FOUND') {
+      toast.warning(message, { title: 'Account Not Found' });
+    } else {
+      toast.error(message, { title: 'Email Login Failed' });
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setErrorCode(null);
     setLoading(true);
 
-    const res = await login(email, password);
-    setLoading(false);
+    try {
+      if (loginMethod === 'email-code' && !emailCodeSent) {
+        await sendEmailCode();
+        return;
+      }
 
-    if (res.success) {
-      setSuccess(true);
-      toast.success('Welcome back! Signed in successfully.', { title: 'Login Successful' });
-      setTimeout(() => {
-        router.push(redirectUrl);
-      }, 800);
-    } else {
-      const errMsg = res.error || 'Invalid credentials';
-      setError(errMsg);
-      toast.error(errMsg, { title: 'Login Failed' });
+      const result =
+        loginMethod === 'password'
+          ? await login(email, password)
+          : await loginWithEmailCode(email, emailCode);
+
+      if (result.success) {
+        finishLogin();
+      } else {
+        const message = result.error || 'Invalid login details.';
+        setError(message);
+        setErrorCode(result.errorCode || null);
+        if (result.errorCode === 'ACCOUNT_NOT_FOUND') {
+          toast.warning(message, { title: 'Account Not Found' });
+        } else {
+          toast.error(message, { title: 'Login Failed' });
+        }
+      }
+    } finally {
+      setLoading(false);
     }
   };
+
+  async function handleResendCode(): Promise<void> {
+    if (resendSeconds > 0 || loading) return;
+    setError(null);
+    setErrorCode(null);
+    setLoading(true);
+    try {
+      await sendEmailCode();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function selectLoginMethod(method: LoginMethod): void {
+    setLoginMethod(method);
+    setError(null);
+    setErrorCode(null);
+    setEmailCode('');
+    setEmailCodeSent(false);
+    setResendSeconds(0);
+  }
 
   return (
     <div className="min-h-[75vh] flex items-center justify-center py-10 px-4 sm:px-6">
@@ -117,9 +246,25 @@ function LoginForm() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs sm:text-sm flex items-start gap-2.5 animate-shake">
+            <div
+              className={`mb-5 border px-4 py-3 rounded-xl text-xs sm:text-sm flex items-start gap-2.5 animate-shake ${
+                errorCode === 'ACCOUNT_NOT_FOUND'
+                  ? 'bg-amber-50 border-amber-200 text-amber-800'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}
+            >
               <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
+              <div className="flex-1">
+                <p>{error}</p>
+                {errorCode === 'ACCOUNT_NOT_FOUND' && (
+                  <Link
+                    href={accountNotFoundRegisterHref}
+                    className="mt-2 inline-flex items-center gap-1 font-bold text-[#083028] hover:underline"
+                  >
+                    Register Now <ArrowRight size={13} />
+                  </Link>
+                )}
+              </div>
             </div>
           )}
 
@@ -130,6 +275,31 @@ function LoginForm() {
               <span>Login successful! Redirecting...</span>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-5">
+            <button
+              type="button"
+              onClick={() => selectLoginMethod('password')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                loginMethod === 'password'
+                  ? 'bg-white text-[#083028] shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Password
+            </button>
+            <button
+              type="button"
+              onClick={() => selectLoginMethod('email-code')}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                loginMethod === 'email-code'
+                  ? 'bg-white text-[#083028] shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Email Code
+            </button>
+          </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -144,7 +314,16 @@ function LoginForm() {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                    setErrorCode(null);
+                    if (emailCodeSent) {
+                      setEmailCodeSent(false);
+                      setEmailCode('');
+                      setResendSeconds(0);
+                    }
+                  }}
                   placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all"
                 />
@@ -152,14 +331,18 @@ function LoginForm() {
             </div>
 
             {/* Password */}
-            <div>
+            {loginMethod === 'password' && <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
                   Password
                 </label>
-                <a href="#" className="text-[11px] text-[#083028] font-semibold hover:underline">
-                  Forgot?
-                </a>
+                <button
+                  type="button"
+                  onClick={() => selectLoginMethod('email-code')}
+                  className="text-[11px] text-[#083028] font-semibold hover:underline"
+                >
+                  Use email code
+                </button>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -180,7 +363,42 @@ function LoginForm() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            </div>
+            </div>}
+
+            {loginMethod === 'email-code' && emailCodeSent && (
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Six-Digit Login Code
+                </label>
+                <div className="relative">
+                  <KeyRound
+                    size={16}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm tracking-[0.35em] font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all"
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-gray-500">
+                  The code expires in 10 minutes and can only be used once.
+                </p>
+              </div>
+            )}
+
+            {loginMethod === 'email-code' && !emailCodeSent && (
+              <p className="rounded-xl bg-[#083028]/5 px-4 py-3 text-xs leading-relaxed text-[#083028]/70">
+                We&apos;ll email a one-time login code to your registered address. No password is required.
+              </p>
+            )}
 
             {/* Submit Button */}
             <button
@@ -191,15 +409,40 @@ function LoginForm() {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Signing In...</span>
+                  <span>
+                    {loginMethod === 'password'
+                      ? 'Signing In...'
+                      : emailCodeSent
+                        ? 'Verifying Code...'
+                        : 'Sending Code...'}
+                  </span>
                 </>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>
+                    {loginMethod === 'password'
+                      ? 'Sign In'
+                      : emailCodeSent
+                        ? 'Verify & Sign In'
+                        : 'Send Login Code'}
+                  </span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
+
+            {loginMethod === 'email-code' && emailCodeSent && (
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading || resendSeconds > 0}
+                className="w-full text-xs font-semibold text-[#083028] hover:underline disabled:text-gray-400 disabled:no-underline"
+              >
+                {resendSeconds > 0
+                  ? `Send a new code in ${resendSeconds}s`
+                  : 'Send a new code'}
+              </button>
+            )}
           </form>
 
 
@@ -207,7 +450,7 @@ function LoginForm() {
           <div className="mt-6 text-center text-xs sm:text-sm text-gray-500">
             Don&apos;t have an account?{' '}
             <Link
-              href={`/register${redirectUrl !== '/' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+              href={registerHref}
               className="font-bold text-[#083028] hover:underline"
             >
               Sign Up Now
