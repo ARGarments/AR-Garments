@@ -7,7 +7,8 @@ import Link from 'next/link';
 import {
   ShoppingCart, Share2, ShieldCheck, Truck, RotateCcw,
   CheckCircle2, ChevronRight, ArrowLeft, Loader2, Sparkles,
-  Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw, Star, User, Heart
+  Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw, Star, User, Heart,
+  PackageCheck, BadgeCheck
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -655,29 +656,29 @@ export default function ProductDetailPage() {
             )}
 
             {/* Social Media Channels Bar (YouTube, Facebook, Instagram) */}
-            <div className="grid grid-cols-3 divide-x divide-[#E9E2D6] overflow-hidden rounded-2xl border border-[#E9E2D6] bg-white p-2 shadow-sm sm:p-3.5">
+            <div className="grid grid-cols-3 divide-x divide-[#E9E2D6] overflow-hidden rounded-2xl border border-[#E9E2D6] bg-white p-1.5 shadow-sm min-[380px]:p-2 sm:p-3.5">
               {/* YouTube */}
               <a
                 href={product.youtubeUrl && product.youtubeUrl.trim() ? product.youtubeUrl : 'https://www.youtube.com'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex min-w-0 items-center gap-1.5 px-1 transition-opacity hover:opacity-85 sm:gap-2.5 sm:px-3"
+                className="group flex min-w-0 flex-col items-center gap-1 px-0.5 text-center transition-opacity hover:opacity-85 min-[380px]:flex-row min-[380px]:gap-1.5 min-[380px]:text-left sm:gap-2.5 sm:px-3"
                 title="Watch on YouTube"
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[#FF0000] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                  <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[#FF0000] shadow-2xs transition-transform group-hover:scale-105 min-[380px]:h-8 min-[380px]:w-8">
+                  <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24">
                     <path d="M10 8.5L15.5 12L10 15.5V8.5Z" />
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                  <p className="break-words text-[10px] font-bold leading-tight text-gray-900 min-[380px]:text-[11px] sm:text-xs">
                     YouTube
                   </p>
-                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
-                    Subscribe &amp; Stay Updated
+                  <p className="break-words text-[8px] leading-tight text-gray-500 min-[380px]:text-[8.5px] sm:text-[10px]">
+                    Subscribe
                   </p>
                 </div>
-                <ChevronRight size={13} className="ml-auto hidden shrink-0 text-gray-400 sm:block" />
+                <ChevronRight size={12} className="ml-auto hidden shrink-0 text-gray-400 min-[420px]:block" />
               </a>
 
               {/* Facebook */}
@@ -685,23 +686,23 @@ export default function ProductDetailPage() {
                 href={product.facebookUrl && product.facebookUrl.trim() ? product.facebookUrl : 'https://www.facebook.com'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 sm:gap-2.5 px-1.5 sm:px-3 hover:opacity-85 transition-opacity group min-w-0"
+                className="group flex min-w-0 flex-col items-center gap-1 px-0.5 text-center transition-opacity hover:opacity-85 min-[380px]:flex-row min-[380px]:gap-1.5 min-[380px]:text-left sm:gap-2.5 sm:px-3"
                 title="Follow on Facebook"
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#1877F2] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                  <svg className="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#1877F2] shadow-2xs transition-transform group-hover:scale-105 min-[380px]:h-8 min-[380px]:w-8">
+                  <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24">
                     <path d="M13.5 12.5H15.5L16 9.5H13.5V8C13.5 7.2 13.8 6.5 15 6.5H16.2V4.1C15.6 4 14.8 4 14 4C11.5 4 10 5.5 10 8.3V9.5H7.5V12.5H10V20H13.5V12.5Z" />
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                  <p className="break-words text-[10px] font-bold leading-tight text-gray-900 min-[380px]:text-[11px] sm:text-xs">
                     Facebook
                   </p>
-                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
+                  <p className="break-words text-[8px] leading-tight text-gray-500 min-[380px]:text-[8.5px] sm:text-[10px]">
                     Follow Us
                   </p>
                 </div>
-                <ChevronRight size={13} className="ml-auto hidden shrink-0 text-gray-400 sm:block" />
+                <ChevronRight size={12} className="ml-auto hidden shrink-0 text-gray-400 min-[420px]:block" />
               </a>
 
               {/* Instagram */}
@@ -709,10 +710,10 @@ export default function ProductDetailPage() {
                 href={product.instagramUrl && product.instagramUrl.trim() ? product.instagramUrl : 'https://www.instagram.com'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 sm:gap-2.5 px-1.5 sm:px-3 hover:opacity-85 transition-opacity group min-w-0"
+                className="group flex min-w-0 flex-col items-center gap-1 px-0.5 text-center transition-opacity hover:opacity-85 min-[380px]:flex-row min-[380px]:gap-1.5 min-[380px]:text-left sm:gap-2.5 sm:px-3"
                 title="Join on Instagram"
               >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center flex-shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] shadow-2xs transition-transform group-hover:scale-105 min-[380px]:h-8 min-[380px]:w-8 sm:rounded-xl">
                   <svg
                     className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white stroke-current"
                     viewBox="0 0 24 24"
@@ -727,23 +728,211 @@ export default function ProductDetailPage() {
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-900 leading-tight truncate">
+                  <p className="break-words text-[10px] font-bold leading-tight text-gray-900 min-[380px]:text-[11px] sm:text-xs">
                     Instagram
                   </p>
-                  <p className="text-[8.5px] sm:text-[10px] text-gray-500 leading-tight truncate">
+                  <p className="break-words text-[8px] leading-tight text-gray-500 min-[380px]:text-[8.5px] sm:text-[10px]">
                     Join Our Community
                   </p>
                 </div>
-                <ChevronRight size={13} className="ml-auto hidden shrink-0 text-gray-400 sm:block" />
+                <ChevronRight size={12} className="ml-auto hidden shrink-0 text-gray-400 min-[420px]:block" />
               </a>
             </div>
+
+            {/* Phone product summary */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-[#E5E2DA] bg-white p-3.5 shadow-[0_12px_30px_rgba(20,45,38,0.08)] sm:hidden">
+              <div className="flex items-start gap-2">
+                <span className="inline-flex min-w-0 flex-1 items-start gap-1 border-b-2 border-[#C9972B] pb-1 text-[11px] font-black uppercase leading-tight tracking-wide text-[#0B5B47] min-[380px]:text-xs">
+                  <Tag size={14} className="shrink-0" />
+                  <span className="break-words">{product.category}</span>
+                </span>
+                <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <span className="inline-flex max-w-[132px] items-center gap-1 rounded-full border border-[#DCE9E3] bg-[#F4FBF7] px-1.5 py-1 font-mono text-[9px] font-bold leading-tight text-[#0B5B47] min-[380px]:max-w-[158px] min-[380px]:px-2 min-[380px]:text-[11px]">
+                    <Tag size={10} className="shrink-0" />
+                    <span className="break-all text-center">Product ID: {product.id}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleWishlist({
+                      id: product.id,
+                      name: product.name,
+                      price: product.price,
+                      numericPrice: product.numericPrice,
+                      image: product.image,
+                      category: product.category,
+                    })}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all min-[380px]:h-10 min-[380px]:w-10 ${
+                      isInWishlist(product.id)
+                        ? 'border-rose-600 bg-rose-600 text-white'
+                        : 'border-[#DCE9E3] bg-white text-[#0B5B47]'
+                    }`}
+                    aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                  >
+                    <Heart size={21} className={isInWishlist(product.id) ? 'fill-current' : ''} />
+                  </button>
+                </div>
+              </div>
+
+              <h1 className="mt-2 text-[1.55rem] font-black leading-[1.08] tracking-tight text-gray-950">
+                {product.name}
+              </h1>
+
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-black text-emerald-800">
+                  <Star size={13} className="fill-current" />
+                  {reviewsSummary.total > 0 ? reviewsSummary.average.toFixed(1) : 'New'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className="font-semibold text-gray-500"
+                >
+                  {reviewsSummary.total > 0
+                    ? `(${reviewsSummary.total} Review${reviewsSummary.total === 1 ? '' : 's'})`
+                    : '(No Reviews)'}
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
+                <div className="flex min-w-0 items-center rounded-2xl bg-gradient-to-br from-[#F0FBF5] to-[#E5F7ED] px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <p className="break-words text-[1.7rem] font-black leading-none tracking-tight text-[#083028]">
+                        {appliedCoupon ? `₹${discountedTotal.toLocaleString('en-IN')}` : product.price}
+                      </p>
+                      {appliedCoupon && (
+                        <span className="text-xs font-semibold text-gray-400 line-through">
+                          ₹{quantityTotal.toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+                    {appliedCoupon ? (
+                      <span className="mt-1 inline-flex rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-bold text-white">
+                        Saved ₹{appliedCoupon.discountAmount}
+                      </span>
+                    ) : (
+                      <span className="mt-1 block text-[9px] font-medium text-gray-500">Inclusive of all taxes</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex min-w-[116px] flex-col justify-center rounded-2xl bg-[#ECF9F1] px-3 py-2.5 text-emerald-800">
+                  <span className="flex items-center gap-1.5 text-sm font-black">
+                    <CheckCircle2 size={19} className="fill-emerald-600 text-white" /> In Stock
+                  </span>
+                  <span className="mt-0.5 pl-6 text-[10px] font-semibold text-emerald-700">
+                    {product.stock && product.stock > 0 ? `(${product.stock} available)` : 'Available'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-3 inline-grid w-[174px] grid-cols-[40px_1fr_40px] items-center rounded-full border border-emerald-100 bg-[#F1FBF6] p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextQuantity = Math.max(1, quantity - 1);
+                    setQuantity(nextQuantity);
+                    if (appliedCoupon) handleApplyCoupon(appliedCoupon.code);
+                  }}
+                  disabled={quantity <= 1}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B5B47] text-white disabled:cursor-not-allowed disabled:opacity-35"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus size={15} />
+                </button>
+                <span className="text-center text-sm font-black text-[#0B5B47]">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextQuantity = Math.min(product.stock || 10, quantity + 1);
+                    setQuantity(nextQuantity);
+                    if (appliedCoupon) handleApplyCoupon(appliedCoupon.code);
+                  }}
+                  disabled={quantity >= (product.stock || 10)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0B5B47] text-white disabled:cursor-not-allowed disabled:opacity-35"
+                  aria-label="Increase quantity"
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-2.5">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className={`flex w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-base font-black shadow-sm transition ${
+                    addedToCart
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-gradient-to-r from-[#07523F] to-[#0B7A55] text-white'
+                  }`}
+                >
+                  <ShoppingCart size={25} />
+                  <span>{addedToCart ? 'Added to Cart ✓' : 'Add to Cart'}</span>
+                  <ChevronRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAddToCart();
+                    router.push('/cart');
+                  }}
+                  className="flex w-full items-center justify-center gap-3 rounded-full border border-[#E7D6B7] bg-gradient-to-r from-[#F5EAD5] to-[#FFF9EE] px-5 py-3 text-base font-black text-[#07523F]"
+                >
+                  <CreditCard size={22} />
+                  <span>Buy Now</span>
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+              <div className="mt-3 flex min-h-[54px] items-center gap-2.5 rounded-2xl bg-[#EAF8F1] px-3 py-2 text-[#07523F]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#D8F2E4] shadow-sm">
+                  <Truck size={24} strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-black leading-tight min-[380px]:text-sm">Free Shipping on Orders Above ₹3000/-</p>
+                  <p className="mt-0.5 flex items-center gap-1 text-[9px] font-medium leading-none text-gray-500 min-[380px]:text-[10px]">
+                    <CheckCircle2 size={11} className="fill-emerald-600 text-white" /> Fast &amp; Safe Delivery
+                  </p>
+                </div>
+                <ChevronRight size={18} className="shrink-0" />
+              </div>
+
+              <div className="mt-2.5 grid min-h-[58px] grid-cols-3 items-center divide-x divide-gray-200">
+                <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-center gap-1 pr-1.5 text-left min-[380px]:grid-cols-[40px_minmax(0,1fr)] min-[380px]:gap-2 min-[380px]:pr-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-white text-[#07523F] shadow-sm min-[380px]:h-10 min-[380px]:w-10">
+                    <ShieldCheck size={20} strokeWidth={2.1} className="min-[380px]:h-[23px] min-[380px]:w-[23px]" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-black leading-tight text-gray-900 min-[380px]:text-[10px]">Secure Payments</span>
+                    <span className="mt-0.5 block text-[8px] leading-tight text-gray-500 min-[380px]:text-[9px]">100% Safe</span>
+                  </span>
+                </div>
+                <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-center gap-1 px-1.5 text-left min-[380px]:grid-cols-[40px_minmax(0,1fr)] min-[380px]:gap-2 min-[380px]:px-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-white text-[#07523F] shadow-sm min-[380px]:h-10 min-[380px]:w-10">
+                    <PackageCheck size={19} strokeWidth={2.1} className="min-[380px]:h-[22px] min-[380px]:w-[22px]" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-black leading-tight text-gray-900 min-[380px]:text-[10px]">Easy Returns</span>
+                    <span className="mt-0.5 block text-[8px] leading-tight text-gray-500 min-[380px]:text-[9px]">7 Days Policy</span>
+                  </span>
+                </div>
+                <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)] items-center gap-1 pl-1.5 text-left min-[380px]:grid-cols-[40px_minmax(0,1fr)] min-[380px]:gap-2 min-[380px]:pl-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-white text-[#07523F] shadow-sm min-[380px]:h-10 min-[380px]:w-10">
+                    <BadgeCheck size={19} strokeWidth={2.1} className="min-[380px]:h-[22px] min-[380px]:w-[22px]" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-black leading-tight text-gray-900 min-[380px]:text-[10px]">Premium Quality</span>
+                    <span className="mt-0.5 block text-[8px] leading-tight text-gray-500 min-[380px]:text-[9px]">Trusted Brand</span>
+                  </span>
+                </div>
+              </div>
+            </section>
           </div>
 
           {/* RIGHT SIDE: Product Name, Price, Actions, Information from DB */}
           <div className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-[1.5rem] border border-[#E5E2DA] bg-white p-3.5 shadow-[0_12px_35px_rgba(20,45,38,0.08)] sm:gap-5 sm:rounded-[1.75rem] sm:p-6 xl:p-7">
             
             {/* Header / Category & Actions */}
-            <div>
+            <div className="hidden sm:block">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="inline-flex min-w-0 items-center gap-1.5 border-b-2 border-[#C9972B] pb-1 text-xs font-black uppercase tracking-wider text-[#0B5B47]">
                   <Tag size={15} /> {product.category}
@@ -784,7 +973,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#DCE9E3] bg-[#F4FBF7] px-2.5 py-1 font-mono text-[10px] font-bold text-[#0B5B47]">
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#DCE9E3] bg-[#F4FBF7] px-2.5 py-1 font-mono text-xs font-bold text-[#0B5B47]">
                 <Tag size={11} /> Product ID: {product.id}
               </div>
               <h1 className="text-[1.35rem] font-black leading-tight tracking-tight text-gray-950 min-[380px]:text-2xl sm:text-3xl">
@@ -808,7 +997,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Price Showcase from DB with Dynamic Coupon Discount */}
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2.5 sm:gap-3">
+            <div className="hidden min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2.5 sm:grid sm:gap-3">
               <div className="min-w-0 rounded-2xl border border-emerald-100 bg-gradient-to-br from-[#F0FBF5] to-[#E5F7ED] p-3 sm:p-4">
                 {appliedCoupon ? (
                   <div>
@@ -850,7 +1039,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Quantity Selector */}
-            <div className="flex items-center justify-between rounded-2xl border border-[#DCE9E3] bg-[#F4FBF7] px-3 py-2">
+            <div className="hidden items-center justify-between rounded-2xl border border-[#DCE9E3] bg-[#F4FBF7] px-3 py-2 sm:flex">
               <label className="text-xs font-black uppercase tracking-wide text-[#0B5B47]">
                 Quantity
               </label>
@@ -886,7 +1075,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col gap-2.5">
+            <div className="hidden flex-col gap-2.5 sm:flex">
               <button
                 type="button"
                 onClick={handleAddToCart}
@@ -914,7 +1103,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-[#EAF9F1] to-[#F4FBF7] px-4 py-3 text-[#07523F]">
+            <div className="hidden items-center gap-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-[#EAF9F1] to-[#F4FBF7] px-4 py-3 text-[#07523F] sm:flex">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
                 <Truck size={22} />
               </span>
@@ -926,11 +1115,11 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Trust Points */}
-            <div className="grid grid-cols-3 divide-x divide-gray-200 rounded-2xl border border-gray-100 bg-white px-0.5 py-3 text-center sm:px-1">
+            <div className="hidden grid-cols-3 divide-x divide-gray-200 rounded-2xl border border-gray-100 bg-white px-0.5 py-3 text-center sm:grid sm:px-1">
               <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2">
                 <CreditCard size={20} className="text-[#083028]" />
-                <span className="text-[10px] font-black text-gray-800">Secure Payments</span>
-                <span className="text-[9px] text-gray-500">100% Safe</span>
+                <span className="text-xs font-black text-gray-800">Secure Payments</span>
+                <span className="text-[10px] text-gray-500">100% Safe</span>
               </div>
               <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2">
                 <RotateCcw size={20} className="text-[#083028]" />
@@ -958,7 +1147,7 @@ export default function ProductDetailPage() {
                         {product.category}
                       </span>
                     </h3>
-                    <p className="text-[11px] text-gray-500">Apply active voucher tickets to save instantly</p>
+                    <p className="text-xs leading-relaxed text-gray-500 sm:text-sm">Apply active voucher tickets to save instantly</p>
                   </div>
                 </div>
 
@@ -1045,7 +1234,7 @@ export default function ProductDetailPage() {
                           </div>
 
                           {/* Ticket Body: Discount & Code Button */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
                             {/* Left: Discount amount & info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-baseline gap-1.5">
@@ -1062,11 +1251,11 @@ export default function ProductDetailPage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs font-semibold text-gray-800 line-clamp-1 mt-0.5">
+                              <p className="mt-0.5 break-words text-xs font-semibold leading-relaxed text-gray-800">
                                 {offer.title}
                               </p>
                               {offer.description && (
-                                <p className="text-[11px] text-gray-500 line-clamp-1">
+                                <p className="break-words text-[11px] leading-relaxed text-gray-500">
                                   {offer.description}
                                 </p>
                               )}
@@ -1076,11 +1265,11 @@ export default function ProductDetailPage() {
                             <div className="hidden sm:block border-l-2 border-dashed border-gray-200 h-10 mx-1" />
 
                             {/* Right: Code Chip & Action Button */}
-                            <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 flex-shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                            <div className="flex min-w-0 flex-shrink-0 items-center justify-between gap-1.5 border-t border-gray-100 pt-2 sm:flex-col sm:items-end sm:gap-2 sm:border-t-0 sm:pt-0">
                               {/* Monospace Code Pill */}
-                              <div className="inline-flex items-center gap-1.5 bg-[#083028]/10 border border-[#083028]/20 px-2.5 py-1 rounded-lg">
+                              <div className="inline-flex min-w-0 items-center gap-1 rounded-lg border border-[#083028]/20 bg-[#083028]/10 px-2 py-1">
                                 <Tag size={11} className="text-[#083028]" />
-                                <span className="font-mono text-xs font-black text-[#083028] tracking-wider">
+                                <span className="truncate font-mono text-[11px] font-black tracking-wide text-[#083028] sm:text-xs sm:tracking-wider">
                                   {offer.code}
                                 </span>
                               </div>
@@ -1089,7 +1278,7 @@ export default function ProductDetailPage() {
                               {isCurrentlyApplied ? (
                                 <button
                                   onClick={handleRemoveCoupon}
-                                  className="inline-flex items-center gap-1 bg-emerald-700 hover:bg-red-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs group/btn"
+                                  className="group/btn inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition-all hover:bg-red-600 sm:px-3.5 sm:text-xs"
                                 >
                                   <Check size={13} className="group-hover/btn:hidden" />
                                   <span className="group-hover/btn:hidden">Applied ✓</span>
@@ -1102,7 +1291,7 @@ export default function ProductDetailPage() {
                                     handleApplyCoupon(offer.code);
                                   }}
                                   disabled={couponLoading}
-                                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] text-white px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs hover:scale-102 disabled:opacity-50"
+                                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-[#083028] px-3 py-1.5 text-[11px] font-bold text-white shadow-xs transition-all hover:scale-102 hover:bg-[#051e19] disabled:opacity-50 sm:px-4 sm:text-xs"
                                 >
                                   <Ticket size={12} />
                                   Apply Coupon
@@ -1486,7 +1675,7 @@ export default function ProductDetailPage() {
             <div className="mb-5 flex items-end justify-between gap-3 sm:mb-8">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold leading-tight text-gray-900 sm:text-2xl">More From {product.category}</h2>
-                <p className="text-xs text-gray-500 mt-1">Live recommendations from database</p>
+                <p className="mt-1 text-sm leading-relaxed text-gray-500 sm:text-base">Live recommendations from database</p>
               </div>
               <Link
                 href={`/category?category=${encodeURIComponent(product.category)}`}

@@ -226,10 +226,10 @@ function CategoryContent() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F3]">
-      <Header />
+      <Header categoryMobileMode />
 
       {/* HERO BANNER */}
-      <section className="relative overflow-hidden bg-[#083028] py-5 sm:py-7 md:py-8">
+      <section className="relative hidden overflow-hidden bg-[#083028] py-5 sm:block sm:py-7 md:py-8">
         <div className="absolute inset-0">
           <Image
             src="/home-images/hero-image1.jpg"
@@ -268,9 +268,202 @@ function CategoryContent() {
         </div>
       </section>
 
+      {/* Mobile category browser */}
+      {categoryTree.length > 0 && (
+        <section className="min-h-[calc(100dvh-7.25rem)] border-b border-gray-200 bg-white sm:hidden">
+          <div className="grid min-h-[calc(100dvh-7.25rem)] grid-cols-[82px_minmax(0,1fr)]">
+            <aside className="sticky top-14 h-[calc(100dvh-7.25rem)] overflow-y-auto border-r border-gray-200 bg-[#F5F6F8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('All')}
+                aria-pressed={selectedCategory === 'All'}
+                className={`relative flex w-full flex-col items-center gap-1 border-b border-gray-200 px-1 py-2.5 text-center transition ${
+                  selectedCategory === 'All'
+                    ? 'bg-white text-blue-600 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-blue-600'
+                    : 'text-gray-600'
+                }`}
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E7EEF9] text-[#083028]">
+                  <Layers3 size={21} />
+                </span>
+                <span className="line-clamp-2 text-[10px] font-semibold leading-tight">For You</span>
+              </button>
+
+              {categoryTree.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => handleCategoryChange(category.name)}
+                  aria-pressed={selectedCategory === category.name}
+                  className={`relative flex w-full flex-col items-center gap-1 border-b border-gray-200 px-1 py-2.5 text-center transition ${
+                    selectedCategory === category.name
+                      ? 'bg-white text-blue-600 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-blue-600'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  <span className="relative h-11 w-11 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                    {category.image ? (
+                      <Image src={category.image} alt="" fill className="object-cover object-top" sizes="44px" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-sm font-black text-[#083028]">
+                        {category.name.charAt(0)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="line-clamp-2 text-[9px] font-semibold leading-tight">{category.name}</span>
+                </button>
+              ))}
+            </aside>
+
+            <div className="min-w-0 bg-white px-3 pb-5 pt-4">
+              {selectedCategory === 'All' ? (
+                <div className="space-y-6">
+                  {categoryTree.map((parent) => {
+                    const children = parent.children || [];
+                    return (
+                      <section key={parent.id}>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <h2 className="text-sm font-bold text-gray-900">{parent.name}</h2>
+                          <button
+                            type="button"
+                            onClick={() => showParentProducts(parent.name)}
+                            className="shrink-0 text-[10px] font-bold text-blue-600"
+                          >
+                            View all
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+                          {children.length > 0 ? children.map((subcategory) => (
+                            <button
+                              key={subcategory.id}
+                              type="button"
+                              onClick={() => handleSubcategoryChange(parent, subcategory)}
+                              className="group min-w-0 text-center"
+                            >
+                              <span className="relative mx-auto block aspect-square w-full overflow-hidden rounded-2xl bg-[#F1F3F8]">
+                                {subcategory.image ? (
+                                  <Image
+                                    src={subcategory.image}
+                                    alt={subcategory.name}
+                                    fill
+                                    className="object-cover object-top transition duration-300 group-active:scale-95"
+                                    sizes="(max-width: 639px) 27vw, 100px"
+                                  />
+                                ) : (
+                                  <span className="flex h-full w-full items-center justify-center text-xl font-black text-[#083028]">
+                                    {subcategory.name.charAt(0)}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-1.5 block line-clamp-2 text-[10px] font-semibold leading-tight text-gray-800">
+                                {subcategory.name}
+                              </span>
+                            </button>
+                          )) : (
+                            <button
+                              type="button"
+                              onClick={() => showParentProducts(parent.name)}
+                              className="group min-w-0 text-center"
+                            >
+                              <span className="relative mx-auto block aspect-square w-full overflow-hidden rounded-2xl bg-[#F1F3F8]">
+                                {parent.image ? (
+                                  <Image src={parent.image} alt={parent.name} fill className="object-cover object-top" sizes="(max-width: 639px) 27vw, 100px" />
+                                ) : (
+                                  <span className="flex h-full w-full items-center justify-center text-xl font-black text-[#083028]">
+                                    {parent.name.charAt(0)}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-1.5 block line-clamp-2 text-[10px] font-semibold leading-tight text-gray-800">
+                                All {parent.name}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-blue-600">Shop by category</p>
+                      <h2 className="truncate text-base font-bold text-gray-900">{selectedCategory}</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => showParentProducts(selectedCategory)}
+                      className="shrink-0 text-[10px] font-bold text-blue-600"
+                    >
+                      View all
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+                    <button
+                      type="button"
+                      onClick={() => showParentProducts(selectedCategory)}
+                      className={`group min-w-0 text-center ${!selectedSubcategory ? 'text-blue-600' : 'text-gray-800'}`}
+                    >
+                      <span className={`relative mx-auto block aspect-square w-full overflow-hidden rounded-2xl border bg-[#F1F3F8] ${
+                        !selectedSubcategory ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-transparent'
+                      }`}>
+                        {selectedParent?.image ? (
+                          <Image src={selectedParent.image} alt={selectedCategory} fill className="object-cover object-top" sizes="(max-width: 639px) 27vw, 100px" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-xl font-black text-[#083028]">
+                            {selectedCategory.charAt(0)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-1.5 block line-clamp-2 text-[10px] font-semibold leading-tight">All {selectedCategory}</span>
+                    </button>
+
+                    {browserSubcategories.map(({ parent, subcategory }) => (
+                      <button
+                        key={subcategory.id}
+                        type="button"
+                        onClick={() => handleSubcategoryChange(parent, subcategory)}
+                        className={`group min-w-0 text-center ${
+                          selectedSubcategoryNode?.id === subcategory.id ? 'text-blue-600' : 'text-gray-800'
+                        }`}
+                      >
+                        <span className={`relative mx-auto block aspect-square w-full overflow-hidden rounded-2xl border bg-[#F1F3F8] ${
+                          selectedSubcategoryNode?.id === subcategory.id
+                            ? 'border-blue-500 ring-2 ring-blue-500/10'
+                            : 'border-transparent'
+                        }`}>
+                          {subcategory.image ? (
+                            <Image
+                              src={subcategory.image}
+                              alt={subcategory.name}
+                              fill
+                              className="object-cover object-top transition duration-300 group-active:scale-95"
+                              sizes="(max-width: 639px) 27vw, 100px"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-xl font-black text-[#083028]">
+                              {subcategory.name.charAt(0)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-1.5 block line-clamp-2 text-[10px] font-semibold leading-tight">
+                          {subcategory.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Parent category and subcategory browser */}
       {categoryTree.length > 0 && (
-        <section className="border-b border-gray-200 bg-white py-4 sm:py-6">
+        <section className="hidden border-b border-gray-200 bg-white py-4 sm:block sm:py-6">
           <div className="container mx-auto max-w-7xl px-3 sm:px-4">
             <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:p-5">
               <div className="mb-4 flex items-end justify-between gap-3">

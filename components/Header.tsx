@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, User, ShoppingBag, ChevronDown, Heart } from 'lucide-react';
+import { ArrowLeft, Search, User, ShoppingBag, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -24,7 +24,11 @@ const DEFAULT_CATEGORIES: NavCategory[] = [
   { name: 'Kids Fashion', href: '/category?category=Kids+Fashion' },
 ];
 
-export default function Header() {
+type HeaderProps = {
+  categoryMobileMode?: boolean;
+};
+
+export default function Header({ categoryMobileMode }: HeaderProps) {
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [categories, setCategories] = useState<NavCategory[]>(DEFAULT_CATEGORIES);
@@ -74,7 +78,7 @@ export default function Header() {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       {/* Main Navigation */}
-      <div className="container mx-auto px-4 py-3">
+      <div className={`container mx-auto px-4 py-3 ${categoryMobileMode ? 'hidden sm:block' : ''}`}>
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center group py-0.5">
@@ -219,6 +223,43 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {categoryMobileMode && (
+        <div className="flex h-14 items-center gap-2 border-b border-gray-200 px-2 sm:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else window.location.assign('/');
+            }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-800 transition hover:bg-gray-100"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={22} />
+          </button>
+          <span className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900">All Categories</span>
+          <button
+            type="button"
+            onClick={() => setSearchModalOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-900 transition hover:bg-gray-100"
+            aria-label="Search catalog"
+          >
+            <Search size={21} />
+          </button>
+          <Link
+            href="/cart"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-900 transition hover:bg-gray-100"
+            aria-label={`Shopping bag with ${totalCount} items`}
+          >
+            <ShoppingBag size={21} />
+            {totalCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white">
+                {totalCount > 99 ? '99+' : totalCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      )}
 
       {/* Interactive Live Search Modal */}
       <SearchModal
