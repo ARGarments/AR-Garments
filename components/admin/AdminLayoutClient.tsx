@@ -35,8 +35,10 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8">
-            {children}
+          <main className="admin-content flex-1 p-4 sm:p-6 lg:p-8">
+            <div key={pathname} className="route-enter">
+              {children}
+            </div>
           </main>
         </div>
       </div>

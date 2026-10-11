@@ -160,7 +160,14 @@ function AccountContent() {
 
     setOrdersLoading(true);
     setOrdersError(null);
-    fetch(`/api/orders?userId=${encodeURIComponent(user.id)}`)
+    const token = localStorage.getItem('ar_token');
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    fetch(`/api/orders?userId=${encodeURIComponent(user.id)}`, {
+      headers,
+      cache: 'no-store',
+    })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
@@ -186,6 +193,30 @@ function AccountContent() {
         setOrdersLoading(false);
       });
   }, [user?.id]);
+
+  const handleOrderCancelled = (orderId: string, update: Partial<Order>) => {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId ? { ...order, ...update } : order
+      )
+    );
+
+    if (update.refundStatus === 'failed') {
+      toast.warning('Order cancelled. Your refund needs support review.', {
+        title: 'Refund action required',
+      });
+      return;
+    }
+    if (update.refundStatus === 'pending' || update.refundStatus === 'processed') {
+      toast.success('Order cancelled and your refund was submitted.', {
+        title: 'Cancellation confirmed',
+      });
+      return;
+    }
+    toast.success('Your order was cancelled successfully.', {
+      title: 'Order cancelled',
+    });
+  };
 
   // Save profile handler
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -537,7 +568,11 @@ function AccountContent() {
                   ) : (
                     <div className="space-y-4">
                       {orders.map((order) => (
-                        <CustomerOrderCard key={order.id} order={order} />
+                        <CustomerOrderCard
+                          key={order.id}
+                          order={order}
+                          onCancelled={handleOrderCancelled}
+                        />
                       ))}
                     </div>
                   )}
@@ -877,7 +912,11 @@ function AccountContent() {
                 </div>
               ) : (
                 orders.map((order) => (
-                  <CustomerOrderCard key={order.id} order={order} />
+                  <CustomerOrderCard
+                    key={order.id}
+                    order={order}
+                    onCancelled={handleOrderCancelled}
+                  />
                 ))
               )}
             </div>

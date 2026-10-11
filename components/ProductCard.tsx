@@ -54,7 +54,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   };
 
   return (
-    <div className="group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
+    <div className="premium-card group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between">
       <Link href={`/product/${product.id}`} className="block flex-1">
         {/* Image area */}
         <div className="relative bg-[#EDE8DF] w-full h-[180px] sm:h-[220px] md:h-[260px]">
@@ -69,7 +69,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
           <button
             type="button"
             onClick={handleToggleWishlist}
-            className={`absolute top-2.5 right-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-md ${
+            className={`micro-icon absolute top-2.5 right-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-md ${
               isFavorited
                 ? 'bg-rose-50 text-rose-600 scale-105'
                 : 'bg-white/90 text-gray-500 hover:text-rose-600 hover:bg-white hover:scale-105'
@@ -87,7 +87,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+            className="premium-image object-cover object-top"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           />
         </div>
@@ -112,7 +112,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         {/* Outlined Add to Cart button */}
         <button
           onClick={handleAddToCart}
-          className={`w-full border border-gray-300 py-1.5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
+          className={`premium-button w-full border border-gray-300 py-1.5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
             added
               ? 'bg-[#083028] text-white border-[#083028]'
               : 'bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'

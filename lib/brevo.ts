@@ -134,16 +134,16 @@ async function sendCodeEmail(
 
 export function sendLoginCode(input: SendLoginCodeInput): Promise<string> {
   return sendCodeEmail(input, {
-    subject: 'Your AR Garments login code',
-    instruction: 'Use this one-time code to sign in to your AR Garments account:',
+    subject: 'Your AR Garment login code',
+    instruction: 'Use this one-time code to sign in to your AR Garment account:',
     tag: 'email-login',
   });
 }
 
 export function sendRegistrationCode(input: SendLoginCodeInput): Promise<string> {
   return sendCodeEmail(input, {
-    subject: 'Your AR Garments registration code',
-    instruction: 'Use this one-time code to verify your email and create your AR Garments account:',
+    subject: 'Your AR Garment registration code',
+    instruction: 'Use this one-time code to verify your email and create your AR Garment account:',
     tag: 'email-registration',
   });
 }

@@ -6,6 +6,8 @@ import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import BottomWidgetsNav from "@/components/BottomWidgetsNav";
+import { ShippingSettingsProvider } from "@/context/ShippingSettingsContext";
+import MotionEnhancer from "@/components/MotionEnhancer";
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 
@@ -21,15 +23,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://ik.imagekit.io" />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ToastProvider>
           <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                {children}
-                <BottomWidgetsNav />
-              </WishlistProvider>
-            </CartProvider>
+            <ShippingSettingsProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  {children}
+                  <BottomWidgetsNav />
+                  <MotionEnhancer />
+                </WishlistProvider>
+              </CartProvider>
+            </ShippingSettingsProvider>
           </AuthProvider>
         </ToastProvider>
       </body>

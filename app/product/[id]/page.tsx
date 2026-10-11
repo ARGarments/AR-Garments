@@ -17,6 +17,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { useShippingSettings } from '@/context/ShippingSettingsContext';
 
 interface ProductData {
   id: string;
@@ -62,6 +63,7 @@ export default function ProductDetailPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { settings: shippingSettings } = useShippingSettings();
 
   const [product, setProduct] = useState<ProductData | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
@@ -859,7 +861,7 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  className={`flex w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-base font-black shadow-sm transition ${
+                  className={`premium-button flex w-full items-center justify-center gap-3 rounded-full px-5 py-3 text-base font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
                     addedToCart
                       ? 'bg-emerald-700 text-white'
                       : 'bg-gradient-to-r from-[#07523F] to-[#0B7A55] text-white'
@@ -867,7 +869,7 @@ export default function ProductDetailPage() {
                 >
                   <ShoppingCart size={25} />
                   <span>{addedToCart ? 'Added to Cart ✓' : 'Add to Cart'}</span>
-                  <ChevronRight size={18} />
+                  <ChevronRight size={18} className="button-arrow" />
                 </button>
                 <button
                   type="button"
@@ -875,11 +877,11 @@ export default function ProductDetailPage() {
                     handleAddToCart();
                     router.push('/cart');
                   }}
-                  className="flex w-full items-center justify-center gap-3 rounded-full border border-[#E7D6B7] bg-gradient-to-r from-[#F5EAD5] to-[#FFF9EE] px-5 py-3 text-base font-black text-[#07523F]"
+                  className="premium-button flex w-full items-center justify-center gap-3 rounded-full border border-[#E7D6B7] bg-gradient-to-r from-[#F5EAD5] to-[#FFF9EE] px-5 py-3 text-base font-black text-[#07523F] transition-all hover:-translate-y-0.5 hover:border-[#C9972B]/50 hover:shadow-md"
                 >
                   <CreditCard size={22} />
                   <span>Buy Now</span>
-                  <ChevronRight size={18} />
+                  <ChevronRight size={18} className="button-arrow" />
                 </button>
               </div>
 
@@ -888,7 +890,13 @@ export default function ProductDetailPage() {
                   <Truck size={24} strokeWidth={2.2} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-black leading-tight min-[380px]:text-sm">Free Shipping on Orders Above ₹3000/-</p>
+                  <p className="text-[11px] font-black leading-tight min-[380px]:text-sm">
+                    {shippingSettings
+                      ? shippingSettings.freeShippingEnabled
+                        ? `Free Shipping on Orders Above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}/-`
+                        : `Standard Shipping ₹${shippingSettings.standardShippingCharge.toLocaleString('en-IN')}`
+                      : 'Shipping calculated at checkout'}
+                  </p>
                   <p className="mt-0.5 flex items-center gap-1 text-[9px] font-medium leading-none text-gray-500 min-[380px]:text-[10px]">
                     <CheckCircle2 size={11} className="fill-emerald-600 text-white" /> Fast &amp; Safe Delivery
                   </p>
@@ -1079,7 +1087,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className={`flex w-full items-center justify-center gap-3 rounded-full px-6 py-3.5 text-sm font-black shadow-sm transition-all duration-200 ${
+                className={`premium-button flex w-full items-center justify-center gap-3 rounded-full px-6 py-3.5 text-sm font-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 ${
                   addedToCart
                     ? 'bg-emerald-700 text-white'
                     : 'bg-gradient-to-r from-[#07523F] to-[#0B7A55] text-white hover:shadow-md'
@@ -1087,7 +1095,7 @@ export default function ProductDetailPage() {
               >
                 <ShoppingCart size={18} />
                 {addedToCart ? 'Added to Cart ✓' : 'Add to Cart'}
-                <ChevronRight size={17} />
+                <ChevronRight size={17} className="button-arrow" />
               </button>
               <button
                 type="button"
@@ -1095,11 +1103,11 @@ export default function ProductDetailPage() {
                   handleAddToCart();
                   router.push('/cart');
                 }}
-                className="flex w-full items-center justify-center gap-3 rounded-full border border-[#E7D6B7] bg-gradient-to-r from-[#F5EAD5] to-[#FFF9EE] px-6 py-3.5 text-sm font-black text-[#07523F] transition hover:bg-[#F1E2C7]"
+                className="premium-button flex w-full items-center justify-center gap-3 rounded-full border border-[#E7D6B7] bg-gradient-to-r from-[#F5EAD5] to-[#FFF9EE] px-6 py-3.5 text-sm font-black text-[#07523F] transition-all hover:-translate-y-0.5 hover:border-[#C9972B]/50 hover:bg-[#F1E2C7] hover:shadow-md"
               >
                 <CreditCard size={18} />
                 Buy Now
-                <ChevronRight size={17} />
+                <ChevronRight size={17} className="button-arrow" />
               </button>
             </div>
 
@@ -1108,7 +1116,13 @@ export default function ProductDetailPage() {
                 <Truck size={22} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-black">Free Delivery</p>
+                <p className="text-sm font-black">
+                  {shippingSettings
+                    ? shippingSettings.freeShippingEnabled
+                      ? `Free Delivery Above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}`
+                      : `Standard Delivery ₹${shippingSettings.standardShippingCharge.toLocaleString('en-IN')}`
+                    : 'Delivery calculated at checkout'}
+                </p>
                 <p className="text-[10px] font-medium text-gray-500">Pan-India express</p>
               </div>
               <ChevronRight size={18} />

@@ -27,20 +27,20 @@ const banners = [
 
 export default function PromotionalBanners() {
   return (
-    <section className="py-8 sm:py-10 bg-white">
+    <section data-reveal className="content-auto-section py-8 sm:py-10 bg-white">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {banners.map((banner, index) => (
             <Link
               key={index}
               href={banner.href}
-              className="relative h-[160px] sm:h-[190px] md:h-[230px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer shadow-md block"
+              className="premium-card relative h-[160px] sm:h-[190px] md:h-[230px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer block"
             >
               <Image
                 src={banner.image}
                 alt={banner.title}
                 fill
-                className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                className="premium-image object-cover object-top"
               />
               {/* Minimal left gradient only for text readability */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />

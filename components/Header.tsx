@@ -8,12 +8,19 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import SearchModal from '@/components/SearchModal';
+import { fetchJson } from '@/lib/clientRequest';
 
 interface NavCategory {
   id?: string;
   name: string;
   href: string;
   children?: NavCategory[];
+}
+
+interface CategoryApiRow {
+  id: string;
+  name: string;
+  children?: Array<{ id: string; name: string }>;
 }
 
 const DEFAULT_CATEGORIES: NavCategory[] = [
@@ -39,11 +46,10 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/categories?active=true&tree=true', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : []))
+    fetchJson<CategoryApiRow[]>('/api/categories?active=true&tree=true')
       .then((data) => {
         if (Array.isArray(data) && data.length > 0 && isMounted) {
-          const mapped: NavCategory[] = data.map((c: { id: string; name: string; children?: { id: string; name: string }[] }) => ({
+          const mapped: NavCategory[] = data.map((c) => ({
             id: c.id,
             name: c.name,
             href: `/category?category=${encodeURIComponent(c.name)}`,
@@ -76,7 +82,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
   }, []);
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
+    <header className="sticky top-0 z-50 border-b border-gray-100/80 bg-white/95 shadow-sm backdrop-blur-xl">
       {/* Main Navigation */}
       <div className={`container mx-auto px-4 py-3 ${categoryMobileMode ? 'hidden sm:block' : ''}`}>
         <div className="flex justify-between items-center">
@@ -97,7 +103,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
           <nav className="hidden lg:flex items-center gap-9">
             <Link
               href="/"
-              className="text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
+              className="nav-link-premium text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
             >
               Home
             </Link>
@@ -108,12 +114,12 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
               onMouseEnter={() => setCategoryDropdownOpen(true)}
               onMouseLeave={() => setCategoryDropdownOpen(false)}
             >
-              <div className="flex items-center gap-1.5 cursor-pointer text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2">
+              <div className="nav-link-premium flex items-center gap-1.5 cursor-pointer text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2">
                 <Link href="/category">Category</Link>
                 <ChevronDown size={18} className="text-gray-500 group-hover:text-[#083028] transition-transform duration-200 group-hover:rotate-180" />
               </div>
 
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[min(760px,82vw)] z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 translate-y-2 pt-2 w-[min(760px,82vw)] z-50 opacity-0 invisible group-hover:translate-y-0 group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2.5 overflow-hidden">
                   <Link
                     href="/category"
@@ -152,14 +158,14 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
 
             <Link
               href="/about"
-              className="text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
+              className="nav-link-premium text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
             >
               About Us
             </Link>
 
             <Link
               href="/contact"
-              className="text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
+              className="nav-link-premium text-gray-700 hover:text-[#083028] transition-colors text-lg font-semibold tracking-wide py-2"
             >
               Contact Us
             </Link>
@@ -174,7 +180,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
+              className="micro-icon w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:-translate-y-0.5 hover:border-[#083028]/25 hover:bg-gray-50 hover:shadow-md flex items-center justify-center text-gray-700 hover:text-[#083028] transition-all shadow-xs flex-shrink-0"
               aria-label="Search Catalog"
               title="Search products (Ctrl+K)"
             >
@@ -184,7 +190,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
             {/* Wishlist Button with live counter badge */}
             <Link
               href="/wishlist"
-              className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-rose-600 transition-colors shadow-xs flex-shrink-0"
+              className="micro-icon relative w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:-translate-y-0.5 hover:border-rose-200 hover:bg-gray-50 hover:shadow-md flex items-center justify-center text-gray-700 hover:text-rose-600 transition-all shadow-xs flex-shrink-0"
               aria-label={`Wishlist with ${wishlistCount} items`}
               title="My Wishlist"
             >
@@ -199,7 +205,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
             {/* User Account Button */}
             <Link
               href={user ? '/account' : '/login'}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
+              className="micro-icon w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:-translate-y-0.5 hover:border-[#083028]/25 hover:bg-gray-50 hover:shadow-md flex items-center justify-center text-gray-700 hover:text-[#083028] transition-all shadow-xs flex-shrink-0"
               aria-label={user ? `Account: ${user.name}` : 'Sign In'}
               title={user ? `My Account (${user.name})` : 'Sign In'}
             >
@@ -209,7 +215,7 @@ export default function Header({ categoryMobileMode }: HeaderProps) {
             {/* Shopping Bag Button (Desktop only, mobile has bottom widget) */}
             <Link
               href="/cart"
-              className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:bg-gray-50 hidden lg:flex items-center justify-center text-gray-700 hover:text-[#083028] transition-colors shadow-xs flex-shrink-0"
+              className="micro-icon relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200/80 bg-white hover:-translate-y-0.5 hover:border-[#083028]/25 hover:bg-gray-50 hover:shadow-md hidden lg:flex items-center justify-center text-gray-700 hover:text-[#083028] transition-all shadow-xs flex-shrink-0"
               aria-label={`Shopping Bag with ${totalCount} items`}
               title="Shopping Bag"
             >

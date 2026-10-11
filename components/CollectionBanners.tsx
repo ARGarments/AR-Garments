@@ -3,19 +3,19 @@ import Link from 'next/link';
 
 export default function CollectionBanners() {
   return (
-    <section className="py-8 sm:py-10 bg-white">
+    <section data-reveal className="content-auto-section py-8 sm:py-10 bg-white">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Sarees Collection */}
           <Link
             href="/category?category=Sarees"
-            className="relative h-[180px] sm:h-[240px] md:h-[300px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer shadow-md block"
+            className="premium-card relative h-[180px] sm:h-[240px] md:h-[300px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer block"
           >
             <Image
               src="/home-images/hero-image6.jpg"
               alt="Sarees Collection"
               fill
-              className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+              className="premium-image object-cover object-top"
             />
             {/* Minimal left gradient only for text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
@@ -37,13 +37,13 @@ export default function CollectionBanners() {
           {/* Suite Collection */}
           <Link
             href="/category?category=Suits+%26+Dress+Material"
-            className="relative h-[180px] sm:h-[240px] md:h-[300px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer shadow-md block"
+            className="premium-card relative h-[180px] sm:h-[240px] md:h-[300px] rounded-xl sm:rounded-2xl overflow-hidden group cursor-pointer block"
           >
             <Image
               src="/home-images/hero-image7.jpg"
               alt="Suite Collection"
               fill
-              className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+              className="premium-image object-cover object-top"
             />
             {/* Minimal left gradient only for text readability */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />

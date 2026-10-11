@@ -12,14 +12,192 @@
     --color-secondary-dark: #E8E4DB;
     --color-accent-green: #083028;
     --color-accent: #083028;
+    --motion-fast: 160ms;
+    --motion-base: 260ms;
+    --motion-slow: 520ms;
+    --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+    --shadow-premium: 0 18px 45px -28px rgba(8, 48, 40, 0.45);
+    --shadow-premium-hover: 0 24px 55px -28px rgba(8, 48, 40, 0.58);
   }
   
   html {
     font-size: 16px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   p {
     line-height: 1.6;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-premium);
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid #b8860b;
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgba(8, 48, 40, 0.18);
+    color: #051e19;
+  }
+}
+
+@layer components {
+  .premium-card {
+    box-shadow: var(--shadow-premium);
+    transition:
+      transform var(--motion-base) var(--ease-premium),
+      box-shadow var(--motion-base) var(--ease-premium),
+      border-color var(--motion-base) var(--ease-premium);
+  }
+
+  .premium-image {
+    transition:
+      transform var(--motion-slow) var(--ease-premium),
+      filter var(--motion-base) var(--ease-premium);
+  }
+
+  .micro-icon svg,
+  .button-arrow {
+    transition: transform var(--motion-base) var(--ease-premium);
+  }
+
+  .nav-link-premium {
+    position: relative;
+  }
+
+  .nav-link-premium::after {
+    position: absolute;
+    right: 50%;
+    bottom: 0;
+    left: 50%;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #b8860b, #083028);
+    content: '';
+    transition:
+      right var(--motion-base) var(--ease-premium),
+      left var(--motion-base) var(--ease-premium);
+  }
+
+  .route-enter {
+    animation: route-enter 420ms var(--ease-premium) both;
+  }
+
+  main:not(.admin-content) {
+    animation: route-enter 420ms var(--ease-premium) both;
+  }
+
+  [data-reveal='pending'] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 600ms var(--ease-premium),
+      transform 600ms var(--ease-premium);
+  }
+
+  [data-reveal='visible'] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .content-auto-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 520px;
+  }
+
+  .admin-content button:not(:disabled),
+  .admin-content a,
+  .admin-content tr,
+  .admin-content [role='switch'] {
+    transition-timing-function: var(--ease-premium);
+  }
+
+  .admin-content tbody tr:hover {
+    background-color: rgba(8, 48, 40, 0.035);
+  }
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .premium-card:hover {
+    will-change: transform;
+    transform: translateY(-6px);
+    border-color: rgba(8, 48, 40, 0.2);
+    box-shadow: var(--shadow-premium-hover);
+  }
+
+  .group:hover .premium-image {
+    will-change: transform;
+    transform: scale(1.055);
+    filter: saturate(1.04) contrast(1.02);
+  }
+
+  .micro-icon:hover svg {
+    transform: scale(1.1) rotate(-3deg);
+  }
+
+  .nav-link-premium:hover::after,
+  .nav-link-premium:focus-visible::after {
+    right: 0;
+    left: 0;
+  }
+
+  .premium-button:hover .button-arrow,
+  .group:hover .button-arrow {
+    transform: translateX(3px);
+  }
+
+  button:not(:disabled):active,
+  .premium-button:active {
+    transform: scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
   }
 }
 

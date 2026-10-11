@@ -63,10 +63,10 @@ export default function Newsletter() {
   };
 
   return (
-    <section className="py-8 bg-white">
+    <section data-reveal className="content-auto-section py-8 bg-white">
       <div className="container mx-auto px-4">
         {/* Compact banner card */}
-        <div className="relative overflow-hidden rounded-2xl bg-[#083028] shadow-md">
+        <div className="premium-card relative overflow-hidden rounded-2xl bg-[#083028] shadow-md">
           {/* Vector SVG Botanical Background */}
           <div className="absolute inset-0">
             <Image
@@ -133,7 +133,7 @@ export default function Newsletter() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-shrink-0 px-3.5 sm:px-5 py-2.5 sm:py-3 bg-[#B8860B] hover:bg-[#9a7009] text-white font-semibold text-xs sm:text-sm rounded-r-lg transition-colors duration-200 whitespace-nowrap flex items-center gap-1.5 disabled:opacity-80"
+                  className="premium-button flex-shrink-0 px-3.5 sm:px-5 py-2.5 sm:py-3 bg-[#B8860B] hover:bg-[#9a7009] hover:shadow-lg text-white font-semibold text-xs sm:text-sm rounded-r-lg transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 disabled:opacity-80"
                 >
                   {loading ? (
                     <>

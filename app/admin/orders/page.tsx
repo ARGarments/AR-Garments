@@ -203,13 +203,13 @@ function OrderedProducts({ order }: { order: Order }) {
           </div>
         )}
         <div className="flex justify-between gap-4 text-gray-600">
-          <span>Shipping</span>
+          <span>Delivery charge</span>
           <span className="font-bold text-gray-800">
             {order.shipping === 0 ? 'Free' : formatCurrency(order.shipping)}
           </span>
         </div>
         <div className="flex justify-between gap-4 border-t border-gray-200 pt-2 text-sm font-black text-gray-900">
-          <span>Total</span>
+          <span>Final payable</span>
           <span>{formatCurrency(order.total)}</span>
         </div>
       </div>
@@ -284,6 +284,20 @@ function AdminOrderCard({
                 <>
                   <p className="break-all">Payment ID: {order.razorpayPaymentId || 'Not available'}</p>
                   <p className="break-all">Razorpay order: {order.razorpayOrderId || 'Not available'}</p>
+                </>
+              )}
+              {order.status === 'Cancelled' && (
+                <>
+                  <p className="font-bold text-red-700">
+                    Cancelled by: {order.cancelledBy || 'Not recorded'}
+                  </p>
+                  <p>Reason: {order.cancellationReason || 'Not provided'}</p>
+                  {order.paymentMethod === 'online' && order.paymentStatus === 'paid' && (
+                    <p className="font-bold text-amber-700">
+                      Refund: {(order.refundStatus || 'pending').replace('_', ' ')}
+                    </p>
+                  )}
+                  {order.refundId && <p className="break-all">Refund ID: {order.refundId}</p>}
                 </>
               )}
             </DetailCard>

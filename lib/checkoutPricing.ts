@@ -1,8 +1,7 @@
 import { getServiceSupabase } from '@/lib/supabase';
 import { OrderItem } from '@/lib/orders';
-
-const FREE_SHIPPING_THRESHOLD = 500;
-const SHIPPING_FEE = 70;
+import { calculateShippingCharge } from '@/lib/shipping';
+import { getShippingSettings } from '@/lib/shippingSettings.server';
 
 interface CheckoutItemInput {
   id: string;
@@ -192,8 +191,12 @@ export async function calculateCheckoutPricing(
   const couponResult = couponCode
     ? calculateCouponDiscount(await getCoupon(couponCode), products, subtotal)
     : { discount: 0, freeShipping: false };
-  const shipping =
-    subtotal >= FREE_SHIPPING_THRESHOLD || couponResult.freeShipping ? 0 : SHIPPING_FEE;
+  const shippingSettings = await getShippingSettings();
+  const shipping = calculateShippingCharge(
+    subtotal,
+    shippingSettings,
+    couponResult.freeShipping
+  );
   const total = Math.max(0, subtotal - couponResult.discount + shipping);
 
   if (total < 1) {

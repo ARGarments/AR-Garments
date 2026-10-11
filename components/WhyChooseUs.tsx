@@ -25,7 +25,7 @@ const features = [
 
 export default function WhyChooseUs() {
   return (
-    <section className="py-8 sm:py-14 bg-white border-t border-gray-100">
+    <section data-reveal className="content-auto-section py-8 sm:py-14 bg-white border-t border-gray-100">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-6 sm:mb-12">
@@ -41,10 +41,10 @@ export default function WhyChooseUs() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="text-center group p-2"
+              className="group rounded-2xl p-3 text-center transition-all duration-300 hover:-translate-y-1 hover:bg-[#FAF8F3] hover:shadow-sm sm:p-4"
             >
               {/* Icon circle */}
-              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2.5 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-[#083028] transition-colors duration-300">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2.5 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-[#083028] group-hover:rotate-3 group-hover:scale-105 transition-all duration-300">
                 <feature.icon
                   size={20}
                   className="text-[#083028] group-hover:text-white transition-colors duration-300 sm:hidden"

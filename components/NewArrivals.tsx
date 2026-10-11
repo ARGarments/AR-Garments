@@ -44,7 +44,7 @@ export default function NewArrivals() {
   if (activeProducts.length === 0) return null;
 
   return (
-    <section className="py-10 bg-white">
+    <section data-reveal className="content-auto-section py-10 bg-white">
       <div className="container mx-auto px-4 sm:px-8 lg:px-12">
         {/* Section Header */}
         <div className="flex justify-between items-center mb-5 sm:mb-8">
@@ -54,7 +54,7 @@ export default function NewArrivals() {
           </div>
           <Link
             href="/category"
-            className="text-xs sm:text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors flex-shrink-0"
+            className="premium-button text-xs sm:text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-md flex-shrink-0"
           >
             View All →
           </Link>
@@ -67,7 +67,7 @@ export default function NewArrivals() {
             return (
               <div
                 key={product.id}
-                className="group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+                className="premium-card group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between"
               >
                 {/* Image area */}
                 <div className="relative bg-[#EDE8DF] h-[170px] sm:h-[200px] md:h-[220px]">
@@ -76,7 +76,7 @@ export default function NewArrivals() {
                       src={product.image}
                       alt={product.name}
                       fill
-                      className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                      className="premium-image object-cover object-top"
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                     />
                   </Link>
@@ -90,7 +90,7 @@ export default function NewArrivals() {
                       image: product.image,
                       category: product.category,
                     })}
-                    className={`absolute top-2 right-2 w-7 h-7 rounded-full shadow flex items-center justify-center transition-colors ${
+                    className={`micro-icon absolute top-2 right-2 w-7 h-7 rounded-full shadow flex items-center justify-center transition-colors ${
                       wishlisted
                         ? 'bg-rose-600 text-white'
                         : 'bg-white/90 hover:bg-white text-gray-500 hover:text-rose-600'
@@ -119,7 +119,7 @@ export default function NewArrivals() {
                           setAddedIds((prev) => ({ ...prev, [product.id]: false }));
                         }, 1500);
                       }}
-                      className={`w-full border py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                      className={`premium-button w-full border py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
                         addedIds[product.id]
                           ? 'bg-[#083028] text-white border-[#083028]'
                           : 'border-gray-300 bg-[#F5F1E8] hover:bg-[#083028] hover:text-white hover:border-[#083028] text-gray-700'
@@ -133,7 +133,7 @@ export default function NewArrivals() {
                         addToCart(product, 1);
                         router.push('/cart');
                       }}
-                      className="w-full bg-[#083028] hover:bg-[#051e19] text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs"
+                      className="premium-button w-full bg-[#083028] hover:bg-[#051e19] hover:shadow-md text-white py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs"
                     >
                       <CreditCard size={13} strokeWidth={1.5} />
                       Buy Now

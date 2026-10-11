@@ -316,7 +316,7 @@ export default function ContactPage() {
                   Experience the drape, texture, and brilliance of our pure handlooms in person at our flagship Surat boutique.
                 </p>
                 <div className="bg-white/10 rounded-2xl p-4 text-xs space-y-1 text-gray-200">
-                  <p className="font-bold text-white">AR Garments Surat Hub</p>
+                  <p className="font-bold text-white">AR Garment Surat Hub</p>
                   <p>Shop #42-45, Ring Road Textile Market</p>
                   <p>Surat, Gujarat - 395002</p>
                   <p className="pt-2 text-[#E5D7B7] font-semibold">📞 WhatsApp: +91 98765 43210</p>

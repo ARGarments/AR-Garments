@@ -3,15 +3,15 @@ import Link from 'next/link';
 
 export default function NewSeasonBanner() {
   return (
-    <section className="py-6 sm:py-10 bg-secondary">
+    <section data-reveal className="content-auto-section py-6 sm:py-10 bg-secondary">
       <div className="container mx-auto px-4 sm:px-8 lg:px-12">
-        <div className="relative h-[200px] sm:h-[300px] md:h-[400px] rounded-2xl overflow-hidden shadow-lg">
+        <div className="premium-card group relative h-[200px] sm:h-[300px] md:h-[400px] rounded-2xl overflow-hidden shadow-lg">
           {/* Background Image — fully visible, minimal overlay */}
           <Image
             src="/home-images/hero-image2.jpg"
             alt="New Season New Styles"
             fill
-            className="object-cover object-top"
+            className="premium-image object-cover object-top"
           />
           {/* Very subtle left-side gradient only for text readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
@@ -29,7 +29,7 @@ export default function NewSeasonBanner() {
                 </p>
                 <Link
                   href="/category"
-                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] border border-white/30 text-white rounded-lg font-semibold transition-colors shadow-lg px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm"
+                  className="premium-button inline-flex items-center gap-1.5 bg-[#083028] hover:-translate-y-0.5 hover:bg-[#051e19] hover:shadow-xl border border-white/30 text-white rounded-lg font-semibold transition-all shadow-lg px-3.5 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm"
                 >
                   Shop Collection →
                 </Link>

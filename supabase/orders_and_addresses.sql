@@ -64,6 +64,11 @@ CREATE TABLE IF NOT EXISTS public.orders (
     out_for_delivery_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     delivered_at     TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     cancelled_at     TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    cancellation_reason TEXT DEFAULT NULL,
+    cancelled_by     TEXT DEFAULT NULL CHECK (cancelled_by IS NULL OR cancelled_by IN ('customer', 'admin')),
+    refund_status    TEXT NOT NULL DEFAULT 'not_required' CHECK (refund_status IN ('not_required', 'pending', 'processed', 'failed')),
+    refund_id        TEXT DEFAULT NULL,
+    refunded_at      TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     shiprocket_order_id TEXT DEFAULT NULL,
     shiprocket_shipment_id TEXT DEFAULT NULL,
     courier_name     TEXT DEFAULT NULL,
@@ -85,6 +90,11 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP WITH TIM
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS out_for_delivery_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancelled_by TEXT DEFAULT NULL CHECK (cancelled_by IS NULL OR cancelled_by IN ('customer', 'admin'));
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refund_status TEXT NOT NULL DEFAULT 'not_required' CHECK (refund_status IN ('not_required', 'pending', 'processed', 'failed'));
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refund_id TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shiprocket_order_id TEXT DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shiprocket_shipment_id TEXT DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS courier_name TEXT DEFAULT NULL;
@@ -96,6 +106,7 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_updated_at TIMESTAMP
 CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_order_id ON public.orders(razorpay_order_id) WHERE razorpay_order_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id ON public.orders(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_orders_awb_number ON public.orders(awb_number) WHERE awb_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_refund_status ON public.orders(refund_status) WHERE refund_status <> 'not_required';
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);

@@ -297,7 +297,7 @@ export default function AdminDashboard() {
             <Link
               key={card.label}
               href={card.href}
-              className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs hover:shadow-md transition-all group block"
+              className="premium-card bg-white rounded-2xl p-6 border border-gray-100 group block"
             >
               <div className="flex items-center justify-between mb-4">
                 <div
@@ -332,7 +332,7 @@ export default function AdminDashboard() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {pipelineItems.map((item) => (
-            <div key={item.label} className="text-center p-3 bg-gray-50/70 rounded-xl border border-gray-100">
+            <div key={item.label} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#083028]/15 hover:bg-white hover:shadow-sm">
               <div className={`w-full h-2 rounded-full ${item.color} mb-3`} />
               <p className="text-2xl font-bold text-gray-900">{item.count}</p>
               <p className="text-xs font-semibold text-gray-600 mt-1">{item.label}</p>
@@ -576,7 +576,7 @@ export default function AdminDashboard() {
               <Link
                 key={item.label}
                 href={item.link}
-                className="bg-gray-50 rounded-xl p-4 text-center hover:bg-gray-100 hover:shadow-xs transition-all border border-gray-100 group block"
+                className="premium-card bg-gray-50 rounded-xl p-4 text-center hover:bg-white transition-all border border-gray-100 group block"
               >
                 <Icon size={20} className={`mx-auto mb-2 ${item.color} group-hover:scale-110 transition-transform`} />
                 <p className="text-2xl font-bold text-gray-900">{item.count}</p>

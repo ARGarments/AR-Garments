@@ -24,6 +24,15 @@ export interface RazorpayPayment {
   status: 'created' | 'authorized' | 'captured' | 'refunded' | 'failed';
 }
 
+export interface RazorpayRefund {
+  id: string;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'processed' | 'failed';
+  created_at: number;
+}
+
 interface CreateRazorpayOrderInput {
   amount: number;
   receipt: string;
@@ -133,6 +142,24 @@ export async function getRazorpayPayment(paymentId: string): Promise<RazorpayPay
   }
 
   throw lastError;
+}
+
+export async function refundRazorpayPayment(
+  paymentId: string,
+  applicationOrderId: string
+): Promise<RazorpayRefund> {
+  return razorpayRequest<RazorpayRefund>(
+    `/payments/${encodeURIComponent(paymentId)}/refund`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        notes: {
+          application_order_id: applicationOrderId,
+          cancellation_source: 'customer',
+        },
+      }),
+    }
+  );
 }
 
 export function verifyRazorpayPaymentSignature(

@@ -34,10 +34,6 @@ const INDIAN_STATES = [
   'Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh',
 ];
 
-const SHIPPING_THRESHOLD = 999;
-const SHIPPING_FEE = 79;
-const DISCOUNT_RATE = 0;
-
 interface DeliveryForm {
   fullName: string;
   phone: string;
@@ -50,6 +46,10 @@ interface DeliveryForm {
 
 interface OrderResult {
   orderId: string;
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  total: number;
 }
 
 interface RazorpayCheckoutResponse {
@@ -255,12 +255,14 @@ function OrderSummary({
   subtotal,
   discount,
   shipping,
+  shippingReady,
   total,
 }: {
   items: { id: string; name: string; image?: string; quantity: number; price: number }[];
   subtotal: number;
   discount: number;
   shipping: number;
+  shippingReady: boolean;
   total: number;
 }) {
   return (
@@ -316,18 +318,18 @@ function OrderSummary({
           </div>
         )}
         <div className="flex justify-between text-sm text-[#083028]/70">
-          <span>Shipping</span>
-          <span className={shipping === 0 ? 'text-green-600 font-medium' : ''}>
-            {shipping === 0 ? 'FREE' : `₹${shipping}`}
+          <span>Delivery charge</span>
+          <span className={shippingReady && shipping === 0 ? 'text-green-600 font-medium' : ''}>
+            {!shippingReady ? 'Calculating…' : shipping === 0 ? 'FREE' : `₹${shipping}`}
           </span>
         </div>
-        {shipping === 0 && subtotal > 0 && (
+        {shippingReady && shipping === 0 && subtotal > 0 && (
           <p className="text-xs text-green-600 flex items-center gap-1">
             <BadgeCheck size={12} /> Free shipping applied!
           </p>
         )}
         <div className="border-t border-[#083028]/10 pt-2.5 flex justify-between font-bold text-[#083028]">
-          <span>Total</span>
+          <span>Final payable</span>
           <span className="text-lg text-[#B8860B]">₹{total.toLocaleString('en-IN')}</span>
         </div>
       </div>
@@ -339,10 +341,18 @@ function OrderSummary({
 
 function OrderConfirmation({
   orderId,
+  subtotal,
+  discount,
+  shipping,
+  total,
   onContinueShopping,
   onViewOrders,
 }: {
   orderId: string;
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  total: number;
   onContinueShopping: () => void;
   onViewOrders: () => void;
 }) {
@@ -366,6 +376,29 @@ function OrderConfirmation({
         <div className="bg-[#FAF8F3] border border-[#B8860B]/30 rounded-xl px-6 py-3 w-full">
           <p className="text-xs text-[#083028]/50 uppercase tracking-wider mb-1">Order ID</p>
           <p className="text-[#083028] font-bold font-mono text-base">{orderId}</p>
+        </div>
+
+        <div className="w-full space-y-2 rounded-xl border border-[#083028]/10 bg-white px-4 py-3 text-sm">
+          <div className="flex justify-between text-[#083028]/65">
+            <span>Subtotal</span>
+            <span>₹{subtotal.toLocaleString('en-IN')}</span>
+          </div>
+          {discount > 0 && (
+            <div className="flex justify-between text-emerald-700">
+              <span>Discount</span>
+              <span>−₹{discount.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-[#083028]/65">
+            <span>Delivery charge</span>
+            <span className={shipping === 0 ? 'font-bold text-emerald-700' : ''}>
+              {shipping === 0 ? 'FREE' : `₹${shipping.toLocaleString('en-IN')}`}
+            </span>
+          </div>
+          <div className="flex justify-between border-t border-[#083028]/10 pt-2 font-bold text-[#083028]">
+            <span>Final payable</span>
+            <span className="text-[#B8860B]">₹{total.toLocaleString('en-IN')}</span>
+          </div>
         </div>
 
         {/* Estimated delivery */}
@@ -408,6 +441,9 @@ export default function CheckoutPage() {
     discountAmount,
     finalTotal,
     appliedCoupon,
+    shippingSettings,
+    shippingSettingsLoading,
+    shippingSettingsError,
   } = useCart();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -536,6 +572,18 @@ export default function CheckoutPage() {
   // ── Submit ────────────────────────────────────────────────────────────────────
 
   async function handlePlaceOrder() {
+    if (shippingSettingsLoading) {
+      toast.info('Shipping settings are still loading. Please wait a moment.', {
+        title: 'Please Wait',
+      });
+      return;
+    }
+    if (!shippingSettings || shippingSettingsError) {
+      toast.error(shippingSettingsError || 'Shipping settings are unavailable.', {
+        title: 'Checkout Unavailable',
+      });
+      return;
+    }
     if (!validate()) return;
 
     setLoading(true);
@@ -590,7 +638,7 @@ export default function CheckoutPage() {
             key: keyId,
             amount,
             currency,
-            name: 'AR Garments',
+            name: 'AR Garment',
             description: `Payment for ${applicationOrderId}`,
             order_id: razorpayOrderId,
             prefill: {
@@ -645,7 +693,7 @@ export default function CheckoutPage() {
         // ignore
       }
 
-      setOrderResult({ orderId });
+      setOrderResult({ orderId, subtotal, discount, shipping, total });
       clearCart();
       toast.success(`Order ${orderId} placed successfully! 🎉`, { title: 'Order Placed' });
     } catch (error) {
@@ -682,6 +730,10 @@ export default function CheckoutPage() {
         <main className="min-h-screen bg-[#FAF8F3] py-12">
           <OrderConfirmation
             orderId={orderResult.orderId}
+            subtotal={orderResult.subtotal}
+            discount={orderResult.discount}
+            shipping={orderResult.shipping}
+            total={orderResult.total}
             onContinueShopping={() => router.push('/')}
             onViewOrders={() => router.push('/account?tab=orders')}
           />
@@ -868,23 +920,33 @@ export default function CheckoutPage() {
                   subtotal={subtotal}
                   discount={discount}
                   shipping={shipping}
+                  shippingReady={Boolean(shippingSettings)}
                   total={total}
                 />
               </div>
 
               {/* Place Order button */}
+              {shippingSettingsError && (
+                <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
+                  {shippingSettingsError}
+                </p>
+              )}
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading}
+                disabled={loading || shippingSettingsLoading || !shippingSettings}
                 className="w-full bg-[#083028] text-white rounded-2xl py-4 font-bold text-base
                   hover:bg-[#083028]/90 active:scale-[0.99] transition-all
                   disabled:opacity-70 disabled:cursor-not-allowed
                   flex items-center justify-center gap-2 shadow-lg shadow-[#083028]/20"
               >
-                {loading ? (
+                {loading || shippingSettingsLoading ? (
                   <>
                     <Loader2 size={20} className="animate-spin" />
-                    {paymentMethod === 'online' ? 'Starting Payment…' : 'Placing Order…'}
+                    {shippingSettingsLoading
+                      ? 'Loading Shipping…'
+                      : paymentMethod === 'online'
+                        ? 'Starting Payment…'
+                        : 'Placing Order…'}
                   </>
                 ) : (
                   <>
@@ -909,17 +971,18 @@ export default function CheckoutPage() {
                 subtotal={subtotal}
                 discount={discount}
                 shipping={shipping}
+                shippingReady={Boolean(shippingSettings)}
                 total={total}
               />
 
               {/* Free shipping notice */}
-              {shipping > 0 && (
+              {shipping > 0 && shippingSettings?.freeShippingEnabled && (
                 <div className="mt-3 bg-[#B8860B]/10 border border-[#B8860B]/30 rounded-xl px-4 py-3 text-xs text-[#083028]/70 flex items-start gap-2">
                   <Truck size={15} className="text-[#B8860B] mt-0.5 shrink-0" />
                   <span>
                     Add{' '}
                     <strong className="text-[#083028]">
-                      ₹{(SHIPPING_THRESHOLD - subtotal + discount).toLocaleString('en-IN')}
+                      ₹{Math.max(0, shippingSettings.freeShippingThreshold - subtotal).toLocaleString('en-IN')}
                     </strong>{' '}
                     more to get <strong className="text-[#083028]">FREE shipping!</strong>
                   </span>

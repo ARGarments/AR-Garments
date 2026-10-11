@@ -3,12 +3,19 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { fetchJson } from '@/lib/clientRequest';
 
 interface CategoryItem {
   name: string;
   subtitle?: string;
   image: string;
   href: string;
+}
+
+interface CategoryApiRow {
+  name: string;
+  description?: string;
+  image?: string;
 }
 
 const DEFAULT_CATEGORIES: CategoryItem[] = [
@@ -48,11 +55,10 @@ export default function ShopByCategory() {
   const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
 
   useEffect(() => {
-    fetch('/api/categories?active=true')
-      .then((res) => (res.ok ? res.json() : []))
+    fetchJson<CategoryApiRow[]>('/api/categories?active=true&tree=true')
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: CategoryItem[] = data.map((c: { name: string; description?: string; image?: string }) => ({
+          const mapped: CategoryItem[] = data.map((c) => ({
             name: c.name,
             subtitle: c.description || 'Exclusive Collection',
             image: c.image || '/home-images/Sarees.jpg',
@@ -64,7 +70,7 @@ export default function ShopByCategory() {
       .catch(() => {});
   }, []);
   return (
-    <section className="py-10 bg-[#F5F1E8]">
+    <section data-reveal className="content-auto-section py-10 bg-[#F5F1E8]">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="flex justify-between items-center mb-5 sm:mb-8">
@@ -74,7 +80,7 @@ export default function ShopByCategory() {
           </div>
           <Link
             href="/category"
-            className="text-xs sm:text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors flex-shrink-0"
+            className="premium-button text-xs sm:text-sm font-semibold text-white bg-[#083028] hover:bg-[#051e19] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all hover:-translate-y-0.5 hover:shadow-md flex-shrink-0"
           >
             View All →
           </Link>
@@ -86,17 +92,18 @@ export default function ShopByCategory() {
             <Link
               key={index}
               href={category.href}
-              className="group cursor-pointer block"
+              className="premium-card group cursor-pointer rounded-xl sm:rounded-2xl block"
             >
               {/* Card Image */}
               <div
-                className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-[#EDE8DF] shadow-xs group-hover:shadow-md transition-shadow h-[180px] sm:h-[220px] md:h-[260px]"
+                className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-[#EDE8DF] shadow-xs h-[180px] sm:h-[220px] md:h-[260px]"
               >
                 <Image
                   src={category.image}
                   alt={category.name}
                   fill
-                  className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                  className="premium-image object-cover object-top"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
 

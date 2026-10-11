@@ -13,6 +13,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
 import { Product } from '@/components/ProductCard';
+import { fetchJson } from '@/lib/clientRequest';
 
 const PRICE_RANGES = [
   { label: 'All Prices', min: 0, max: Infinity },
@@ -64,9 +65,8 @@ function CategoryContent() {
 
   // Fetch dynamic categories
   useEffect(() => {
-    fetch('/api/categories?active=true&tree=true', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: CategoryNode[]) => {
+    fetchJson<CategoryNode[]>('/api/categories?active=true&tree=true')
+      .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setCategoryTree(data);
         }

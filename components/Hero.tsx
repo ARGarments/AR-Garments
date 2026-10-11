@@ -65,7 +65,9 @@ export default function Hero() {
               src={slide.image}
               alt={slide.title}
               fill
-              className="object-cover object-[85%_top] sm:object-[85%_top] md:object-[right_top]"
+              className={`object-cover object-[85%_top] transition-transform duration-[7000ms] ease-linear sm:object-[85%_top] md:object-[right_top] ${
+                index === currentSlide ? 'scale-[1.025]' : 'scale-100'
+              }`}
               priority={index === 0}
               sizes="100vw"
             />
@@ -95,10 +97,10 @@ export default function Hero() {
               <div>
                 <a
                   href={slide.buttonLink || '/category'}
-                  className="inline-flex items-center gap-1.5 bg-[#083028] hover:bg-[#051e19] border border-white/40 text-white font-semibold rounded-lg px-3 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm transition-all duration-200 shadow-md whitespace-nowrap"
+                  className="premium-button inline-flex items-center gap-1.5 bg-[#083028] hover:-translate-y-0.5 hover:bg-[#051e19] hover:shadow-xl border border-white/40 text-white font-semibold rounded-lg px-3 py-1.5 sm:px-5 sm:py-2.5 text-xs sm:text-sm transition-all duration-200 shadow-md whitespace-nowrap"
                 >
                   <span>{slide.buttonText || 'Shop Now'}</span>
-                  <span>→</span>
+                  <span className="button-arrow">→</span>
                 </a>
               </div>
             </div>

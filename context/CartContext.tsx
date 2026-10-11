@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Coupon } from '@/lib/adminData';
 import { useToast } from '@/context/ToastContext';
+import { useShippingSettings } from '@/context/ShippingSettingsContext';
+import { calculateShippingCharge, ShippingSettings } from '@/lib/shipping';
 
 export interface CartItem {
   id: string;
@@ -36,6 +38,9 @@ interface CartContextType {
   discountAmount: number;
   finalTotal: number;
   toastMessage: string | null;
+  shippingSettings: ShippingSettings | null;
+  shippingSettingsLoading: boolean;
+  shippingSettingsError: string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -51,6 +56,11 @@ export function parsePrice(priceStr: string | number | undefined, fallback = 0):
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
+  const {
+    settings: shippingSettings,
+    loading: shippingSettingsLoading,
+    error: shippingSettingsError,
+  } = useShippingSettings();
   const [items, setItems] = useState<CartItem[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -185,9 +195,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.numericPrice * item.quantity, 0);
 
-  // Free shipping over ₹500 or if coupon provides free shipping
+  // Coupon-based free shipping overrides the storewide shipping rule.
   const hasFreeShippingCoupon = appliedCoupon?.discountType === 'free_shipping';
-  const shipping = subtotal === 0 || subtotal >= 500 || hasFreeShippingCoupon ? 0 : 70;
+  const shipping = shippingSettings
+    ? calculateShippingCharge(subtotal, shippingSettings, hasFreeShippingCoupon)
+    : 0;
 
   // Calculate discount amount
   let discountAmount = 0;
@@ -221,6 +233,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         discountAmount,
         finalTotal,
         toastMessage,
+        shippingSettings,
+        shippingSettingsLoading,
+        shippingSettingsError,
       }}
     >
       {children}

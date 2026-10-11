@@ -6,6 +6,11 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP WITH TIM
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS out_for_delivery_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancelled_by TEXT DEFAULT NULL CHECK (cancelled_by IS NULL OR cancelled_by IN ('customer', 'admin'));
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refund_status TEXT NOT NULL DEFAULT 'not_required' CHECK (refund_status IN ('not_required', 'pending', 'processed', 'failed'));
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refund_id TEXT DEFAULT NULL;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shiprocket_order_id TEXT DEFAULT NULL;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shiprocket_shipment_id TEXT DEFAULT NULL;

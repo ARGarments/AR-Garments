@@ -19,6 +19,7 @@ import {
   Star,
   Mail,
   MessageSquare,
+  Truck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { adminAuth } from '@/lib/adminData';
@@ -32,6 +33,7 @@ const navItems = [
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },
   { label: 'Product Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Coupons & Discounts', href: '/admin/coupons', icon: Ticket },
+  { label: 'Shipping Settings', href: '/admin/shipping-settings', icon: Truck },
   { label: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   { label: 'Home Page', href: '/admin/homepage', icon: Home },
 ];
@@ -74,13 +76,13 @@ export default function AdminSidebar() {
             key={href}
             href={href}
             onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
               isActive(href)
-                ? 'bg-white text-[#083028]'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? 'translate-x-1 bg-white text-[#083028] shadow-sm'
+                : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <Icon size={17} />
+            <Icon size={17} className="transition-transform duration-200 group-hover:scale-110" />
             <span className="flex-1">{label}</span>
             {isActive(href) && <ChevronRight size={14} className="opacity-60" />}
           </Link>

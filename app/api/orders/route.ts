@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { calculateCheckoutPricing, CheckoutPricingError } from '@/lib/checkoutPricing';
+import { isAdminRequest } from '@/lib/adminSession';
+import { getAuthenticatedUser } from '@/lib/requestAuth';
 import {
   Order,
   OrderItem,
@@ -59,6 +62,23 @@ function mapDbOrder(row: Record<string, unknown>): Order {
     outForDeliveryAt: optionalString(row.out_for_delivery_at),
     deliveredAt: optionalString(row.delivered_at),
     cancelledAt: optionalString(row.cancelled_at),
+    cancellationReason: optionalString(row.cancellation_reason),
+    cancelledBy:
+      row.cancelled_by === 'customer' || row.cancelled_by === 'admin'
+        ? row.cancelled_by
+        : undefined,
+    refundStatus:
+      row.refund_status === 'pending' ||
+      row.refund_status === 'processed' ||
+      row.refund_status === 'failed'
+        ? row.refund_status
+        : row.status === 'Cancelled' &&
+            row.payment_method === 'online' &&
+            row.payment_status === 'paid'
+          ? 'pending'
+          : 'not_required',
+    refundId: optionalString(row.refund_id),
+    refundedAt: optionalString(row.refunded_at),
     shiprocketOrderId: optionalString(row.shiprocket_order_id),
     shiprocketShipmentId: optionalString(row.shiprocket_shipment_id),
     courierName: optionalString(row.courier_name),
@@ -78,6 +98,29 @@ export async function GET(request: NextRequest) {
     const all = searchParams.get('all');
     const userId = searchParams.get('userId');
 
+    if (all === 'true' && !isAdminRequest(request)) {
+      return NextResponse.json(
+        { success: false, error: 'Administrator access is required.' },
+        { status: 403 }
+      );
+    }
+
+    const authenticatedUser = all === 'true' ? null : getAuthenticatedUser(request);
+    if (all !== 'true' && !authenticatedUser) {
+      return NextResponse.json(
+        { success: false, error: 'Please sign in to view your orders.' },
+        { status: 401 }
+      );
+    }
+    if (userId && authenticatedUser && userId !== authenticatedUser.id) {
+      return NextResponse.json(
+        { success: false, error: 'You cannot view another customer’s orders.' },
+        { status: 403 }
+      );
+    }
+
+    const resolvedUserId = authenticatedUser?.id;
+
     // 1. Try querying Supabase
     try {
       const supabase = getServiceSupabase();
@@ -88,8 +131,8 @@ export async function GET(request: NextRequest) {
 
       if (all === 'true') {
         query = query.order('created_at', { ascending: false });
-      } else if (userId) {
-        query = query.eq('user_id', userId).order('created_at', { ascending: false });
+      } else if (resolvedUserId) {
+        query = query.eq('user_id', resolvedUserId).order('created_at', { ascending: false });
       } else {
         return NextResponse.json(
           { success: false, error: 'Provide ?userId=xxx or ?all=true' },
@@ -120,9 +163,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (userId) {
+    if (resolvedUserId) {
       const userOrders = memoryOrders
-        .filter((o) => o.userId === userId)
+        .filter((o) => o.userId === resolvedUserId)
         .sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -151,41 +194,41 @@ export async function GET(request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
+  const authenticatedUser = getAuthenticatedUser(request);
+  if (!authenticatedUser) {
+    return NextResponse.json(
+      { success: false, error: 'Please sign in before placing an order.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
 
     const {
-      userId,
-      userName,
-      userEmail,
       items,
       shippingAddress,
       paymentMethod,
-      subtotal,
-      discount,
-      shipping,
       total,
       couponCode,
     } = body;
 
     const address = shippingAddress || body.deliveryAddress;
-    const resolvedUserName = userName || address?.fullName || userEmail?.split('@')[0] || 'Customer';
+    const resolvedUserName =
+      authenticatedUser.name || address?.fullName || authenticatedUser.email.split('@')[0] || 'Customer';
 
     // --- Basic validation ---
     if (
-      !userId ||
-      !userEmail ||
       !items?.length ||
       !address ||
       !paymentMethod ||
-      subtotal === undefined ||
       total === undefined
     ) {
       return NextResponse.json(
         {
           success: false,
           error:
-            'Missing required fields: userId, userEmail, items, address, paymentMethod, subtotal, total',
+            'Missing required fields: items, address, paymentMethod, total',
         },
         { status: 400 }
       );
@@ -205,21 +248,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const pricing = await calculateCheckoutPricing(items, couponCode);
+    const expectedTotal = Number(total);
+    if (!Number.isFinite(expectedTotal) || Math.abs(expectedTotal - pricing.total) > 0.001) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Your cart price changed. Refresh the cart and try again.',
+          pricing,
+        },
+        { status: 409 }
+      );
+    }
+
     // --- Build order object ---
     const newOrder: Order = {
       id: generateOrderId(),
-      userId,
+      userId: authenticatedUser.id,
       userName: resolvedUserName,
-      userEmail,
-      items,
+      userEmail: authenticatedUser.email,
+      items: pricing.items,
       shippingAddress: address,
       paymentMethod,
       paymentStatus: 'pending',
-      subtotal: Number(subtotal) || 0,
-      discount: Number(discount) || 0,
-      shipping: Number(shipping) || 0,
-      total: Number(total) || 0,
-      ...(couponCode ? { couponCode } : {}),
+      subtotal: pricing.subtotal,
+      discount: pricing.discount,
+      shipping: pricing.shipping,
+      total: pricing.total,
+      ...(pricing.couponCode ? { couponCode: pricing.couponCode } : {}),
       status: 'Pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -294,8 +350,17 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('[POST /api/orders] Error:', error);
+    if (error instanceof CheckoutPricingError) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
       { status: 500 }
     );
   }
@@ -306,6 +371,13 @@ export async function POST(request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function PATCH(request: NextRequest) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json(
+      { success: false, error: 'Administrator access is required.' },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { orderId, status } = body;

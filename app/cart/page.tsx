@@ -49,6 +49,9 @@ export default function CartPage() {
     removeCoupon,
     discountAmount,
     finalTotal,
+    shippingSettings,
+    shippingSettingsLoading,
+    shippingSettingsError,
   } = useCart();
 
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -459,10 +462,14 @@ export default function CartPage() {
                   <div className="flex justify-between text-gray-600">
                     <span className="flex items-center gap-1.5">
                       <Truck size={14} />
-                      Estimated Shipping
+                      Delivery charge
                     </span>
                     <span>
-                      {shipping === 0 ? (
+                      {shippingSettingsLoading ? (
+                        <span className="text-xs font-semibold text-gray-400">Loading...</span>
+                      ) : !shippingSettings ? (
+                        <span className="text-xs font-semibold text-red-600">Unavailable</span>
+                      ) : shipping === 0 ? (
                         <span className="text-emerald-700 font-bold uppercase text-[11px] bg-emerald-50 px-2 py-0.5 rounded">
                           FREE
                         </span>
@@ -472,9 +479,13 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  {subtotal < 500 && shipping > 0 && (
+                  {shippingSettings?.freeShippingEnabled &&
+                    subtotal < shippingSettings.freeShippingThreshold &&
+                    shipping > 0 && (
                     <p className="text-[11px] bg-amber-50 text-amber-800 p-2 rounded-lg leading-tight">
-                      Add ₹{(500 - subtotal).toLocaleString()} more to qualify for{' '}
+                      Add ₹{(
+                        shippingSettings.freeShippingThreshold - subtotal
+                      ).toLocaleString('en-IN')} more to qualify for{' '}
                       <strong>FREE Delivery</strong>!
                     </p>
                   )}
@@ -484,7 +495,7 @@ export default function CartPage() {
                     <div className="flex justify-between items-baseline">
                       <div>
                         <span className="text-sm sm:text-base font-extrabold text-gray-900">
-                          Total Amount
+                          Final payable amount
                         </span>
                         <p className="text-[10px] text-gray-400">Includes all applicable taxes</p>
                       </div>
@@ -595,9 +606,15 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout CTA Button */}
+                {shippingSettingsError && (
+                  <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                    {shippingSettingsError}
+                  </p>
+                )}
                 <button
                   onClick={handleCheckout}
-                  className="w-full mt-5 bg-[#083028] hover:bg-[#051e19] text-white py-3.5 rounded-xl font-bold text-sm transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  disabled={shippingSettingsLoading || !shippingSettings}
+                  className="w-full mt-5 bg-[#083028] hover:bg-[#051e19] text-white py-3.5 rounded-xl font-bold text-sm transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Lock size={15} />
                   <span>Proceed to Checkout</span>
@@ -608,7 +625,13 @@ export default function CartPage() {
                 <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-2 text-center text-[10px] text-gray-500">
                   <div className="flex flex-col items-center">
                     <Truck size={14} className="text-[#083028] mb-0.5" />
-                    <span>Free Shipping</span>
+                    <span>
+                      {shippingSettings?.freeShippingEnabled
+                        ? `Free over ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}`
+                        : shippingSettings
+                          ? `Shipping ₹${shippingSettings.standardShippingCharge.toLocaleString('en-IN')}`
+                          : 'Shipping'}
+                    </span>
                   </div>
                   <div className="flex flex-col items-center">
                     <RotateCcw size={14} className="text-[#083028] mb-0.5" />

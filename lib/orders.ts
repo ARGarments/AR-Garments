@@ -32,6 +32,18 @@ export type OrderStatus =
   | 'Delivered'
   | 'Cancelled';
 
+export type RefundStatus = 'not_required' | 'pending' | 'processed' | 'failed';
+
+export const CUSTOMER_CANCELLABLE_STATUSES: readonly OrderStatus[] = [
+  'Pending',
+  'Confirmed',
+  'Processing',
+];
+
+export function canCustomerCancelOrder(status: OrderStatus): boolean {
+  return CUSTOMER_CANCELLABLE_STATUSES.includes(status);
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -55,6 +67,11 @@ export interface Order {
   outForDeliveryAt?: string;
   deliveredAt?: string;
   cancelledAt?: string;
+  cancellationReason?: string;
+  cancelledBy?: 'customer' | 'admin';
+  refundStatus?: RefundStatus;
+  refundId?: string;
+  refundedAt?: string;
   shiprocketOrderId?: string;
   shiprocketShipmentId?: string;
   courierName?: string;
