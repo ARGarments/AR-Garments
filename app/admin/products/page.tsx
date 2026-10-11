@@ -15,10 +15,20 @@ const DEFAULT_CATEGORIES = [
   'Dupatta Sets', 'Men Fashion', 'Kids Fashion',
 ];
 
+type CategoryOption = {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  active: boolean;
+};
+
 type FormData = {
   name: string;
   price: string;
   category: string;
+  categoryId: string;
+  subcategoryId: string;
   image: string;
   images: string[];
   description: string;
@@ -37,6 +47,8 @@ const emptyForm = (): FormData => ({
   name: '',
   price: '₹',
   category: 'Sarees',
+  categoryId: '',
+  subcategoryId: '',
   image: '',
   images: [],
   description: '',
@@ -55,6 +67,7 @@ export default function AdminProductsPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -72,7 +85,10 @@ export default function AdminProductsPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch('/api/products', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       // Map DB columns to Product shape
@@ -82,6 +98,8 @@ export default function AdminProductsPage() {
         price: d.price as string,
         numericPrice: d.numeric_price as number,
         category: d.category as string,
+        categoryId: (d.category_id as string) || undefined,
+        subcategoryId: (d.subcategory_id as string) || null,
         image: d.image as string,
         images: Array.isArray(d.images) && d.images.length > 0
           ? (d.images as string[])
@@ -99,8 +117,10 @@ export default function AdminProductsPage() {
         instagramUrl: (d.instagram_url as string) || (d.instagramUrl as string) || '',
       }));
       setProducts(mapped);
-    } catch {
-      setSaveError('Could not load products from database.');
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : 'Could not load products from database.';
+      setSaveError(message);
+      toast.error(message, { title: 'Catalog Load Failed' });
     } finally {
       setLoading(false);
     }
@@ -111,10 +131,12 @@ export default function AdminProductsPage() {
     // Load categories dynamically from database
     fetch('/api/categories?active=true')
       .then((res) => (res.ok ? res.json() : []))
-      .then((data: { name: string }[]) => {
+      .then((data: CategoryOption[]) => {
         if (Array.isArray(data) && data.length > 0) {
-          const names = ['All', ...data.map((c) => c.name)];
+          const parents = data.filter((category) => !category.parentId);
+          const names = ['All', ...parents.map((category) => category.name)];
           setCategoriesList(names);
+          setCategoryOptions(data);
         }
       })
       .catch(() => {});
@@ -132,7 +154,12 @@ export default function AdminProductsPage() {
   // ─── Modal helpers ─────────────────────────────────────────────────────────
   const openAddModal = () => {
     setEditingProduct(null);
-    setFormData(emptyForm());
+    const firstParent = categoryOptions.find((category) => !category.parentId);
+    setFormData({
+      ...emptyForm(),
+      category: firstParent?.name || 'Sarees',
+      categoryId: firstParent?.id || '',
+    });
     setUploadError('');
     setSaveError('');
     setModalOpen(true);
@@ -148,6 +175,10 @@ export default function AdminProductsPage() {
       name: product.name,
       price: product.price,
       category: product.category || 'Sarees',
+      categoryId: product.categoryId
+        || categoryOptions.find((category) => !category.parentId && category.name === product.category)?.id
+        || '',
+      subcategoryId: product.subcategoryId || '',
       image: product.image || (existingImages[0] ?? ''),
       images: existingImages,
       description: product.description || '',
@@ -269,6 +300,10 @@ export default function AdminProductsPage() {
     e.preventDefault();
     if (!formData.name.trim()) {
       toast.error('Please enter a product title');
+      return;
+    }
+    if (!formData.categoryId) {
+      toast.error('Please select a parent category');
       return;
     }
     setSaving(true);
@@ -481,9 +516,16 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg font-medium">
-                        {product.category}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg font-medium">
+                          {product.category}
+                        </span>
+                        {product.subcategoryId && (
+                          <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 text-[11px] rounded-lg font-semibold">
+                            {categoryOptions.find((category) => category.id === product.subcategoryId)?.name || 'Subcategory'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 font-bold text-[#083028]">{product.price}</td>
                     <td className="px-4 py-3.5">
@@ -602,8 +644,8 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              {/* Price & Category */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Price, parent category, and subcategory */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Price *</label>
                   <input
@@ -615,15 +657,41 @@ export default function AdminProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Category *</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Parent Category *</label>
                   <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    required
+                    value={formData.categoryId}
+                    onChange={(event) => {
+                      const selected = categoryOptions.find((category) => category.id === event.target.value);
+                      setFormData({
+                        ...formData,
+                        categoryId: event.target.value,
+                        category: selected?.name || '',
+                        subcategoryId: '',
+                      });
+                    }}
                     className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#083028]"
                   >
-                    {categoriesList.filter((c) => c !== 'All').map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    <option value="">Select category</option>
+                    {categoryOptions.filter((category) => !category.parentId).map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Subcategory</label>
+                  <select
+                    value={formData.subcategoryId}
+                    onChange={(event) => setFormData({ ...formData, subcategoryId: event.target.value })}
+                    disabled={!formData.categoryId}
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#083028] disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">No subcategory</option>
+                    {categoryOptions
+                      .filter((category) => category.parentId === formData.categoryId)
+                      .map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
                   </select>
                 </div>
               </div>

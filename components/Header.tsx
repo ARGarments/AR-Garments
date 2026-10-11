@@ -10,8 +10,10 @@ import { useWishlist } from '@/context/WishlistContext';
 import SearchModal from '@/components/SearchModal';
 
 interface NavCategory {
+  id?: string;
   name: string;
   href: string;
+  children?: NavCategory[];
 }
 
 const DEFAULT_CATEGORIES: NavCategory[] = [
@@ -33,13 +35,19 @@ export default function Header() {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/categories?active=true')
+    fetch('/api/categories?active=true&tree=true', { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         if (Array.isArray(data) && data.length > 0 && isMounted) {
-          const mapped: NavCategory[] = data.map((c: { name: string }) => ({
+          const mapped: NavCategory[] = data.map((c: { id: string; name: string; children?: { id: string; name: string }[] }) => ({
+            id: c.id,
             name: c.name,
             href: `/category?category=${encodeURIComponent(c.name)}`,
+            children: (c.children || []).map((child) => ({
+              id: child.id,
+              name: child.name,
+              href: `/category?category=${encodeURIComponent(c.name)}&subcategory=${encodeURIComponent(child.name)}`,
+            })),
           }));
           setCategories(mapped);
         }
@@ -101,7 +109,7 @@ export default function Header() {
                 <ChevronDown size={18} className="text-gray-500 group-hover:text-[#083028] transition-transform duration-200 group-hover:rotate-180" />
               </div>
 
-              <div className="absolute top-full left-0 pt-2 w-64 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[min(760px,82vw)] z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2.5 overflow-hidden">
                   <Link
                     href="/category"
@@ -109,15 +117,31 @@ export default function Header() {
                   >
                     View All Categories →
                   </Link>
-                  {categories.map((category) => (
-                    <Link
-                      key={category.name}
-                      href={category.href}
-                      className="block px-5 py-3 text-[15px] font-medium text-gray-700 hover:bg-[#F5F1E8] hover:text-[#083028] hover:pl-6 transition-all duration-150"
-                    >
-                      {category.name}
-                    </Link>
-                  ))}
+                  <div className="grid grid-cols-2 gap-x-5 gap-y-4 p-4 lg:grid-cols-3">
+                    {categories.map((category) => (
+                      <div key={category.id || category.name} className="min-w-0">
+                        <Link
+                          href={category.href}
+                          className="block truncate text-sm font-extrabold text-[#083028] hover:text-amber-700"
+                        >
+                          {category.name}
+                        </Link>
+                        {(category.children || []).length > 0 && (
+                          <div className="mt-1.5 space-y-1">
+                            {(category.children || []).slice(0, 6).map((subcategory) => (
+                              <Link
+                                key={subcategory.id || subcategory.name}
+                                href={subcategory.href}
+                                className="block truncate py-0.5 text-xs font-medium text-gray-600 hover:text-[#083028] hover:underline"
+                              >
+                                {subcategory.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

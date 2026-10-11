@@ -19,6 +19,8 @@ export interface Product {
   price: string;
   numericPrice?: number;
   category?: string;
+  categoryId?: string;
+  subcategoryId?: string | null;
   image: string;
   images?: string[];
   description?: string;

@@ -44,6 +44,8 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS specification TEXT DEFAULT '';
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS shipping_care TEXT DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category_id TEXT NULL;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS subcategory_id TEXT NULL;
 
 
 -- ─── 3. HERO SLIDES TABLE ─────────────────────────────────────────────────────
@@ -315,6 +317,10 @@ CREATE TABLE IF NOT EXISTS public.categories (
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS parent_id TEXT NULL;
+-- Apply supabase/category_hierarchy.sql after this base schema to install
+-- hierarchy foreign keys, validation triggers, indexes, and product backfill.
 
 CREATE INDEX IF NOT EXISTS idx_categories_active ON public.categories(active);
 CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON public.categories(sort_order ASC);

@@ -18,6 +18,7 @@ import {
   ExternalLink,
   UploadCloud,
   Image as ImageIcon,
+  CornerDownRight,
 } from 'lucide-react';
 
 import { useToast } from '@/context/ToastContext';
@@ -30,6 +31,7 @@ interface Category {
   image?: string;
   sortOrder?: number;
   active: boolean;
+  parentId: string | null;
   createdAt?: string;
 }
 
@@ -58,6 +60,7 @@ export default function AdminCategoriesPage() {
   const [image, setImage] = useState('');
   const [sortOrder, setSortOrder] = useState(0);
   const [active, setActive] = useState(true);
+  const [parentId, setParentId] = useState<string | null>(null);
 
   // ImageKit upload state
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -77,12 +80,11 @@ export default function AdminCategoriesPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/categories', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(Array.isArray(data) ? data : []);
-      }
-    } catch {
-      showToast('Could not load categories');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not load categories');
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (loadError) {
+      showToast(loadError instanceof Error ? loadError.message : 'Could not load categories', true);
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ export default function AdminCategoriesPage() {
     loadCategories();
   }, []);
 
-  const openAddModal = () => {
+  const openAddModal = (initialParentId: string | null = null) => {
     setEditingCategory(null);
     setName('');
     setSlug('');
@@ -100,6 +102,7 @@ export default function AdminCategoriesPage() {
     setImage('');
     setSortOrder(categories.length + 1);
     setActive(true);
+    setParentId(initialParentId);
     setError(null);
     setUploadError(null);
     setUploadingImage(false);
@@ -114,6 +117,7 @@ export default function AdminCategoriesPage() {
     setImage(cat.image || '');
     setSortOrder(cat.sortOrder ?? 0);
     setActive(cat.active);
+    setParentId(cat.parentId);
     setError(null);
     setUploadError(null);
     setUploadingImage(false);
@@ -204,6 +208,7 @@ export default function AdminCategoriesPage() {
             image: image.trim(),
             sortOrder,
             active,
+            parentId,
           }),
         });
         const data = await res.json();
@@ -223,6 +228,7 @@ export default function AdminCategoriesPage() {
             image: image.trim(),
             sortOrder,
             active,
+            parentId,
           }),
         });
         const data = await res.json();
@@ -250,23 +256,39 @@ export default function AdminCategoriesPage() {
       const res = await fetch(`/api/categories?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
+      const data = await res.json();
       if (res.ok) {
         showToast(`Category "${catName}" deleted`);
         loadCategories();
       } else {
-        showToast('Failed to delete category');
+        showToast(data.error || 'Failed to delete category', true);
       }
     } catch {
       showToast('Error deleting category');
     }
   };
 
-  const filteredCategories = categories.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const parentCategories = categories.filter((category) => !category.parentId);
+  const orderedCategories = parentCategories.flatMap((parent) => [
+    parent,
+    ...categories.filter((category) => category.parentId === parent.id),
+  ]);
+  const query = searchQuery.toLowerCase();
+  const matchingParentIds = new Set(
+    categories
+      .filter((category) => category.parentId && (
+        category.name.toLowerCase().includes(query)
+        || category.slug.toLowerCase().includes(query)
+        || category.description?.toLowerCase().includes(query)
+      ))
+      .map((category) => category.parentId)
   );
+  const filteredCategories = orderedCategories.filter((category) => (
+    category.name.toLowerCase().includes(query)
+    || category.slug.toLowerCase().includes(query)
+    || category.description?.toLowerCase().includes(query)
+    || matchingParentIds.has(category.id)
+  ));
 
   return (
     <div className="space-y-6">
@@ -283,11 +305,11 @@ export default function AdminCategoriesPage() {
         </div>
 
         <button
-          onClick={openAddModal}
+          onClick={() => openAddModal()}
           className="inline-flex items-center justify-center gap-2 bg-[#083028] hover:bg-[#051e19] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm hover:shadow-md shrink-0"
         >
           <Plus size={18} />
-          Add Category
+          Add Parent Category
         </button>
       </div>
 
@@ -306,7 +328,10 @@ export default function AdminCategoriesPage() {
 
         <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
           <span className="bg-[#083028]/5 text-[#083028] px-3 py-1.5 rounded-lg border border-[#083028]/10 font-bold">
-            Total: {categories.length}
+            Parents: {parentCategories.length}
+          </span>
+          <span className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-100 font-bold">
+            Subcategories: {categories.filter((category) => category.parentId).length}
           </span>
           <span className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 font-bold">
             Active: {categories.filter((c) => c.active).length}
@@ -332,10 +357,10 @@ export default function AdminCategoriesPage() {
             </p>
             {!searchQuery && (
               <button
-                onClick={openAddModal}
+                onClick={() => openAddModal()}
                 className="mt-4 inline-flex items-center gap-2 bg-[#083028] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#051e19] transition"
               >
-                <Plus size={15} /> Add Category
+                <Plus size={15} /> Add Parent Category
               </button>
             )}
           </div>
@@ -373,7 +398,13 @@ export default function AdminCategoriesPage() {
                           )}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">{cat.name}</p>
+                          <p className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
+                            {cat.parentId && <CornerDownRight size={14} className="text-amber-600" />}
+                            {cat.name}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                            {cat.parentId ? `Subcategory of ${categories.find((item) => item.id === cat.parentId)?.name || 'Unknown'}` : 'Parent category'}
+                          </p>
                           <p className="text-[11px] text-gray-400 font-mono">ID: {cat.id}</p>
                         </div>
                       </div>
@@ -382,9 +413,15 @@ export default function AdminCategoriesPage() {
                     {/* Slug & Storefront Link */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 font-mono text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg w-fit">
-                        <span>/category?category={cat.name}</span>
+                        <span>
+                          {cat.parentId
+                            ? `/category?category=${categories.find((item) => item.id === cat.parentId)?.name || ''}&subcategory=${cat.name}`
+                            : `/category?category=${cat.name}`}
+                        </span>
                         <a
-                          href={`/category?category=${encodeURIComponent(cat.name)}`}
+                          href={cat.parentId
+                            ? `/category?category=${encodeURIComponent(categories.find((item) => item.id === cat.parentId)?.name || '')}&subcategory=${encodeURIComponent(cat.name)}`
+                            : `/category?category=${encodeURIComponent(cat.name)}`}
                           target="_blank"
                           rel="noreferrer"
                           title="View on Storefront"
@@ -425,6 +462,15 @@ export default function AdminCategoriesPage() {
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {!cat.parentId && (
+                          <button
+                            onClick={() => openAddModal(cat.id)}
+                            title="Add Subcategory"
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(cat)}
                           title="Edit Category"
@@ -457,12 +503,18 @@ export default function AdminCategoriesPage() {
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  {editingCategory ? 'Edit Category' : 'Create New Category'}
+                  {editingCategory
+                    ? `Edit ${editingCategory.parentId ? 'Subcategory' : 'Category'}`
+                    : parentId
+                    ? 'Create Subcategory'
+                    : 'Create Parent Category'}
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {editingCategory
                     ? 'Update the category details below.'
-                    : 'Add a new product category to your store.'}
+                    : parentId
+                    ? 'Add a subcategory under the selected parent.'
+                    : 'Add a new parent category to your store.'}
                 </p>
               </div>
               <button
@@ -481,6 +533,28 @@ export default function AdminCategoriesPage() {
             )}
 
             <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 mb-1 block">
+                  Category Level
+                </label>
+                <select
+                  value={parentId || ''}
+                  onChange={(event) => setParentId(event.target.value || null)}
+                  className="w-full px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#083028]/20 focus:border-[#083028] transition font-medium text-gray-800"
+                >
+                  <option value="">Parent category</option>
+                  {parentCategories
+                    .filter((category) => category.id !== editingCategory?.id)
+                    .map((category) => (
+                      <option key={category.id} value={category.id}>
+                        Subcategory of {category.name}
+                      </option>
+                    ))}
+                </select>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Choose a parent to make this item a subcategory. Only two levels are supported.
+                </p>
+              </div>
               {/* Category Name */}
               <div>
                 <label className="text-xs font-bold text-gray-700 mb-1 block">

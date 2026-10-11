@@ -16,6 +16,13 @@ CREATE TABLE IF NOT EXISTS public.categories (
     updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Parent categories have parent_id = NULL. Subcategories reference one parent.
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS parent_id TEXT NULL;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category_id TEXT NULL;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS subcategory_id TEXT NULL;
+-- Apply category_hierarchy.sql after this base module to install relationship
+-- constraints, validation triggers, indexes, and product backfill.
+
 CREATE INDEX IF NOT EXISTS idx_categories_active ON public.categories(active);
 CREATE INDEX IF NOT EXISTS idx_categories_sort_order ON public.categories(sort_order ASC);
 
