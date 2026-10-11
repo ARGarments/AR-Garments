@@ -78,7 +78,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2 text-white/60 text-sm">
                 <Mail size={13} className="text-white/80 flex-shrink-0" />
-                support@argarments.com
+                support@argarment.com
               </li>
               <li className="flex items-start gap-2 text-white/60 text-sm">
                 <MapPin size={13} className="text-white/80 mt-0.5 flex-shrink-0" />

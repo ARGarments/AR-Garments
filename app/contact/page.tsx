@@ -72,9 +72,9 @@ export default function ContactPage() {
     {
       icon: <Mail className="text-[#083028]" size={22} />,
       title: 'Email Support',
-      detail: 'support@argarments.com',
+      detail: 'support@argarment.com',
       sub: 'Response within 24 business hours',
-      action: 'mailto:support@argarments.com',
+      action: 'mailto:support@argarment.com',
       actionLabel: 'Send an Email',
     },
     {
