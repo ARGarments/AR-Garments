@@ -138,7 +138,7 @@ async function getZoneShippingSettings(): Promise<ZoneShippingSetting[]> {
       .order('sort_order', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      return data.map((row: Record<string, unknown>) => ({
+      const mapped = data.map((row: Record<string, unknown>) => ({
         id: String(row.id),
         zoneName: String(row.zone_name || ''),
         zoneNameHi: String(row.zone_name_hi || ''),
@@ -149,6 +149,30 @@ async function getZoneShippingSettings(): Promise<ZoneShippingSetting[]> {
         sortOrder: Number(row.sort_order) || 0,
         updatedAt: row.updated_at ? String(row.updated_at) : null,
       }));
+
+      // Cross-sync with delivery_zones table so ON/OFF toggled by admin is 100% honored
+      try {
+        const { data: dZones } = await supabase.from('delivery_zones').select('zone_key, name, is_active');
+        if (dZones && dZones.length > 0) {
+          for (const dz of dZones) {
+            const k = (dz.zone_key || '').toLowerCase();
+            const n = (dz.name || '').toLowerCase();
+            let targetId: string | null = null;
+            if (k.includes('city') || k.includes('nagar') || n.includes('city')) targetId = 'zone_nagar_nigam';
+            else if (k.includes('rural') || k.includes('dehat') || n.includes('rural') || n.includes('dehat')) targetId = 'zone_dehat';
+            else if (k.includes('pan') || n.includes('pan') || n.includes('outside')) targetId = 'zone_pan_india';
+
+            if (targetId) {
+              const z = mapped.find((m) => m.id === targetId);
+              if (z) {
+                z.isActive = Boolean(dz.is_active);
+              }
+            }
+          }
+        }
+      } catch {}
+
+      return mapped;
     }
   } catch {
     // Fallback to defaults
@@ -312,6 +336,13 @@ export async function calculateCheckoutPricing(
       zoneSettings,
       couponResult.freeShipping
     );
+
+    if (zoneDelivery.isClosed) {
+      throw new CheckoutPricingError(
+        zoneDelivery.closedMessage || 'Delivery is temporarily closed for this area / आपके क्षेत्र में सेवा अभी बंद है।'
+      );
+    }
+
     baseShipping = zoneDelivery.deliveryFee;
   } else {
     try {

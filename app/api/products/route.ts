@@ -203,6 +203,7 @@ export async function POST(request: Request) {
     // Delivery Type
     delivery_type: body.deliveryType || body.delivery_type || 'standard',
     delivery_charge_amount: Number(body.deliveryChargeAmount ?? body.delivery_charge_amount ?? 0),
+    is_non_returnable: Boolean(body.isNonReturnable ?? body.is_non_returnable ?? false),
   };
 
   // Attempt insert
@@ -327,6 +328,10 @@ export async function PATCH(request: Request) {
   if (body.delivery_type !== undefined) patch.delivery_type = body.delivery_type;
   if (body.deliveryChargeAmount !== undefined) patch.delivery_charge_amount = Number(body.deliveryChargeAmount);
   if (body.delivery_charge_amount !== undefined) patch.delivery_charge_amount = Number(body.delivery_charge_amount);
+
+  // Non-Returnable flag
+  if (body.isNonReturnable !== undefined) patch.is_non_returnable = Boolean(body.isNonReturnable);
+  if (body.is_non_returnable !== undefined) patch.is_non_returnable = Boolean(body.is_non_returnable);
 
   // Category
   if (body.categoryId !== undefined || body.category !== undefined) {

@@ -97,9 +97,60 @@ export async function PUT(request: NextRequest) {
     if (isActive !== undefined) updates.is_active = Boolean(isActive);
     if (priority !== undefined) updates.priority = Number(priority) || 1;
 
+    let updatedZoneData: Record<string, unknown> | null = null;
+
     try {
       const supabase = getServiceSupabase();
-      await supabase.from('delivery_zones').update(updates).eq('id', id);
+      
+      // Update delivery_zones row and retrieve full record
+      const res = await supabase
+        .from('delivery_zones')
+        .update(updates)
+        .eq('id', id)
+        .select('*')
+        .maybeSingle();
+      updatedZoneData = res.data;
+
+      // Sync active state to zone_shipping_settings so checkout reflects it immediately
+      if (isActive !== undefined) {
+        let shippingZoneId: string | null = null;
+        const memoryEntry = memoryZones.find((z) => z.id === id);
+        const zKey = String(updatedZoneData?.zone_key || memoryEntry?.zoneKey || id || '').toLowerCase();
+        const zName = String(updatedZoneData?.name || memoryEntry?.name || '').toLowerCase();
+
+        if (zKey.includes('city') || zKey.includes('nagar') || zName.includes('city') || zName.includes('nagar') || id === 'zone-city-1') {
+          shippingZoneId = 'zone_nagar_nigam';
+        } else if (zKey.includes('rural') || zKey.includes('dehat') || zName.includes('rural') || zName.includes('dehat') || id === 'zone-rural-2') {
+          shippingZoneId = 'zone_dehat';
+        } else if (zKey.includes('pan') || zName.includes('pan') || zName.includes('outside') || id === 'zone-pan-india-3') {
+          shippingZoneId = 'zone_pan_india';
+        }
+
+        if (shippingZoneId) {
+          await supabase
+            .from('zone_shipping_settings')
+            .update({ is_active: Boolean(isActive), updated_at: updates.updated_at })
+            .eq('id', shippingZoneId);
+
+          // Also update data/zone_shipping_settings.json backup file
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
+            if (fs.existsSync(filePath)) {
+              const fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              if (Array.isArray(fileData)) {
+                const target = fileData.find((f: Record<string, unknown>) => f.id === shippingZoneId);
+                if (target) {
+                  target.isActive = Boolean(isActive);
+                  target.updatedAt = updates.updated_at;
+                  fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2), 'utf8');
+                }
+              }
+            }
+          } catch {}
+        }
+      }
 
       // If pincodes array is provided, refresh pincode mappings for this zone
       if (Array.isArray(pincodes)) {
@@ -122,7 +173,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update memory
-    const idx = memoryZones.findIndex((z) => z.id === id);
+    const idx = memoryZones.findIndex((z) => z.id === id || (typeof updatedZoneData !== 'undefined' && updatedZoneData && z.zoneKey === updatedZoneData.zone_key));
     if (idx !== -1) {
       memoryZones[idx] = {
         ...memoryZones[idx],

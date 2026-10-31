@@ -8,7 +8,7 @@ import {
   Info, Truck, ArrowLeft, Check, Box, Tag, Ruler,
   Shirt, DollarSign, Scale, Percent, FileCheck,
   Link as LinkIcon, Home, Crown, Award, Store,
-  Layers, Package, CheckCircle2, Bookmark
+  Layers, Package, CheckCircle2, Bookmark, AlertCircle
 } from 'lucide-react';
 import { Product } from '@/lib/adminData';
 import { useToast } from '@/context/ToastContext';
@@ -119,6 +119,7 @@ type ProductFormData = {
   // Delivery Type (per-product override)
   deliveryType: 'standard' | 'low_margin';
   deliveryChargeAmount: number;
+  isNonReturnable: boolean;
 };
 
 const initialFormData = (): ProductFormData => ({
@@ -161,6 +162,7 @@ const initialFormData = (): ProductFormData => ({
   active: true,
   deliveryType: 'standard',
   deliveryChargeAmount: 0,
+  isNonReturnable: false,
 });
 
 const defaultVariant = (parentForm: ProductFormData): VariantRecord => ({
@@ -271,6 +273,7 @@ export default function AdminProductsPage() {
         instagramUrl: String(d.instagram_url || ''),
         deliveryType: (d.delivery_type === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
         deliveryChargeAmount: Number(d.delivery_charge_amount) || 0,
+        isNonReturnable: Boolean(d.is_non_returnable),
       }));
       setProducts(mapped);
     } catch (err) {
@@ -401,6 +404,7 @@ export default function AdminProductsPage() {
       active: p.active !== false,
       deliveryType: (p.deliveryType === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
       deliveryChargeAmount: p.deliveryChargeAmount ?? 0,
+      isNonReturnable: Boolean(p.isNonReturnable),
     });
     setUploadError('');
     setSaveError('');
@@ -677,6 +681,7 @@ export default function AdminProductsPage() {
         instagramUrl: formData.instagramUrl,
         deliveryType: formData.deliveryType,
         deliveryChargeAmount: formData.deliveryChargeAmount,
+        isNonReturnable: formData.isNonReturnable,
       };
 
       const url = editingProduct ? `/api/products?id=${editingProduct.id}` : '/api/products';
@@ -2132,6 +2137,38 @@ export default function AdminProductsPage() {
               <strong>Low Margin / Wholesale:</strong> Always shows a fixed delivery charge (orange tag). This product does NOT count towards the free delivery threshold, even if the cart total is high.
             </p>
           </div>
+        </div>
+
+        {/* ── NON-RETURNABLE PRODUCT SETTING ── */}
+        <div className="bg-amber-50/70 rounded-2xl border-2 border-amber-300 p-5 sm:p-6 shadow-xs space-y-3">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-amber-200">
+            <AlertCircle size={18} className="text-amber-800" />
+            <h2 className="text-xs font-black text-amber-950 uppercase tracking-wide">
+              Product Return Policy / नॉन-रिटर्नेबल सेटिंग
+            </h2>
+          </div>
+
+          <label className="flex items-start sm:items-center gap-3.5 p-3.5 bg-white rounded-xl border border-amber-200 cursor-pointer hover:border-amber-400 transition-all shadow-xs">
+            <input
+              type="checkbox"
+              checked={formData.isNonReturnable}
+              onChange={(e) => setFormData({ ...formData, isNonReturnable: e.target.checked })}
+              className="w-5 h-5 mt-0.5 sm:mt-0 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer shrink-0"
+            />
+            <div className="flex-1">
+              <span className="text-sm font-extrabold text-gray-900 block">
+                MAKE THIS PRODUCT NON-RETURNABLE (इसको टिक करने से रिटर्न बंद हो जायेगा)
+              </span>
+              <span className="text-xs text-gray-600 block mt-0.5 leading-relaxed">
+                When checked, customers will see a red <span className="font-bold text-red-700">🚫 NON-RETURNABLE</span> warning badge on the product page and cart before purchase. Returns will be strictly disallowed for this item.
+              </span>
+            </div>
+            {formData.isNonReturnable && (
+              <span className="shrink-0 bg-red-100 text-red-700 font-black text-[10px] px-2.5 py-1 rounded-full border border-red-300">
+                NON-RETURNABLE
+              </span>
+            )}
+          </label>
         </div>
 
         {/* ════ SECTION 8: SHOW ON HOMEPAGE SECTIONS (Screenshot 2) ════ */}

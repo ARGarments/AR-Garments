@@ -68,6 +68,7 @@ export interface Product {
   // Delivery Type (per-product override)
   deliveryType?: 'standard' | 'low_margin'; // 'standard' = green Free Delivery tag; 'low_margin' = orange + Delivery tag
   deliveryChargeAmount?: number;             // Fixed delivery charge in ₹ for low_margin products
+  isNonReturnable?: boolean;                 // Non-returnable product flag
 }
 
 export interface Testimonial {

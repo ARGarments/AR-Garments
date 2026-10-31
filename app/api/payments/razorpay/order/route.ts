@@ -10,6 +10,7 @@ import {
 } from '@/lib/razorpay';
 import { getServiceSupabase } from '@/lib/supabase';
 import { ShippingAddress } from '@/lib/orders';
+import { resolveDispatchRouting } from '@/lib/deliveryPartners';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const shippingAddress = parseShippingAddress(body.shippingAddress);
+    const routing = resolveDispatchRouting(shippingAddress.pincode);
+    if (routing.isClosed) {
+      return NextResponse.json(
+        { error: 'Delivery is temporarily closed for this area / आपके क्षेत्र में सेवा अभी बंद है।' },
+        { status: 503 }
+      );
+    }
     const pricing = await calculateCheckoutPricing(body.items, body.couponCode, shippingAddress.pincode, shippingAddress.city);
     const expectedTotal = Number(body.expectedTotal);
 

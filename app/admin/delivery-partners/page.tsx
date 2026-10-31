@@ -277,6 +277,37 @@ export default function DeliveryPartnersPage() {
     }
   };
 
+  const handleToggleZoneStatus = async (zone: DeliveryZone) => {
+    const nextStatus = !zone.isActive;
+    // Optimistic UI update
+    setZones((prev) =>
+      prev.map((z) => (z.id === zone.id ? { ...z, isActive: nextStatus } : z))
+    );
+
+    try {
+      const res = await fetch('/api/admin/delivery-zones', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: zone.id, isActive: nextStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(
+          nextStatus
+            ? `${zone.name}: Delivery चालू कर दी गई है (Delivery ON)`
+            : `${zone.name}: Delivery बंद कर दी गई है (Delivery OFF - Checkout Blocked)`
+        );
+        fetchZones();
+      } else {
+        toast.error(data.error || 'Failed to update zone status');
+        fetchZones();
+      }
+    } catch {
+      toast.error('Network error toggling zone status');
+      fetchZones();
+    }
+  };
+
   // ─── Routing Simulator Handlers ───────────────────────────────────────────
   const handleTestRouting = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -533,10 +564,10 @@ export default function DeliveryPartnersPage() {
                     <div
                       key={zone.id}
                       className={`rounded-3xl border-2 p-6 space-y-4 transition-all flex flex-col justify-between ${
-                        zone.isActive ? 'border-gray-200 bg-[#FAF8F5]' : 'border-gray-200 bg-gray-50 opacity-75'
+                        zone.isActive ? 'border-gray-200 bg-[#FAF8F5]' : 'border-red-200 bg-red-50/30'
                       }`}
                     >
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {/* Zone Header */}
                         <div className="flex items-start justify-between">
                           <div>
@@ -546,10 +577,66 @@ export default function DeliveryPartnersPage() {
                             <h3 className="font-extrabold text-base text-gray-900">{zone.name}</h3>
                           </div>
                           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
-                            zone.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'
+                            zone.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
                           }`}>
-                            {zone.isActive ? 'ACTIVE' : 'INACTIVE'}
+                            {zone.isActive ? 'DELIVERY OPEN' : 'DELIVERY CLOSED'}
                           </span>
+                        </div>
+
+                        {/* ── Big ON / OFF Toggle Switch (Direct 1-Click Control) ── */}
+                        <div className={`p-4 rounded-2xl border-2 transition-all flex flex-col gap-2.5 ${
+                          zone.isActive
+                            ? 'bg-blue-50/80 border-blue-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase tracking-wider text-gray-800">
+                              Zone Switch
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleZoneStatus(zone)}
+                              className={`relative inline-flex h-9 w-20 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none shadow-inner ${
+                                zone.isActive ? 'bg-[#1D68BD]' : 'bg-gray-400'
+                              }`}
+                              title={`Click to toggle ${zone.name} ${zone.isActive ? 'OFF' : 'ON'}`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out flex items-center justify-center text-[10px] font-black ${
+                                  zone.isActive ? 'translate-x-12 text-[#1D68BD]' : 'translate-x-1 text-gray-600'
+                                }`}
+                              >
+                                {zone.isActive ? 'ON' : 'OFF'}
+                              </span>
+                              <span
+                                className={`absolute text-[11px] font-black text-white uppercase select-none ${
+                                  zone.isActive ? 'left-2.5' : 'right-2.5'
+                                }`}
+                              >
+                                {zone.isActive ? 'ON' : 'OFF'}
+                              </span>
+                            </button>
+                          </div>
+
+                          <div className="text-[11px] leading-snug">
+                            {zone.isActive ? (
+                              <span className="font-extrabold text-blue-900 flex items-center gap-1.5">
+                                <span>✓</span>
+                                <span>Delivery चालू है (Delivery ON)</span>
+                              </span>
+                            ) : (
+                              <div className="space-y-0.5 text-red-800">
+                                <span className="font-extrabold flex items-center gap-1.5 text-red-700">
+                                  <span>🚫</span>
+                                  <span>Delivery बंद है (OFF)</span>
+                                </span>
+                                <p className="text-[10px] text-red-600 font-medium">
+                                  User cannot checkout. Message shown: &quot;Delivery temporarily closed here / आपके क्षेत्र में सेवा अभी बंद है&quot;
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <p className="text-xs text-gray-600 leading-relaxed min-h-[36px]">

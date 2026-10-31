@@ -52,6 +52,28 @@ export async function GET(): Promise<NextResponse> {
       updatedAt: row.updated_at ? String(row.updated_at) : null,
     }));
 
+    // Cross-sync with delivery_zones table so ON/OFF toggled from /admin/delivery-partners is 100% honored
+    try {
+      const { data: dZones } = await supabase.from('delivery_zones').select('zone_key, name, is_active');
+      if (dZones && dZones.length > 0) {
+        for (const dz of dZones) {
+          const k = (dz.zone_key || '').toLowerCase();
+          const n = (dz.name || '').toLowerCase();
+          let targetId: string | null = null;
+          if (k.includes('city') || k.includes('nagar') || n.includes('city')) targetId = 'zone_nagar_nigam';
+          else if (k.includes('rural') || k.includes('dehat') || n.includes('rural') || n.includes('dehat')) targetId = 'zone_dehat';
+          else if (k.includes('pan') || n.includes('pan') || n.includes('outside')) targetId = 'zone_pan_india';
+
+          if (targetId) {
+            const z = mapped.find((m) => m.id === targetId);
+            if (z) {
+              z.isActive = Boolean(dz.is_active);
+            }
+          }
+        }
+      }
+    } catch {}
+
     return NextResponse.json(mapped, { headers: NO_STORE_HEADERS });
   } catch (error: unknown) {
     console.error('Error fetching zone shipping settings:', error);

@@ -68,6 +68,17 @@ export function ShippingSettingsProvider({ children }: { children: ReactNode }) 
     void refreshSettings();
   }, [refreshSettings]);
 
+  // Re-fetch zone settings when user switches back to this tab from admin
+  useEffect(() => {
+    const onFocus = () => {
+      void refreshSettings();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+      return () => window.removeEventListener('focus', onFocus);
+    }
+  }, [refreshSettings]);
+
   return (
     <ShippingSettingsContext.Provider value={{ settings, zoneSettings, isFreeDeliveryGloballyActive, loading, error, refreshSettings }}>
       {children}

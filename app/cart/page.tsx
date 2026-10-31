@@ -397,6 +397,16 @@ export default function CartPage() {
                           </span>
                         )}
 
+                        {/* Non-Returnable Warning Badge */}
+                        {item.isNonReturnable && (
+                          <div className="mt-1.5">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-red-700 bg-red-50 border border-red-300 px-2 py-0.5 rounded-md shadow-2xs">
+                              <span className="text-xs">⚠</span>
+                              <span>Non-Returnable Item (वापस नहीं होगा)</span>
+                            </span>
+                          </div>
+                        )}
+
                         {/* Mobile Stepper & Remove */}
                         <div className="flex items-center justify-between mt-3 sm:hidden pt-2 border-t border-gray-100">
                           {/* Stepper */}

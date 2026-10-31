@@ -22,6 +22,7 @@ export interface CartItem {
   quantity: number;
   deliveryType?: 'standard' | 'low_margin';
   deliveryChargeAmount?: number;
+  isNonReturnable?: boolean;
   // Computed zone price info
   zonePrice?: ZonePriceResult;
   effectivePrice?: number;
@@ -42,6 +43,7 @@ interface CartContextType {
     subcategoryName?: string | null;
     deliveryType?: 'standard' | 'low_margin';
     deliveryChargeAmount?: number;
+    isNonReturnable?: boolean;
   }, quantity?: number) => void;
   removeFromCart: (productId: string | number) => void;
   updateQuantity: (productId: string | number, quantity: number) => void;
@@ -178,6 +180,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       subcategoryName?: string | null;
       deliveryType?: 'standard' | 'low_margin';
       deliveryChargeAmount?: number;
+      isNonReturnable?: boolean;
     },
     quantity = 1
   ) => {
@@ -208,6 +211,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             quantity,
             deliveryType: product.deliveryType || 'standard',
             deliveryChargeAmount: product.deliveryChargeAmount ?? 0,
+            isNonReturnable: Boolean(product.isNonReturnable),
           },
         ];
       }

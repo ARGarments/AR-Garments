@@ -1,6 +1,7 @@
 // ─── DELIVERY PARTNERS & AUTOMATED DISPATCH ROUTING ENGINE ─────────────
 
 import { DEFAULT_NAGAR_NIGAM_PINCODES, DEFAULT_DEHAT_PINCODES } from './zoneShipping';
+import { getServiceSupabase } from './supabase';
 
 export type IntegrationType = 'manual' | 'api';
 export type DispatchType = 'internal' | 'external';
@@ -47,6 +48,8 @@ export interface RoutingDecision {
   dispatchType: DispatchType;
   dispatchStatus: DispatchStatus;
   isFallback: boolean;
+  isClosed?: boolean;
+  isZoneActive?: boolean;
   notes: string;
   trackingUrl?: string | null;
 }
@@ -146,6 +149,63 @@ export function sanitizePartnerForClient(partner: DeliveryPartner): DeliveryPart
   return sanitized;
 }
 
+// ─── Live Zones Fetcher (Honors DB is_active toggles) ───────────────────────
+
+export async function fetchLiveDeliveryZones(): Promise<DeliveryZone[]> {
+  try {
+    const supabase = getServiceSupabase();
+    const { data: zonesData, error: zErr } = await supabase
+      .from('delivery_zones')
+      .select(`
+        *,
+        default_partner:default_partner_id (id, name, code, is_active),
+        fallback_partner:fallback_partner_id (id, name, code, is_active)
+      `)
+      .order('priority', { ascending: false });
+
+    if (!zErr && zonesData && zonesData.length > 0) {
+      const { data: pincodesData } = await supabase
+        .from('delivery_zone_pincodes')
+        .select('zone_id, pincode, pincode_prefix');
+
+      const pincodesByZone = new Map<string, { pincodes: string[]; prefixes: string[] }>();
+      if (pincodesData) {
+        for (const row of pincodesData) {
+          if (!pincodesByZone.has(row.zone_id)) {
+            pincodesByZone.set(row.zone_id, { pincodes: [], prefixes: [] });
+          }
+          const entry = pincodesByZone.get(row.zone_id)!;
+          if (row.pincode) entry.pincodes.push(String(row.pincode));
+          if (row.pincode_prefix) entry.prefixes.push(String(row.pincode_prefix));
+        }
+      }
+
+      return zonesData.map((row) => {
+        const pinEntry = pincodesByZone.get(row.id) || { pincodes: [], prefixes: [] };
+        return {
+          id: String(row.id),
+          zoneKey: String(row.zone_key),
+          name: String(row.name),
+          description: row.description ? String(row.description) : null,
+          defaultPartnerId: row.default_partner_id ? String(row.default_partner_id) : null,
+          defaultPartnerName: row.default_partner ? (row.default_partner as { name: string }).name : undefined,
+          fallbackPartnerId: row.fallback_partner_id ? String(row.fallback_partner_id) : null,
+          fallbackPartnerName: row.fallback_partner ? (row.fallback_partner as { name: string }).name : undefined,
+          isActive: Boolean(row.is_active),
+          priority: Number(row.priority) || 1,
+          pincodes: pinEntry.pincodes,
+          pincodePrefixes: pinEntry.prefixes,
+          createdAt: row.created_at ? String(row.created_at) : undefined,
+          updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching live delivery zones:', err);
+  }
+  return DEFAULT_ZONES;
+}
+
 // ─── Automated Dispatch Routing Engine ──────────────────────────────────────
 
 export function resolveDispatchRouting(
@@ -155,11 +215,11 @@ export function resolveDispatchRouting(
 ): RoutingDecision {
   const cleanPin = (pincode || '').replace(/\D/g, '').trim();
 
-  // 1. Identify Zone (sorted by priority descending)
-  const activeZones = zones.filter((z) => z.isActive).sort((a, b) => b.priority - a.priority);
+  // 1. Identify Zone (sorted by priority descending, regardless of active status first)
+  const sortedZones = [...zones].sort((a, b) => b.priority - a.priority);
   let matchedZone: DeliveryZone | null = null;
 
-  for (const zone of activeZones) {
+  for (const zone of sortedZones) {
     // Check explicit pincodes
     if (zone.pincodes && zone.pincodes.length > 0 && zone.pincodes.includes(cleanPin)) {
       matchedZone = zone;
@@ -188,7 +248,27 @@ export function resolveDispatchRouting(
       dispatchType: 'internal',
       dispatchStatus: 'manual_review',
       isFallback: false,
+      isClosed: false,
+      isZoneActive: true,
       notes: `No active delivery zone matched pincode "${cleanPin}". Placed in Manual Review.`,
+    };
+  }
+
+  // If the matched zone has been turned OFF by Admin, block delivery!
+  if (!matchedZone.isActive) {
+    return {
+      partnerId: null,
+      partnerName: 'Delivery Closed',
+      partnerCode: 'zone_closed',
+      zoneId: matchedZone.id,
+      zoneKey: matchedZone.zoneKey,
+      zoneName: matchedZone.name,
+      dispatchType: 'internal',
+      dispatchStatus: 'manual_review',
+      isFallback: false,
+      isClosed: true,
+      isZoneActive: false,
+      notes: `Delivery temporarily closed here / आपके क्षेत्र में सेवा अभी बंद है (${matchedZone.name}).`,
     };
   }
 
@@ -220,6 +300,8 @@ export function resolveDispatchRouting(
       dispatchType: isManual ? 'internal' : 'external',
       dispatchStatus: 'assigned',
       isFallback: false,
+      isClosed: false,
+      isZoneActive: true,
       notes: `Routed to default partner ${defaultPartner.name} via ${matchedZone.name} rule.`,
     };
   }
@@ -237,11 +319,13 @@ export function resolveDispatchRouting(
       dispatchType: isManual ? 'internal' : 'external',
       dispatchStatus: 'assigned',
       isFallback: true,
+      isClosed: false,
+      isZoneActive: true,
       notes: `Default partner was unavailable/inactive. Assigned fallback partner ${fallbackPartner.name}.`,
     };
   }
 
-  // 4. Default / Fallback partner not available -> Manual Review
+  // 4. Default / Fallback partner not available -> Manual Review (zone IS active, partner just not configured)
   return {
     partnerId: defaultPartner?.id || null,
     partnerName: defaultPartner?.name || 'Manual Review Required',
@@ -252,6 +336,8 @@ export function resolveDispatchRouting(
     dispatchType: 'internal',
     dispatchStatus: 'manual_review',
     isFallback: false,
+    isClosed: false,
+    isZoneActive: true,
     notes: `No active/configured partner available for ${matchedZone.name} (Pincode: ${cleanPin}). Needs admin review.`,
   };
 }

@@ -45,6 +45,7 @@ interface ProductData {
   instagramUrl?: string;
   deliveryType?: 'standard' | 'low_margin';
   deliveryChargeAmount?: number;
+  isNonReturnable?: boolean;
 }
 
 interface ProductReview {
@@ -256,6 +257,7 @@ export default function ProductDetailPage() {
           instagramUrl: (data.instagram_url as string) || (data.instagramUrl as string) || '',
           deliveryType: (data.delivery_type === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
           deliveryChargeAmount: Number(data.delivery_charge_amount ?? 0),
+          isNonReturnable: Boolean(data.is_non_returnable ?? data.isNonReturnable ?? false),
         };
 
         setProduct(mapped);
@@ -539,6 +541,7 @@ export default function ProductDetailPage() {
       subcategoryName: product.subcategoryName,
       deliveryType: product.deliveryType,
       deliveryChargeAmount: product.deliveryChargeAmount,
+      isNonReturnable: product.isNonReturnable,
     }, quantity);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
@@ -1004,6 +1007,21 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
+              {/* NON-RETURNABLE BADGE (Customer Product Page) */}
+              {product.isNonReturnable && (
+                <div className="mt-3 rounded-2xl border-2 border-red-300 bg-red-50 p-3.5 text-red-900 shadow-xs flex items-start gap-2.5">
+                  <span className="text-lg leading-none mt-0.5">🚫</span>
+                  <div>
+                    <span className="text-xs font-black tracking-wide uppercase text-red-700 block">
+                      NON-RETURNABLE (यह सामान वापस नहीं होगा)
+                    </span>
+                    <span className="text-[11px] text-red-800 font-medium leading-relaxed block mt-0.5">
+                      This item cannot be returned or replaced due to hygiene and clearance policy.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 space-y-2.5">
                 <button
                   type="button"
@@ -1286,6 +1304,21 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+            {/* NON-RETURNABLE BADGE (Customer Product Page) */}
+            {product.isNonReturnable && (
+              <div className="mt-3 rounded-2xl border-2 border-red-300 bg-red-50 p-3.5 text-red-900 shadow-xs flex items-start gap-2.5">
+                <span className="text-lg leading-none mt-0.5">🚫</span>
+                <div>
+                  <span className="text-xs font-black tracking-wide uppercase text-red-700 block">
+                    NON-RETURNABLE (यह सामान वापस नहीं होगा)
+                  </span>
+                  <span className="text-[11px] text-red-800 font-medium leading-relaxed block mt-0.5">
+                    This item cannot be returned or replaced due to hygiene and clearance policy.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="hidden flex-col gap-2.5 sm:flex">
               <button
@@ -1347,11 +1380,19 @@ export default function ProductDetailPage() {
                 <span className="text-xs font-black text-gray-800">Secure Payments</span>
                 <span className="text-[10px] text-gray-500">100% Safe</span>
               </div>
-              <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2">
-                <RotateCcw size={20} className="text-[#083028]" />
-                <span className="text-[10px] font-black text-gray-800">7 Days Return</span>
-                <span className="text-[9px] text-gray-500">Hassle-free pickups</span>
-              </div>
+              {product.isNonReturnable ? (
+                <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2 text-red-600">
+                  <AlertCircle size={20} className="text-red-600" />
+                  <span className="text-[10px] font-black text-red-700">Non-Returnable</span>
+                  <span className="text-[9px] text-red-600 font-medium">No returns allowed</span>
+                </div>
+              ) : (
+                <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2">
+                  <RotateCcw size={20} className="text-[#083028]" />
+                  <span className="text-[10px] font-black text-gray-800">7 Days Return</span>
+                  <span className="text-[9px] text-gray-500">Hassle-free pickups</span>
+                </div>
+              )}
               <div className="flex min-w-0 flex-col items-center gap-1 px-1 sm:px-2">
                 <ShieldCheck size={20} className="text-[#083028]" />
                 <span className="text-[10px] font-black text-gray-800">100% Authentic</span>

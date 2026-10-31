@@ -3,7 +3,7 @@ import { getServiceSupabase } from '@/lib/supabase';
 import { calculateCheckoutPricing, CheckoutPricingError } from '@/lib/checkoutPricing';
 import { isAdminRequest } from '@/lib/adminSession';
 import { getAuthenticatedUser } from '@/lib/requestAuth';
-import { resolveDispatchRouting } from '@/lib/deliveryPartners';
+import { resolveDispatchRouting, fetchLiveDeliveryZones } from '@/lib/deliveryPartners';
 import {
   Order,
   OrderItem,
@@ -283,8 +283,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Automatic Dispatch Routing based on shipping pincode
-    const routing = resolveDispatchRouting(address.pincode || '');
+    // Automatic Dispatch Routing based on shipping pincode with live database zones
+    const liveZones = await fetchLiveDeliveryZones();
+    const routing = resolveDispatchRouting(address.pincode || '', liveZones);
+
+    if (routing.isClosed === true) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Delivery is temporarily closed for this area (${routing.zoneName || 'Selected Zone'}). Orders cannot be placed at this time. / आपके क्षेत्र में सेवा अभी बंद है।`,
+        },
+        { status: 503 }
+      );
+    }
 
     // --- Build order object ---
     const newOrder: Order = {

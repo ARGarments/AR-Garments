@@ -67,6 +67,8 @@ export interface DetectedZoneResult {
   isFreeDelivery: boolean;
   deliveryFee: number;
   amountNeededForFreeDelivery: number;
+  isClosed?: boolean;
+  closedMessage?: string;
 }
 
 /**
@@ -109,12 +111,12 @@ export function resolveZoneByPincode(
 
 /**
  * Calculates delivery fee according to the 3-Zone Free Delivery rules:
- * - If subtotal <= 0 or coupon gives free shipping => 0
+ * - If pincode is empty or incomplete (< 6 digits) => NOT closed, just show estimated fee (Pan India)
  * - If zone is ON (isActive = true):
  *     - If subtotal >= freeDeliveryThreshold => FREE (0)
  *     - Else => standardDeliveryFee
- * - If zone is OFF (isActive = false):
- *     - Free delivery is disabled. standardDeliveryFee always applies regardless of order amount!
+ * - If zone is OFF (isActive = false) AND pincode is a valid 6-digit entered pincode:
+ *     - isClosed: true — block checkout
  */
 export function calculateZoneDelivery(
   subtotal: number,
@@ -122,24 +124,15 @@ export function calculateZoneDelivery(
   settings: ZoneShippingSetting[] = DEFAULT_ZONE_SETTINGS,
   hasFreeShippingCoupon = false
 ): DetectedZoneResult {
-  if (subtotal <= 0 || hasFreeShippingCoupon) {
-    const zone = resolveZoneByPincode(pincode, settings);
-    return {
-      zone,
-      zoneType: zone.id === 'zone_nagar_nigam' ? 'nagar_nigam' : zone.id === 'zone_dehat' ? 'dehat' : 'pan_india',
-      zoneLabel: zone.zoneName,
-      zoneLabelHi: zone.zoneNameHi,
-      isFreeDelivery: true,
-      deliveryFee: 0,
-      amountNeededForFreeDelivery: 0,
-    };
-  }
+  const cleaned = (pincode || '').trim().replace(/\D/g, '');
+  const isPincodeEntered = cleaned.length === 6;
 
   const zone = resolveZoneByPincode(pincode, settings);
   const zoneType = zone.id === 'zone_nagar_nigam' ? 'nagar_nigam' : zone.id === 'zone_dehat' ? 'dehat' : 'pan_india';
 
-  // Rule: If OFF, standard fee always applies regardless of order value
-  if (!zone.isActive) {
+  // Rule 1: Only block checkout if zone is OFF AND user has actually entered a valid 6-digit pincode.
+  // If pincode is empty/incomplete, NEVER show "Delivery Closed" — user hasn't selected their zone yet.
+  if (!zone.isActive && isPincodeEntered) {
     return {
       zone,
       zoneType,
@@ -147,6 +140,21 @@ export function calculateZoneDelivery(
       zoneLabelHi: zone.zoneNameHi,
       isFreeDelivery: false,
       deliveryFee: zone.standardDeliveryFee,
+      amountNeededForFreeDelivery: 0,
+      isClosed: true,
+      closedMessage: 'Delivery temporarily closed here / आपके क्षेत्र में सेवा अभी बंद है',
+    };
+  }
+
+  // Rule 2: If free shipping coupon or zero subtotal
+  if (subtotal <= 0 || hasFreeShippingCoupon) {
+    return {
+      zone,
+      zoneType,
+      zoneLabel: zone.zoneName,
+      zoneLabelHi: zone.zoneNameHi,
+      isFreeDelivery: true,
+      deliveryFee: 0,
       amountNeededForFreeDelivery: 0,
     };
   }

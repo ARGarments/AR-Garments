@@ -17,6 +17,8 @@ import {
   Tag,
   BadgeCheck,
   Home,
+  XCircle,
+  AlertCircle,
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -275,6 +277,7 @@ function OrderSummary({
     zonePrice?: ZonePriceResult;
     deliveryType?: string;
     deliveryChargeAmount?: number;
+    isNonReturnable?: boolean;
   }[];
   subtotal: number;
   discount: number;
@@ -329,6 +332,11 @@ function OrderSummary({
                       : `-${item.zonePrice.markupPercent}%`}
                   </span>
                 )}
+                {item.isNonReturnable && (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                    ⚠ Non-Returnable (वापस नहीं होगा)
+                  </span>
+                )}
               </div>
             </div>
             <div className="text-right shrink-0">
@@ -368,10 +376,24 @@ function OrderSummary({
         )}
         <div className="flex justify-between text-sm text-[#083028]/70">
           <div><span>Delivery charge</span>{zoneResult && <p className="text-[10px] text-amber-800 font-semibold">{zoneResult.zoneLabel}</p>}</div>
-          <span className={shippingReady && shipping === 0 ? 'text-green-600 font-medium' : ''}>
-            {!shippingReady ? 'Calculating…' : shipping === 0 ? 'FREE' : `₹${shipping}`}
-          </span>
+          {zoneResult?.isClosed ? (
+            <span className="text-xs font-black text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded">
+              CLOSED / सेवा बंद
+            </span>
+          ) : (
+            <span className={shippingReady && shipping === 0 ? 'text-green-600 font-medium' : ''}>
+              {!shippingReady ? 'Calculating…' : shipping === 0 ? 'FREE' : `₹${shipping}`}
+            </span>
+          )}
         </div>
+        {zoneResult?.isClosed && (
+          <div className="rounded-xl border border-red-300 bg-red-50 p-2.5 text-xs text-red-800">
+            <span className="font-bold block">🚫 Delivery Unavailable in this Zone</span>
+            <span className="text-[11px] text-red-700 leading-tight block mt-0.5">
+              {zoneResult.closedMessage || 'Delivery is temporarily closed here / आपके क्षेत्र में सेवा अभी बंद है'}
+            </span>
+          </div>
+        )}
         {shippingReady && shipping === 0 && subtotal > 0 && (
           <p className="text-xs text-green-600 flex items-center gap-1">
             <BadgeCheck size={12} /> Free shipping applied!
@@ -497,7 +519,7 @@ export default function CheckoutPage() {
     shippingSettingsError,
     getItemZonePrice,
   } = useCart();
-  const { zoneSettings } = useShippingSettings();
+  const { zoneSettings, refreshSettings } = useShippingSettings();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -583,6 +605,11 @@ export default function CheckoutPage() {
 
   // ── Redirects ────────────────────────────────────────────────────────────────
 
+  // Always fetch latest zone settings when checkout page mounts (catches stale context from admin toggles)
+  useEffect(() => {
+    void refreshSettings();
+  }, [refreshSettings]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/login?redirect=/checkout');
@@ -662,6 +689,7 @@ export default function CheckoutPage() {
     price: item.price,
     deliveryType: item.deliveryType,
     deliveryChargeAmount: item.deliveryChargeAmount,
+    isNonReturnable: item.isNonReturnable,
   }));
 
   // ── Validation ────────────────────────────────────────────────────────────────
@@ -704,6 +732,14 @@ export default function CheckoutPage() {
       toast.error(shippingSettingsError || 'Shipping settings are unavailable.', {
         title: 'Checkout Unavailable',
       });
+      return;
+    }
+    if (checkoutZoneResult?.isClosed) {
+      toast.error(
+        checkoutZoneResult.closedMessage ||
+          'Delivery is temporarily closed for your location. Orders cannot be placed right now.',
+        { title: 'Delivery Closed' }
+      );
       return;
     }
     if (!validate()) return;
@@ -1046,9 +1082,25 @@ export default function CheckoutPage() {
                   shipping={shipping}
                   shippingReady={Boolean(shippingSettings)}
                   total={total}
+                  zoneResult={checkoutZoneResult}
                   lowMarginDeliveryTotal={lowMarginDeliveryTotal}
                 />
               </div>
+
+              {/* Zone Closed Banner / Kill Switch */}
+              {checkoutZoneResult.isClosed && (
+                <div className="mb-4 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-900 shadow-sm flex items-start gap-3">
+                  <span className="text-2xl shrink-0 mt-0.5">🚫</span>
+                  <div>
+                    <h4 className="text-sm font-black text-red-900">
+                      Delivery Temporarily Closed / आपके क्षेत्र में सेवा अभी बंद है
+                    </h4>
+                    <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                      {checkoutZoneResult.closedMessage || 'Delivery is temporarily closed for this area. Orders cannot be placed at this time.'}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Place Order button */}
               {shippingSettingsError && (
@@ -1058,11 +1110,12 @@ export default function CheckoutPage() {
               )}
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || shippingSettingsLoading || !shippingSettings}
-                className="w-full bg-[#083028] text-white rounded-2xl py-4 font-bold text-base
-                  hover:bg-[#083028]/90 active:scale-[0.99] transition-all
-                  disabled:opacity-70 disabled:cursor-not-allowed
-                  flex items-center justify-center gap-2 shadow-lg shadow-[#083028]/20"
+                disabled={loading || shippingSettingsLoading || !shippingSettings || Boolean(checkoutZoneResult.isClosed)}
+                className={`w-full rounded-2xl py-4 font-bold text-base transition-all flex items-center justify-center gap-2 shadow-lg ${
+                  checkoutZoneResult.isClosed
+                    ? 'bg-red-700 text-white cursor-not-allowed opacity-90 shadow-red-700/20'
+                    : 'bg-[#083028] text-white hover:bg-[#083028]/90 active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed shadow-[#083028]/20'
+                }`}
               >
                 {loading || shippingSettingsLoading ? (
                   <>
@@ -1072,6 +1125,10 @@ export default function CheckoutPage() {
                       : paymentMethod === 'online'
                         ? 'Starting Payment…'
                         : 'Placing Order…'}
+                  </>
+                ) : checkoutZoneResult.isClosed ? (
+                  <>
+                    <XCircle size={20} /> Delivery Closed for this Area (ऑर्डर बंद है)
                   </>
                 ) : (
                   <>
