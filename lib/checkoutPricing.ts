@@ -13,6 +13,7 @@ import {
   ZoneShippingSetting,
   DEFAULT_ZONE_SETTINGS,
   calculateZoneDelivery,
+  resolveZoneByPincode,
 } from '@/lib/zoneShipping';
 
 interface CheckoutItemInput {
@@ -57,6 +58,9 @@ export interface CheckoutPricing {
   shipping: number;
   total: number;
   couponCode?: string;
+  couponDiscount?: number;
+  onlineDiscount?: number;
+  onlineDiscountPercent?: number;
 }
 
 export class CheckoutPricingError extends Error {}
@@ -145,10 +149,29 @@ async function getZoneShippingSettings(): Promise<ZoneShippingSetting[]> {
         isActive: Boolean(row.is_active),
         freeDeliveryThreshold: Number(row.free_delivery_threshold) || 0,
         standardDeliveryFee: Number(row.standard_delivery_fee) || 0,
+        onlinePaymentDiscount: Number(row.online_payment_discount) || 0,
         customPincodes: Array.isArray(row.custom_pincodes) ? (row.custom_pincodes as string[]) : [],
         sortOrder: Number(row.sort_order) || 0,
         updatedAt: row.updated_at ? String(row.updated_at) : null,
       }));
+
+      // Cross-sync onlinePaymentDiscount from local file if DB had 0 or not yet migrated
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
+        if (fs.existsSync(filePath)) {
+          const fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          if (Array.isArray(fileData)) {
+            for (const item of fileData) {
+              const m = mapped.find((x) => x.id === item.id);
+              if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+                m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+              }
+            }
+          }
+        }
+      } catch {}
 
       // Cross-sync with delivery_zones table so ON/OFF toggled by admin is 100% honored
       try {
@@ -251,7 +274,8 @@ export async function calculateCheckoutPricing(
   rawItems: unknown,
   rawCouponCode: unknown,
   rawPincode?: string | null,
-  rawCity?: string | null
+  rawCity?: string | null,
+  paymentMethod?: string | null
 ): Promise<CheckoutPricing> {
   const items = normalizeItems(rawItems);
   const productMap = await getProducts(items);
@@ -353,8 +377,21 @@ export async function calculateCheckoutPricing(
     }
   }
 
+  // Calculate Zone Online Payment Discount if user chooses online payment
+  let onlineDiscount = 0;
+  let onlineDiscountPercent = 0;
+  if (paymentMethod === 'online' && rawPincode) {
+    const zoneSettings = await getZoneShippingSettings();
+    const zone = resolveZoneByPincode(rawPincode, zoneSettings);
+    onlineDiscountPercent = Number(zone.onlinePaymentDiscount) || 0;
+    if (onlineDiscountPercent > 0) {
+      const discountableBase = Math.max(0, subtotal - couponResult.discount);
+      onlineDiscount = Math.round((discountableBase * onlineDiscountPercent) / 100);
+    }
+  }
+
   const shipping = baseShipping + lowMarginDeliveryTotal;
-  const total = Math.max(0, subtotal - couponResult.discount + shipping);
+  const total = Math.max(0, subtotal - couponResult.discount - onlineDiscount + shipping);
 
   if (total < 1) {
     throw new CheckoutPricingError('The payable amount must be at least ₹1.');
@@ -363,7 +400,10 @@ export async function calculateCheckoutPricing(
   return {
     items: canonicalItems,
     subtotal,
-    discount: couponResult.discount,
+    discount: couponResult.discount + onlineDiscount,
+    couponDiscount: couponResult.discount,
+    onlineDiscount,
+    onlineDiscountPercent,
     shipping,
     total,
     ...(couponCode ? { couponCode } : {}),

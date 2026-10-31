@@ -267,7 +267,8 @@ export async function POST(request: NextRequest) {
       items,
       couponCode,
       address?.pincode,
-      address?.city
+      address?.city,
+      paymentMethod
     );
     const expectedTotal = Number(total);
     const priceDiff = Math.abs(expectedTotal - pricing.total);

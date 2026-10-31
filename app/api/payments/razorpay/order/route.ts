@@ -65,7 +65,13 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    const pricing = await calculateCheckoutPricing(body.items, body.couponCode, shippingAddress.pincode, shippingAddress.city);
+    const pricing = await calculateCheckoutPricing(
+      body.items,
+      body.couponCode,
+      shippingAddress.pincode,
+      shippingAddress.city,
+      'online'
+    );
     const expectedTotal = Number(body.expectedTotal);
 
     const priceDiff = Math.abs(expectedTotal - pricing.total);

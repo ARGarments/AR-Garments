@@ -10,6 +10,8 @@ export interface ZoneShippingSetting {
   customPincodes?: string[];
   sortOrder: number;
   updatedAt?: string | null;
+  /** Online payment discount % for this zone (0 = no discount). Admin-configurable. */
+  onlinePaymentDiscount?: number;
 }
 
 export const DEFAULT_NAGAR_NIGAM_PINCODES: string[] = [
@@ -32,8 +34,9 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 1: Prayagraj Nagar Nigam',
     zoneNameHi: 'प्रयागराज नगर निगम',
     isActive: true,
-    freeDeliveryThreshold: 500,
-    standardDeliveryFee: 40,
+    freeDeliveryThreshold: 600,
+    standardDeliveryFee: 50,
+    onlinePaymentDiscount: 2,
     customPincodes: DEFAULT_NAGAR_NIGAM_PINCODES,
     sortOrder: 1,
   },
@@ -42,8 +45,9 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 2: Prayagraj Dehat',
     zoneNameHi: 'प्रयागराज देहात',
     isActive: true,
-    freeDeliveryThreshold: 1500,
-    standardDeliveryFee: 80,
+    freeDeliveryThreshold: 2000,
+    standardDeliveryFee: 100,
+    onlinePaymentDiscount: 3,
     customPincodes: DEFAULT_DEHAT_PINCODES,
     sortOrder: 2,
   },
@@ -52,8 +56,9 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 3: Pan India',
     zoneNameHi: 'पैन इंडिया',
     isActive: true,
-    freeDeliveryThreshold: 3000,
-    standardDeliveryFee: 120,
+    freeDeliveryThreshold: 1600,
+    standardDeliveryFee: 170,
+    onlinePaymentDiscount: 5,
     customPincodes: [],
     sortOrder: 3,
   },

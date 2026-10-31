@@ -6,6 +6,7 @@
     "isActive": true,
     "freeDeliveryThreshold": 600,
     "standardDeliveryFee": 50,
+    "onlinePaymentDiscount": 2,
     "customPincodes": [
       "211001",
       "211002",
@@ -25,7 +26,7 @@
       "211019"
     ],
     "sortOrder": 1,
-    "updatedAt": "2026-10-31T15:07:12.744Z"
+    "updatedAt": "2026-10-31T16:41:57.791Z"
   },
   {
     "id": "zone_dehat",
@@ -34,6 +35,7 @@
     "isActive": true,
     "freeDeliveryThreshold": 2000,
     "standardDeliveryFee": 100,
+    "onlinePaymentDiscount": 3,
     "customPincodes": [
       "212101",
       "212104",
@@ -70,7 +72,7 @@
       "212412"
     ],
     "sortOrder": 2,
-    "updatedAt": "2026-10-31T15:07:14.322Z"
+    "updatedAt": "2026-10-31T16:41:57.791Z"
   },
   {
     "id": "zone_pan_india",
@@ -79,8 +81,9 @@
     "isActive": true,
     "freeDeliveryThreshold": 1600,
     "standardDeliveryFee": 170,
+    "onlinePaymentDiscount": 5,
     "customPincodes": [],
     "sortOrder": 3,
-    "updatedAt": "2026-10-31T15:24:37.547Z"
+    "updatedAt": "2026-10-31T16:41:57.791Z"
   }
 ]

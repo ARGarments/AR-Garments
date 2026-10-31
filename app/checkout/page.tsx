@@ -258,12 +258,14 @@ function SelectField({
 function OrderSummary({
   items,
   subtotal,
-  discount,
+  couponDiscount = 0,
   shipping,
   shippingReady,
   total,
   zoneResult,
   lowMarginDeliveryTotal,
+  onlineDiscountAmount = 0,
+  onlineDiscountPercent = 0,
 }: {
   zoneResult?: DetectedZoneResult;
   items: {
@@ -280,11 +282,13 @@ function OrderSummary({
     isNonReturnable?: boolean;
   }[];
   subtotal: number;
-  discount: number;
+  couponDiscount?: number;
   shipping: number;
   shippingReady: boolean;
   total: number;
   lowMarginDeliveryTotal?: number;
+  onlineDiscountAmount?: number;
+  onlineDiscountPercent?: number;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-[#083028]/10 shadow-sm overflow-hidden">
@@ -359,12 +363,20 @@ function OrderSummary({
           <span>Subtotal</span>
           <span>₹{subtotal.toLocaleString('en-IN')}</span>
         </div>
-        {discount > 0 && (
+        {couponDiscount > 0 && (
           <div className="flex justify-between text-sm text-green-600">
             <span className="flex items-center gap-1">
-              <Tag size={13} /> Discount
+              <Tag size={13} /> Coupon Discount
             </span>
-            <span>-₹{discount.toLocaleString('en-IN')}</span>
+            <span>-₹{couponDiscount.toLocaleString('en-IN')}</span>
+          </div>
+        )}
+        {onlineDiscountAmount > 0 && (
+          <div className="flex justify-between text-sm text-blue-700 bg-blue-50/90 border border-blue-200 px-2.5 py-1.5 rounded-lg">
+            <span className="flex items-center gap-1.5 font-bold">
+              💳 Online Pay Discount ({onlineDiscountPercent}%)
+            </span>
+            <span className="font-extrabold">-₹{onlineDiscountAmount.toLocaleString('en-IN')}</span>
           </div>
         )}
         {/* Low-margin delivery charges */}
@@ -595,10 +607,26 @@ export default function CheckoutPage() {
     return 0;
   }, [appliedCoupon, checkoutSubtotal]);
 
-  const checkoutShipping = checkoutZoneResult.deliveryFee;
-  const checkoutTotal = Math.max(0, checkoutSubtotal - checkoutDiscount + checkoutShipping + lowMarginDeliveryTotal);
-
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+
+  // Zone-specific Online Payment Discount
+  const zoneOnlineDiscountPercent = useMemo(() => {
+    return Number(checkoutZoneResult?.zone?.onlinePaymentDiscount) || 0;
+  }, [checkoutZoneResult]);
+
+  const onlineDiscountAmount = useMemo(() => {
+    if (paymentMethod !== 'online' || zoneOnlineDiscountPercent <= 0) return 0;
+    // Applied on (subtotal - coupon discount)
+    const base = Math.max(0, checkoutSubtotal - checkoutDiscount);
+    return Math.round((base * zoneOnlineDiscountPercent) / 100);
+  }, [paymentMethod, zoneOnlineDiscountPercent, checkoutSubtotal, checkoutDiscount]);
+
+  const checkoutShipping = checkoutZoneResult.deliveryFee;
+  const checkoutTotal = Math.max(
+    0,
+    checkoutSubtotal - checkoutDiscount - onlineDiscountAmount + checkoutShipping + lowMarginDeliveryTotal
+  );
+
   const [errors, setErrors] = useState<Partial<DeliveryForm>>({});
   const [loading, setLoading] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
@@ -676,7 +704,7 @@ export default function CheckoutPage() {
 
   // ── Pricing ───────────────────────────────────────────────────────────────────
 
-  const discount = checkoutDiscount;
+  const discount = checkoutDiscount + onlineDiscountAmount;
   const total = checkoutTotal;
   const subtotal = checkoutSubtotal;
   const shipping = checkoutShipping;
@@ -1047,6 +1075,10 @@ export default function CheckoutPage() {
 
                   {/* Online Payment */}
                   <label
+                    onClick={() => {
+                      setPaymentMethod('online');
+                      void refreshSettings();
+                    }}
                     className={`flex items-center gap-4 border-2 rounded-xl px-4 py-3.5 cursor-pointer transition-all select-none
                       ${paymentMethod === 'online'
                         ? 'border-[#083028] bg-[#083028]/5'
@@ -1058,16 +1090,30 @@ export default function CheckoutPage() {
                       name="payment"
                       value="online"
                       checked={paymentMethod === 'online'}
-                      onChange={() => setPaymentMethod('online')}
+                      onChange={() => {
+                        setPaymentMethod('online');
+                        void refreshSettings();
+                      }}
                       className="accent-[#083028] w-4 h-4"
                     />
                     <CreditCard size={22} className="text-[#083028] shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-[#083028]">Online Payment (UPI / Card)</p>
-                      <p className="text-xs text-[#083028]/55">Secure digital payment</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-[#083028]">Online Payment (UPI / Card)</p>
+                        {zoneOnlineDiscountPercent > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full shadow-xs animate-pulse">
+                            🔥 {zoneOnlineDiscountPercent}% Extra OFF
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#083028]/55">
+                        {zoneOnlineDiscountPercent > 0 
+                          ? `Pay online & save an extra ₹${Math.round((Math.max(0, checkoutSubtotal - checkoutDiscount) * zoneOnlineDiscountPercent) / 100).toLocaleString('en-IN')} on this order!`
+                          : 'Secure digital payment'}
+                      </p>
                     </div>
                     {paymentMethod === 'online' && (
-                      <CheckCircle2 size={18} className="text-[#083028] ml-auto" />
+                      <CheckCircle2 size={18} className="text-[#083028] ml-auto shrink-0" />
                     )}
                   </label>
                 </div>
@@ -1078,12 +1124,14 @@ export default function CheckoutPage() {
                 <OrderSummary
                   items={checkoutItems}
                   subtotal={subtotal}
-                  discount={discount}
+                  couponDiscount={checkoutDiscount}
                   shipping={shipping}
                   shippingReady={Boolean(shippingSettings)}
                   total={total}
                   zoneResult={checkoutZoneResult}
                   lowMarginDeliveryTotal={lowMarginDeliveryTotal}
+                  onlineDiscountAmount={onlineDiscountAmount}
+                  onlineDiscountPercent={zoneOnlineDiscountPercent}
                 />
               </div>
 
@@ -1151,12 +1199,14 @@ export default function CheckoutPage() {
               <OrderSummary
                 items={checkoutItems}
                 subtotal={subtotal}
-                discount={discount}
+                couponDiscount={checkoutDiscount}
                 shipping={shipping}
                 shippingReady={Boolean(shippingSettings)}
                 total={total}
                 zoneResult={checkoutZoneResult}
                 lowMarginDeliveryTotal={lowMarginDeliveryTotal}
+                onlineDiscountAmount={onlineDiscountAmount}
+                onlineDiscountPercent={zoneOnlineDiscountPercent}
               />
 
               {/* Free shipping notice - Completely Hidden / Destroyed when Zone is OFF */}

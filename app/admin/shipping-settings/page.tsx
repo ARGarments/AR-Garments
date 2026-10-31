@@ -378,12 +378,30 @@ export default function ShippingSettingsPage() {
                               className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#083028]" />
                           </div>
                         </div>
+                        <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
+                          <label className="block text-[11px] font-black text-blue-900 leading-tight mb-1.5 flex items-center justify-between">
+                            <span>Online Payment Discount (ऑनलाइन छूट):</span>
+                            <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold">UPI / Card</span>
+                          </label>
+                          <div className="relative flex items-center">
+                            <input type="number" min="0" max="100" step="0.5" value={zone.onlinePaymentDiscount ?? 0}
+                              onChange={(e) => updateZoneField(index, 'onlinePaymentDiscount', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full pl-3 pr-8 py-2 bg-white border border-blue-300 rounded-lg text-sm font-black text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            <span className="absolute right-3 text-sm font-extrabold text-blue-700">%</span>
+                          </div>
+                          <p className="text-[9.5px] text-blue-700 mt-1">
+                            {(zone.onlinePaymentDiscount ?? 0) > 0 
+                              ? `✓ Customers paying online from this zone get ${zone.onlinePaymentDiscount}% instant discount at checkout.`
+                              : '0% = No online payment discount for this zone.'}
+                          </p>
+                        </div>
                       </div>
                       <div className={`p-2.5 rounded-xl text-[10px] leading-relaxed ${zone.isActive ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>
                         {zone.isActive ? (
-                          <p>✓ <strong>Free Delivery active</strong> on orders above ₹{zone.freeDeliveryThreshold}. Below: ₹{zone.standardDeliveryFee} fee.</p>
+                          <p>✓ <strong>Free Delivery active</strong> on orders above ₹{zone.freeDeliveryThreshold}. Below: ₹{zone.standardDeliveryFee} fee.{(zone.onlinePaymentDiscount ?? 0) > 0 ? ` Online discount: ${zone.onlinePaymentDiscount}%.` : ''}</p>
                         ) : (
-                          <p>✕ <strong>Free Delivery OFF</strong>: ₹{zone.standardDeliveryFee} always applies.</p>
+                          <p>✕ <strong>Zone Delivery OFF</strong>: Delivery is temporarily closed for this zone.</p>
                         )}
                       </div>
                     </div>

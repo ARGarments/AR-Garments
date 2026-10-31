@@ -50,6 +50,7 @@ export async function GET(): Promise<NextResponse> {
       customPincodes: Array.isArray(row.custom_pincodes) ? (row.custom_pincodes as string[]) : [],
       sortOrder: Number(row.sort_order) || 0,
       updatedAt: row.updated_at ? String(row.updated_at) : null,
+      onlinePaymentDiscount: Number(row.online_payment_discount) || 0,
     }));
 
     // Cross-sync with delivery_zones table so ON/OFF toggled from /admin/delivery-partners is 100% honored
@@ -68,6 +69,22 @@ export async function GET(): Promise<NextResponse> {
             const z = mapped.find((m) => m.id === targetId);
             if (z) {
               z.isActive = Boolean(dz.is_active);
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // Also read online_payment_discount from local fallback file if DB doesn't have it yet
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
+      if (fs.existsSync(filePath)) {
+        const fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (Array.isArray(fileData)) {
+          for (const item of fileData) {
+            const m = mapped.find((x) => x.id === item.id);
+            if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+              m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
             }
           }
         }
@@ -105,6 +122,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const upsertRows = zones.map((z: Record<string, unknown>, index: number) => {
       const freeThreshold = Math.max(0, Number(z.freeDeliveryThreshold ?? z.free_delivery_threshold) || 0);
       const standardFee = Math.max(0, Number(z.standardDeliveryFee ?? z.standard_delivery_fee) || 0);
+      const onlineDiscount = Math.max(0, Math.min(100, Number(z.onlinePaymentDiscount ?? z.online_payment_discount) || 0));
 
       return {
         id: String(z.id || `zone_${index + 1}`),
@@ -113,6 +131,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         is_active: Boolean(z.isActive ?? z.is_active),
         free_delivery_threshold: freeThreshold,
         standard_delivery_fee: standardFee,
+        online_payment_discount: onlineDiscount,
         custom_pincodes: Array.isArray(z.customPincodes)
           ? z.customPincodes
           : (Array.isArray(z.custom_pincodes) ? z.custom_pincodes : []),
@@ -129,6 +148,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       isActive: Boolean(row.is_active),
       freeDeliveryThreshold: Number(row.free_delivery_threshold),
       standardDeliveryFee: Number(row.standard_delivery_fee),
+      onlinePaymentDiscount: Number(row.online_payment_discount),
       customPincodes: Array.isArray(row.custom_pincodes) ? (row.custom_pincodes as string[]) : [],
       sortOrder: Number(row.sort_order),
       updatedAt: row.updated_at ? String(row.updated_at) : null,
@@ -157,28 +177,59 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         .eq('id', 1);
     } catch {}
 
-    const { data, error } = await supabase
+    // If column doesn't exist yet in Supabase, retry without online_payment_discount for DB while keeping in local file
+    let upsertRes = await supabase
       .from('zone_shipping_settings')
       .upsert(upsertRows, { onConflict: 'id' })
       .select('*')
       .order('sort_order', { ascending: true });
+
+    if (upsertRes.error && upsertRes.error.message.includes('online_payment_discount')) {
+      const fallbackRows = upsertRows.map(({ online_payment_discount, ...rest }) => rest);
+      upsertRes = await supabase
+        .from('zone_shipping_settings')
+        .upsert(fallbackRows, { onConflict: 'id' })
+        .select('*')
+        .order('sort_order', { ascending: true });
+    }
+
+    const { data, error } = upsertRes;
 
     if (error) {
       console.warn('Supabase zone settings upsert error (using local fallback):', error.message);
       return NextResponse.json(mappedFallback, { headers: NO_STORE_HEADERS });
     }
 
-    const mapped: ZoneShippingSetting[] = (data || []).map((row: Record<string, unknown>) => ({
+    const mapped: ZoneShippingSetting[] = (data || []).map((row: Record<string, unknown>, idx: number) => ({
       id: String(row.id),
       zoneName: String(row.zone_name),
       zoneNameHi: String(row.zone_name_hi),
       isActive: Boolean(row.is_active),
       freeDeliveryThreshold: Number(row.free_delivery_threshold),
       standardDeliveryFee: Number(row.standard_delivery_fee),
+      onlinePaymentDiscount: row.online_payment_discount !== undefined 
+        ? Number(row.online_payment_discount) 
+        : (mappedFallback[idx]?.onlinePaymentDiscount ?? 0),
       customPincodes: Array.isArray(row.custom_pincodes) ? (row.custom_pincodes as string[]) : [],
       sortOrder: Number(row.sort_order),
       updatedAt: row.updated_at ? String(row.updated_at) : null,
     }));
+
+    // Also read online_payment_discount from local fallback file if DB doesn't have it yet
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
+      if (fs.existsSync(filePath)) {
+        const fileData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (Array.isArray(fileData)) {
+          for (const item of fileData) {
+            const m = mapped.find((x) => x.id === item.id);
+            if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+              m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+            }
+          }
+        }
+      }
+    } catch {}
 
     return NextResponse.json(mapped, { headers: NO_STORE_HEADERS });
   } catch (error: unknown) {
