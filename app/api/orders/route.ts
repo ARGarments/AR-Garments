@@ -431,6 +431,37 @@ export async function POST(request: NextRequest) {
     // 2. Persist to in-memory store (always — ensures order is never lost)
     memoryOrders.unshift(newOrder);
 
+    // 3. Allocate items to Party Stock Meter / Main Store batches
+    try {
+      const { createAllocation, getPartyBatches } = await import('@/lib/partyService');
+      const allBatches = await getPartyBatches();
+
+      for (const item of newOrder.items) {
+        // Find if this product belongs to a specific party batch
+        const matchedBatch = allBatches.find((b) => b.productId === item.id && b.availableQuantity > 0)
+          || allBatches.find((b) => b.productId === item.id);
+
+        const assignedPartyId = matchedBatch ? matchedBatch.partyId : null;
+        const unitCost = matchedBatch ? matchedBatch.partyCostPrice : 0;
+        const sellingPrice = Number(item.numericPrice || item.price || 0);
+
+        await createAllocation({
+          orderId: newOrder.id,
+          orderItemId: item.id,
+          productId: item.id,
+          productName: item.name,
+          partyId: assignedPartyId,
+          batchId: matchedBatch ? matchedBatch.id : null,
+          quantity: item.quantity || 1,
+          unitCostPrice: unitCost,
+          unitSellingPrice: sellingPrice,
+          status: 'allocated',
+        });
+      }
+    } catch (allocErr) {
+      console.warn('Could not auto-create party allocation on order placement:', allocErr);
+    }
+
     return NextResponse.json(
       { success: true, order: newOrder, orderId: newOrder.id },
       { status: 201 }
@@ -577,6 +608,38 @@ export async function PATCH(request: NextRequest) {
         },
         { status: databaseError ? 500 : 404 }
       );
+    }
+
+    // 3. Update Party Allocations and 7-day return window countdown
+    try {
+      const { getAllocations } = await import('@/lib/partyService');
+      const allAllocations = await getAllocations();
+      const orderAllocations = allAllocations.filter((a) => a.orderId === orderId);
+
+      for (const alloc of orderAllocations) {
+        if (normalizedStatus === 'Delivered') {
+          alloc.status = 'delivered_hold';
+          alloc.deliveredAt = now;
+          // Calculate 7-day countdown: deliveredAt + 7 days
+          const returnUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+          alloc.returnWindowUntil = returnUntil;
+          alloc.updatedAt = now;
+        } else if (normalizedStatus === 'Shipped' || normalizedStatus === 'Out for Delivery') {
+          alloc.status = 'in_transit';
+          alloc.updatedAt = now;
+        } else if (normalizedStatus === 'Cancelled') {
+          alloc.status = 'cancelled';
+          alloc.updatedAt = now;
+        }
+      }
+
+      // Persist allocation changes
+      const fs = await import('fs');
+      const path = await import('path');
+      const allocFile = path.join(process.cwd(), 'data', 'order_item_party_allocations.json');
+      fs.writeFileSync(allocFile, JSON.stringify(allAllocations, null, 2), 'utf8');
+    } catch (allocUpdateErr) {
+      console.warn('Could not update party allocations on status change:', allocUpdateErr);
     }
 
     return NextResponse.json({ success: true, orderId, status: normalizedStatus });

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "545b8b54-9724-457d-80f3-47256130b66f",
+    "partyId": "a5967ccb-8d3b-42c0-a28b-b75cccdae5d5",
+    "productId": "prod-2",
+    "productName": "Cotton Suit Set",
+    "variantId": null,
+    "sku": null,
+    "inwardQuantity": 200,
+    "availableQuantity": 200,
+    "partyCostPrice": 50000,
+    "sellingPrice": 899,
+    "batchNumber": "BATCH-990125",
+    "notes": "Party Stock Inward via Product Update (Amit Bhai)",
+    "createdAt": "2026-11-01T09:06:30.125Z",
+    "updatedAt": "2026-11-01T09:06:30.125Z"
+  }
+]

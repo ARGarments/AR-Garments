@@ -32,6 +32,7 @@ const navItems = [
   { label: 'Registered Users', href: '/admin/users', icon: Users },
   { label: 'Business Registrations', href: '/admin/business-registrations', icon: Store },
   { label: 'Products & Catalog', href: '/admin/products', icon: ShoppingBag },
+  { label: 'Parties & Stock Meter', href: '/admin/parties', icon: Store },
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },
   { label: 'Product Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Coupons & Discounts', href: '/admin/coupons', icon: Ticket },

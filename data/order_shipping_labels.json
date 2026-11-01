@@ -1,0 +1,182 @@
+[
+  {
+    "id": "local-lbl-1793525207171",
+    "orderId": "ORD-1793460249418",
+    "labelType": "local",
+    "courierName": "In-House Rider (Local)",
+    "awbNumber": "LOC-249418",
+    "handOffOption": "hand_to_hand",
+    "labelData": {
+      "businessName": "AR Garments",
+      "businessPhone": "+91 96999 42332",
+      "businessAddress": "Chowk, Prayagraj, UP - 211003",
+      "customerName": "John Doe",
+      "customerPhone": "9876543210",
+      "addressLine1": "Updated Address",
+      "addressLine2": "",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411005",
+      "items": [
+        {
+          "name": "Embroidered Saree",
+          "quantity": 1
+        }
+      ],
+      "paymentMethod": "cod",
+      "codAmount": 1469,
+      "isCod": true,
+      "handOffOption": "hand_to_hand",
+      "barcodeSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 375.2 61\" width=\"100%\" height=\"auto\" style=\"max-width: 375.2px; display: block; margin: 0 auto;\">\n      <rect x=\"10.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"14.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"19.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"27.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"34.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"40.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"45.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"53.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"56.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"62.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"66.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"74.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"80.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"85.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"90.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"98.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"102.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"110.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"115.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"122.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"126.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"133.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"141.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"144.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"150.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"157.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"160.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"168.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"174.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"179.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"186.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"192.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"198.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"203.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"208.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"214.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"221.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"227.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"235.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"238.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"245.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"250.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"256.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"264.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"267.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"274.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"280.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"285.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"291.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"296.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"304.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"309.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"315.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"320.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"326.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"333.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"339.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"344.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"352.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"358.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"362.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/>\n      <text x=\"187.6\" y=\"57\" font-family=\"monospace\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#000000\" letter-spacing=\"1.5\">ORD-1793460249418</text>\n    </svg>",
+      "notes": null
+    },
+    "labelUrl": null,
+    "status": "generated",
+    "createdAt": "2026-11-01T09:26:47.171Z",
+    "updatedAt": "2026-11-01T09:26:47.171Z"
+  },
+  {
+    "id": "local-lbl-1793525195801",
+    "orderId": "ORD-1001",
+    "labelType": "local",
+    "courierName": "In-House Rider (Local)",
+    "awbNumber": "LOC-D-1001",
+    "handOffOption": "remote",
+    "labelData": {
+      "businessName": "AR Garments",
+      "businessPhone": "+91 96999 42332",
+      "businessAddress": "Chowk, Prayagraj, UP - 211003",
+      "customerName": "Priya Sharma",
+      "customerPhone": "9876543210",
+      "addressLine1": "12, Rose Garden Apartments",
+      "addressLine2": "MG Road",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "pincode": "560001",
+      "items": [
+        {
+          "name": "Embroidered Saree",
+          "quantity": 1
+        }
+      ],
+      "paymentMethod": "online",
+      "codAmount": 0,
+      "isCod": false,
+      "handOffOption": "remote",
+      "barcodeSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 216.79999999999984 61\" width=\"100%\" height=\"auto\" style=\"max-width: 216.79999999999984px; display: block; margin: 0 auto;\">\n      <rect x=\"10.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"14.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"19.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"27.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"34.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"40.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"45.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"53.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"56.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"62.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"66.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"74.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"80.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"85.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"90.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"98.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"102.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"110.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"115.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"120.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"126.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"133.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"138.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"144.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"150.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"155.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"163.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"168.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"173.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"179.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"186.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"194.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"200.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"203.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/>\n      <text x=\"108.4\" y=\"57\" font-family=\"monospace\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#000000\" letter-spacing=\"1.5\">ORD-1001</text>\n    </svg>",
+      "notes": null
+    },
+    "labelUrl": null,
+    "status": "generated",
+    "createdAt": "2026-11-01T09:26:35.801Z",
+    "updatedAt": "2026-11-01T09:26:35.801Z"
+  },
+  {
+    "id": "local-lbl-1793525087562",
+    "orderId": "ORD-1001",
+    "labelType": "local",
+    "courierName": "In-House Rider (Local)",
+    "awbNumber": "LOC-D-1001",
+    "handOffOption": "hand_to_hand",
+    "labelData": {
+      "businessName": "AR Garments",
+      "businessPhone": "+91 96999 42332",
+      "businessAddress": "Chowk, Prayagraj, UP - 211003",
+      "customerName": "Priya Sharma",
+      "customerPhone": "9876543210",
+      "addressLine1": "12, Rose Garden Apartments",
+      "addressLine2": "MG Road",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "pincode": "560001",
+      "items": [
+        {
+          "name": "Embroidered Saree",
+          "quantity": 1
+        }
+      ],
+      "paymentMethod": "online",
+      "codAmount": 0,
+      "isCod": false,
+      "handOffOption": "hand_to_hand",
+      "barcodeSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 216.79999999999984 61\" width=\"100%\" height=\"auto\" style=\"max-width: 216.79999999999984px; display: block; margin: 0 auto;\">\n      <rect x=\"10.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"14.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"19.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"27.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"34.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"40.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"45.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"53.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"56.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"62.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"66.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"74.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"80.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"85.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"90.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"98.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"102.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"110.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"115.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"120.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"126.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"133.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"138.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"144.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"150.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"155.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"163.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"168.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"173.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"179.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"186.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"194.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"200.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"203.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/>\n      <text x=\"108.4\" y=\"57\" font-family=\"monospace\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#000000\" letter-spacing=\"1.5\">ORD-1001</text>\n    </svg>",
+      "notes": null
+    },
+    "labelUrl": null,
+    "status": "generated",
+    "createdAt": "2026-11-01T09:24:47.562Z",
+    "updatedAt": "2026-11-01T09:24:47.562Z"
+  },
+  {
+    "id": "third-party-lbl-1793525060917",
+    "orderId": "ORD-1793460249418",
+    "labelType": "third_party",
+    "courierName": "Shiprocket",
+    "awbNumber": "SHI9552884510",
+    "handOffOption": "remote",
+    "labelData": {
+      "carrierName": "Shiprocket",
+      "carrierCode": "shiprocket",
+      "awbNumber": "SHI9552884510",
+      "routingHub": "HUB-PUN-411",
+      "scheduleCode": "1-HO-060917",
+      "dimensionalMetadata": "25 x 18 x 5 cm | 0.8 kg",
+      "customerName": "John Doe",
+      "customerPhone": "9876543210",
+      "shippingAddress": "Updated Address",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411005",
+      "codAmount": 1469,
+      "isCod": true,
+      "itemsCount": 1,
+      "items": [
+        {
+          "name": "Embroidered Saree",
+          "quantity": 1
+        }
+      ],
+      "barcodeSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 340.40000000000026 66\" width=\"340.40000000000026\" height=\"66\">\n      <rect x=\"10.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"15.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"20.8\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"29.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"35.2\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"42.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"49.6\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"58.6\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"62.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"69.4\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"78.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"85.6\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"89.2\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"98.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"101.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"109.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"114.4\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"123.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"128.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"134.2\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"143.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"148.6\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"155.8\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"164.8\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"168.4\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"175.6\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"181.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"188.2\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"195.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"200.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"208.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"215.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"220.6\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"227.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"233.2\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"242.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"247.6\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"253.0\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"262.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"267.4\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"272.8\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"280.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"287.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"292.6\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"299.8\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"307.0\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/><rect x=\"316.0\" y=\"0\" width=\"5.4\" height=\"50\" fill=\"#000000\"/><rect x=\"323.2\" y=\"0\" width=\"1.8\" height=\"50\" fill=\"#000000\"/><rect x=\"326.8\" y=\"0\" width=\"3.6\" height=\"50\" fill=\"#000000\"/>\n      <text x=\"170.2\" y=\"62\" font-family=\"monospace\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#000000\" letter-spacing=\"1.5\">SHI9552884510</text>\n    </svg>"
+    },
+    "labelUrl": null,
+    "status": "generated",
+    "createdAt": "2026-11-01T09:24:20.917Z",
+    "updatedAt": "2026-11-01T09:24:20.917Z"
+  },
+  {
+    "id": "local-lbl-1793524886278",
+    "orderId": "ORD-1793460249418",
+    "labelType": "local",
+    "courierName": "In-House Rider (Local)",
+    "awbNumber": "LOC-249418",
+    "handOffOption": "hand_to_hand",
+    "labelData": {
+      "businessName": "AR Garments",
+      "businessPhone": "+91 96999 42332",
+      "businessAddress": "Chowk, Prayagraj, UP - 211003",
+      "customerName": "John Doe",
+      "customerPhone": "9876543210",
+      "addressLine1": "Updated Address",
+      "addressLine2": "",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "pincode": "411005",
+      "items": [
+        {
+          "name": "Embroidered Saree",
+          "quantity": 1
+        }
+      ],
+      "paymentMethod": "cod",
+      "codAmount": 1469,
+      "isCod": true,
+      "handOffOption": "hand_to_hand",
+      "barcodeSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 375.2 61\" width=\"375.2\" height=\"61\">\n      <rect x=\"10.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"14.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"19.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"27.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"34.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"40.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"45.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"53.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"56.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"62.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"66.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"74.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"80.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"85.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"90.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"98.0\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"102.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"110.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"115.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"122.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"126.8\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"133.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"141.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"144.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"150.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"157.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"160.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"168.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"174.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"179.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"186.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"192.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"198.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"203.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"208.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"214.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"221.2\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"227.6\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"235.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"238.8\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"245.2\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"250.0\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"256.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"264.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"267.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"274.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"280.4\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"285.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"291.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"296.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"304.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"309.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"315.6\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"320.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"326.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"333.2\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"339.6\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"344.4\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/><rect x=\"352.4\" y=\"0\" width=\"4.8\" height=\"45\" fill=\"#000000\"/><rect x=\"358.8\" y=\"0\" width=\"1.6\" height=\"45\" fill=\"#000000\"/><rect x=\"362.0\" y=\"0\" width=\"3.2\" height=\"45\" fill=\"#000000\"/>\n      <text x=\"187.6\" y=\"57\" font-family=\"monospace\" font-size=\"11\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#000000\" letter-spacing=\"1.5\">ORD-1793460249418</text>\n    </svg>",
+      "notes": null
+    },
+    "labelUrl": null,
+    "status": "generated",
+    "createdAt": "2026-11-01T09:21:26.278Z",
+    "updatedAt": "2026-11-01T09:21:26.278Z"
+  }
+]

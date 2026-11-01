@@ -53,29 +53,7 @@ export async function GET(): Promise<NextResponse> {
       onlinePaymentDiscount: Number(row.online_payment_discount) || 0,
     }));
 
-    // Cross-sync with delivery_zones table so ON/OFF toggled from /admin/delivery-partners is 100% honored
-    try {
-      const { data: dZones } = await supabase.from('delivery_zones').select('zone_key, name, is_active');
-      if (dZones && dZones.length > 0) {
-        for (const dz of dZones) {
-          const k = (dz.zone_key || '').toLowerCase();
-          const n = (dz.name || '').toLowerCase();
-          let targetId: string | null = null;
-          if (k.includes('city') || k.includes('nagar') || n.includes('city')) targetId = 'zone_nagar_nigam';
-          else if (k.includes('rural') || k.includes('dehat') || n.includes('rural') || n.includes('dehat')) targetId = 'zone_dehat';
-          else if (k.includes('pan') || n.includes('pan') || n.includes('outside')) targetId = 'zone_pan_india';
-
-          if (targetId) {
-            const z = mapped.find((m) => m.id === targetId);
-            if (z) {
-              z.isActive = Boolean(dz.is_active);
-            }
-          }
-        }
-      }
-    } catch {}
-
-    // Also read online_payment_discount from local fallback file if DB doesn't have it yet
+    // Merge from local fallback file: supplement onlinePaymentDiscount and isActive if DB is out of sync
     try {
       const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
       if (fs.existsSync(filePath)) {
@@ -83,8 +61,14 @@ export async function GET(): Promise<NextResponse> {
         if (Array.isArray(fileData)) {
           for (const item of fileData) {
             const m = mapped.find((x) => x.id === item.id);
-            if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
-              m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+            if (m) {
+              // Always trust local file for isActive (it reflects what admin toggled via the UI)
+              if (item.isActive !== undefined) {
+                m.isActive = Boolean(item.isActive);
+              }
+              if (item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+                m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+              }
             }
           }
         }
@@ -215,7 +199,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       updatedAt: row.updated_at ? String(row.updated_at) : null,
     }));
 
-    // Also read online_payment_discount from local fallback file if DB doesn't have it yet
+    // Merge from local fallback file: supplement onlinePaymentDiscount and isActive if DB is out of sync
     try {
       const filePath = path.join(process.cwd(), 'data', 'zone_shipping_settings.json');
       if (fs.existsSync(filePath)) {
@@ -223,8 +207,14 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         if (Array.isArray(fileData)) {
           for (const item of fileData) {
             const m = mapped.find((x) => x.id === item.id);
-            if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
-              m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+            if (m) {
+              // Always trust local file for isActive (it reflects what admin toggled via the UI)
+              if (item.isActive !== undefined) {
+                m.isActive = Boolean(item.isActive);
+              }
+              if (item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+                m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+              }
             }
           }
         }

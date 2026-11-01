@@ -1,0 +1,38 @@
+[
+  {
+    "id": "47fda936-bde3-41ca-9392-f37668324a77",
+    "name": "test",
+    "contactPerson": "test",
+    "phone": "9699942332",
+    "email": null,
+    "address": "pune",
+    "notes": null,
+    "isActive": true,
+    "createdAt": "2026-11-01T08:43:10.624Z",
+    "updatedAt": "2026-11-01T08:43:10.624Z"
+  },
+  {
+    "id": "party-ramesh-01",
+    "name": "Ramesh Ji",
+    "contactPerson": "Ramesh Kumar",
+    "phone": "9876543210",
+    "email": "ramesh@example.com",
+    "address": "Civil Lines, Prayagraj, UP",
+    "notes": "Premium Saree and Dress Material supplier",
+    "isActive": true,
+    "createdAt": "2026-10-01T10:00:00Z",
+    "updatedAt": "2026-10-01T10:00:00Z"
+  },
+  {
+    "id": "party-amit-02",
+    "name": "Amit Bhai",
+    "contactPerson": "Amit Sharma",
+    "phone": "9876501234",
+    "email": "amit@example.com",
+    "address": "Ring Road Market, Surat, Gujarat",
+    "notes": "Silk Sarees and Synthetic Fabric Wholesaler",
+    "isActive": true,
+    "createdAt": "2026-10-01T10:00:00Z",
+    "updatedAt": "2026-10-01T10:00:00Z"
+  }
+]

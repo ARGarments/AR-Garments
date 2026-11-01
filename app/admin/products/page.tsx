@@ -120,6 +120,11 @@ type ProductFormData = {
   deliveryType: 'standard' | 'low_margin';
   deliveryChargeAmount: number;
   isNonReturnable: boolean;
+  // Party Stock Integration
+  partyInvolved: boolean;
+  partyId: string;
+  partyName: string;
+  partyCostPrice: number;
 };
 
 const initialFormData = (): ProductFormData => ({
@@ -163,6 +168,10 @@ const initialFormData = (): ProductFormData => ({
   deliveryType: 'standard',
   deliveryChargeAmount: 0,
   isNonReturnable: false,
+  partyInvolved: false,
+  partyId: '',
+  partyName: '',
+  partyCostPrice: 0,
 });
 
 const defaultVariant = (parentForm: ProductFormData): VariantRecord => ({
@@ -217,6 +226,20 @@ export default function AdminProductsPage() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [showHsnModal, setShowHsnModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Available Parties for Assignment
+  const [availableParties, setAvailableParties] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/parties?active=true')
+      .then((res) => (res.ok ? res.json() : { parties: [] }))
+      .then((data) => {
+        if (data && Array.isArray(data.parties)) {
+          setAvailableParties(data.parties.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ─── Load Products ──────────────────────────────────────────────────────────
   const loadProducts = async () => {
@@ -361,6 +384,28 @@ export default function AdminProductsPage() {
       // ignore
     }
 
+    // Fetch any existing party batch assigned to this product
+    let assignedPartyInvolved = false;
+    let assignedPartyId = '';
+    let assignedPartyName = '';
+    let assignedPartyCost = p.purchasePrice || 0;
+
+    try {
+      const bRes = await fetch(`/api/admin/batches?productId=${encodeURIComponent(p.id)}`);
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        if (bData.success && Array.isArray(bData.batches) && bData.batches.length > 0) {
+          const latestBatch = bData.batches[0];
+          if (latestBatch.partyId) {
+            assignedPartyInvolved = true;
+            assignedPartyId = latestBatch.partyId;
+            assignedPartyName = latestBatch.partyName || '';
+            assignedPartyCost = latestBatch.partyCostPrice || p.purchasePrice || 0;
+          }
+        }
+      }
+    } catch {}
+
     setFormData({
       id: p.id,
       name: p.name || '',
@@ -405,6 +450,10 @@ export default function AdminProductsPage() {
       deliveryType: (p.deliveryType === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
       deliveryChargeAmount: p.deliveryChargeAmount ?? 0,
       isNonReturnable: Boolean(p.isNonReturnable),
+      partyInvolved: assignedPartyInvolved,
+      partyId: assignedPartyId,
+      partyName: assignedPartyName,
+      partyCostPrice: assignedPartyCost,
     });
     setUploadError('');
     setSaveError('');
@@ -682,6 +731,10 @@ export default function AdminProductsPage() {
         deliveryType: formData.deliveryType,
         deliveryChargeAmount: formData.deliveryChargeAmount,
         isNonReturnable: formData.isNonReturnable,
+        partyInvolved: formData.partyInvolved,
+        partyId: formData.partyId || null,
+        partyName: formData.partyName || null,
+        partyCostPrice: formData.partyCostPrice || formData.purchasePrice || 0,
       };
 
       const url = editingProduct ? `/api/products?id=${editingProduct.id}` : '/api/products';
@@ -1910,6 +1963,109 @@ export default function AdminProductsPage() {
               </div>
               <p className="text-[10px] text-gray-400">Total rate available in stock.</p>
             </div>
+          </div>
+
+          {/* Party Stock Allocation Section (Party-Wise Stock Meter Integration) */}
+          <div className="bg-amber-50/70 border-2 border-amber-300 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-amber-200">
+              <div className="flex items-center gap-2">
+                <Store size={18} className="text-amber-800" />
+                <div>
+                  <h4 className="text-sm font-black text-amber-950">
+                    Party Stock Allocation / पार्टी स्टॉक आवंटन
+                  </h4>
+                  <p className="text-xs text-amber-800/80">
+                    Assign stock to an individual party or directly to Main Store
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
+                <span className="text-xs font-bold text-gray-700">Party Involved?</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      partyInvolved: !prev.partyInvolved,
+                      partyCostPrice: !prev.partyInvolved ? prev.purchasePrice : 0,
+                    }))
+                  }
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                    formData.partyInvolved
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {formData.partyInvolved ? 'YES (पार्टी है)' : 'NO (Main Store)'}
+                </button>
+              </div>
+            </div>
+
+            {formData.partyInvolved ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-amber-900 mb-1.5">
+                    Select Party / पार्टी चुनें <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.partyId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const p = availableParties.find((x) => x.id === selectedId);
+                      setFormData((prev) => ({
+                        ...prev,
+                        partyId: selectedId,
+                        partyName: p ? p.name : '',
+                      }));
+                    }}
+                    className="w-full px-3 py-2.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="">-- Choose an existing Party --</option>
+                    {availableParties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-amber-700 mt-1">
+                    Select the vendor/party supplying this stock batch.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-amber-900 mb-1.5">
+                    Party Cost Price / पार्टी खरीद भाव (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.partyCostPrice || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          partyCostPrice: parseFloat(e.target.value) || 0,
+                          purchasePrice: parseFloat(e.target.value) || prev.purchasePrice,
+                        }))
+                      }
+                      placeholder="Enter party cost price"
+                      className="w-full pl-8 pr-3 py-2.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <p className="text-[10px] text-amber-700 mt-1">
+                    Internal cost price per piece. Customers will NEVER see this.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-white/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>
+                  <strong>Scenario B (Direct Main Store)</strong>: Stock ({formData.totalStockPieces} pcs) will be added directly to the main store inventory without party ownership.
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

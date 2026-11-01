@@ -14,7 +14,9 @@ import {
   Truck,
   ExternalLink,
   Save,
+  Printer,
 } from 'lucide-react';
+import ShippingLabelModal from '@/components/admin/ShippingLabelModal';
 import {
   OrderFulfillmentProgress,
   OrderShipmentTracking,
@@ -225,12 +227,14 @@ function AdminOrderCard({
   updating,
   onToggle,
   onStatusChange,
+  onOpenShippingLabel,
 }: {
   order: Order;
   expanded: boolean;
   updating: boolean;
   onToggle: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
+  onOpenShippingLabel: (order: Order) => void;
 }) {
   const address = order.shippingAddress;
   const paymentLabel = order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)';
@@ -286,6 +290,31 @@ function AdminOrderCard({
 
       {expanded && (
         <div className="space-y-5 border-t border-gray-100 px-4 py-5 sm:px-6">
+          {/* Header Action Bar: Generate & Print Shipping Label */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-emerald-50/80 via-white to-amber-50/60 rounded-2xl border border-emerald-200/80 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                <Printer size={16} />
+              </div>
+              <div>
+                <p className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                  Order Dispatch &amp; Label System
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  Generate local hand-to-hand ticket or automated 3rd-party carrier AWB slip.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenShippingLabel(order)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Printer size={14} className="text-[#C9972B]" />
+              <span>Generate &amp; Print Shipping Label</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <DetailCard icon={<Mail size={16} />} title="Customer">
               <p className="font-bold text-gray-900">{address.fullName || order.userName}</p>
@@ -431,6 +460,10 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Shipping Label Generator Modal State
+  const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<Order | null>(null);
+  const [labelModalOpen, setLabelModalOpen] = useState(false);
+
   useEffect(() => {
     async function fetchOrders() {
       try {
@@ -550,9 +583,25 @@ export default function AdminOrdersPage() {
                 setExpandedOrderId((currentId) => (currentId === order.id ? null : order.id))
               }
               onStatusChange={handleStatusChange}
+              onOpenShippingLabel={(o) => {
+                setSelectedOrderForLabel(o);
+                setLabelModalOpen(true);
+              }}
             />
           ))}
         </div>
+      )}
+
+      {/* Interactive Desktop Thermal Shipping Label Generator Modal */}
+      {selectedOrderForLabel && (
+        <ShippingLabelModal
+          order={selectedOrderForLabel}
+          isOpen={labelModalOpen}
+          onClose={() => {
+            setLabelModalOpen(false);
+            setSelectedOrderForLabel(null);
+          }}
+        />
       )}
     </div>
   );

@@ -247,6 +247,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // If party is involved or direct stock added, record batch in Party Stock Meter system
+  try {
+    const { createPartyBatch } = await import('@/lib/partyService');
+    const partyInvolved = Boolean(body.partyInvolved ?? body.party_involved);
+    const assignedPartyId = partyInvolved ? (body.partyId || body.party_id || null) : null;
+    const assignedCostPrice = partyInvolved
+      ? Number(body.partyCostPrice || body.party_cost_price || purchasePrice)
+      : purchasePrice;
+    const inwardQty = totalStockPieces || Number(body.stock || 10);
+
+    if (inwardQty > 0) {
+      await createPartyBatch({
+        partyId: assignedPartyId,
+        productId: String(data.id),
+        productName: String(data.name || 'Product'),
+        inwardQuantity: inwardQty,
+        availableQuantity: inwardQty,
+        partyCostPrice: assignedCostPrice,
+        sellingPrice: Number(data.numeric_price || 0),
+        notes: partyInvolved ? `Party Stock Inward (${body.partyName || 'Party'})` : 'Direct Store Inward (No Party)',
+      });
+    }
+  } catch (batchErr) {
+    console.warn('Could not auto-create party batch on product add:', batchErr);
+  }
+
   revalidatePath('/');
   revalidatePath('/category');
   if (data?.id) revalidatePath(`/product/${data.id}`);
@@ -360,6 +386,32 @@ export async function PATCH(request: Request) {
   if (error) {
     console.error('Update product error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // If party stock is assigned during edit/update, record a party batch
+  try {
+    const { createPartyBatch } = await import('@/lib/partyService');
+    const partyInvolved = Boolean(body.partyInvolved ?? body.party_involved);
+    const assignedPartyId = partyInvolved ? (body.partyId || body.party_id || null) : null;
+    const assignedCostPrice = partyInvolved
+      ? Number(body.partyCostPrice || body.party_cost_price || data.purchase_price || 0)
+      : Number(data.purchase_price || 0);
+    const inwardQty = Number(body.totalStockPieces || body.total_stock_pieces || data.total_stock_pieces || body.stock || 0);
+
+    if (partyInvolved && assignedPartyId && inwardQty > 0) {
+      await createPartyBatch({
+        partyId: assignedPartyId,
+        productId: String(data.id),
+        productName: String(data.name || 'Product'),
+        inwardQuantity: inwardQty,
+        availableQuantity: inwardQty,
+        partyCostPrice: assignedCostPrice,
+        sellingPrice: Number(data.numeric_price || 0),
+        notes: `Party Stock Inward via Product Update (${body.partyName || 'Party'})`,
+      });
+    }
+  } catch (batchErr) {
+    console.warn('Could not auto-create party batch on product update:', batchErr);
   }
 
   revalidatePath('/');
