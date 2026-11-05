@@ -76,6 +76,7 @@ export async function POST(
       fit_shape: String(v.fit_shape || v.fitShape || ''),
       sleeve_length: String(v.sleeve_length || v.sleeveLength || ''),
       length: String(v.length || ''),
+      occasion: String(v.occasion || ''),
       custom_specifications: Array.isArray(v.custom_specifications)
         ? v.custom_specifications
         : (v.customSpecifications || []),

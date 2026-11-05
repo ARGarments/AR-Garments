@@ -44,6 +44,16 @@ export async function GET(req: NextRequest) {
           (user as any).pincode = (bizReg as any).pincode || '';
           (user as any).city = (bizReg as any).city || '';
           (user as any).state = (bizReg as any).state || '';
+
+          // If user was somehow logged in but status is not approved, invalidate authentication
+          if (businessStatus !== 'approved') {
+            return NextResponse.json({
+              authenticated: false,
+              user: null,
+              businessStatus,
+              error: 'Account pending admin approval',
+            }, { status: 200 });
+          }
         }
       } catch {
         // Non-fatal

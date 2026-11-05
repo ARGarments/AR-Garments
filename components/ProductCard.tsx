@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Heart, Info, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -35,37 +35,35 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [added, setAdded] = useState(false);
+  const [showDeliveryTooltip, setShowDeliveryTooltip] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ pincode: string; city: string }>({ pincode: '', city: '' });
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { zoneSettings } = useShippingSettings();
 
   const isFavorited = isInWishlist(product.id);
 
-  // Read saved location or default to determine if Free Delivery is active for this product
-  let savedPin = '';
-  let savedCity = '';
-  if (typeof window !== 'undefined') {
+  // Read saved location and listen to real-time location changes
+  useEffect(() => {
     try {
       const savedInfo = localStorage.getItem('ar_user_pincode_info');
       if (savedInfo) {
         const parsed = JSON.parse(savedInfo);
-        savedPin = parsed.pincode || '';
-        savedCity = parsed.city || '';
+        setUserLocation({ pincode: parsed.pincode || '', city: parsed.city || '' });
       }
     } catch {}
-  }
-  const numericPrice = product.numericPrice || Number(String(product.price).replace(/[^0-9.]/g, '')) || 0;
-  const zoneResult = calculateZoneDelivery(
-    numericPrice,
-    savedPin,
-    zoneSettings && zoneSettings.length > 0 ? zoneSettings : DEFAULT_ZONE_SETTINGS
-  );
-  // Conditional UI: Badge only renders if Zone is ON and product qualifies
-  const showFreeDeliveryBadge = zoneResult.zone.isActive && zoneResult.isFreeDelivery;
 
-  // Delivery type override logic
-  const isLowMargin = product.deliveryType === 'low_margin';
-  const chargeAmt = product.deliveryChargeAmount ?? 0;
+    const handleLocationChange = (e: Event) => {
+      const custom = e as CustomEvent<{ pincode: string; city: string }>;
+      if (custom.detail) {
+        setUserLocation({ pincode: custom.detail.pincode || '', city: custom.detail.city || '' });
+      }
+    };
+    window.addEventListener('ar_location_changed', handleLocationChange);
+    return () => window.removeEventListener('ar_location_changed', handleLocationChange);
+  }, []);
+
+  const numericPrice = product.numericPrice || Number(String(product.price).replace(/[^0-9.]/g, '')) || 0;
 
   // ── Zone Price Markup ──────────────────────────────────────────────────────
   const { getZonePrice } = useZonePriceRules();
@@ -79,9 +77,23 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       subcategoryName: product.subcategoryName,
     },
     null,
-    { pincode: savedPin, city: savedCity }
+    { pincode: userLocation.pincode, city: userLocation.city }
   );
   const showZoneMarkup = zonePrice.hasRule && zonePrice.displayPrice !== numericPrice;
+  const currentPrice = showZoneMarkup ? zonePrice.displayPrice : numericPrice;
+
+  // Dynamic Zone Free Delivery calculation using admin-set freeDeliveryThreshold
+  const activeZoneSettings = zoneSettings && zoneSettings.length > 0 ? zoneSettings : DEFAULT_ZONE_SETTINGS;
+  const zoneResult = calculateZoneDelivery(
+    currentPrice,
+    userLocation.pincode,
+    activeZoneSettings
+  );
+
+  // Delivery type override logic
+  const isLowMargin = product.deliveryType === 'low_margin';
+  // Conditional UI: Green tag only renders if Zone is active and product qualifies for admin's free delivery threshold
+  const qualifiesForFreeDelivery = !isLowMargin && zoneResult.zone.isActive && zoneResult.isFreeDelivery;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -90,7 +102,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
     const cartProduct = {
       ...product,
       price: showZoneMarkup ? `₹${zonePrice.displayPrice.toLocaleString('en-IN')}` : product.price,
-      numericPrice: showZoneMarkup ? zonePrice.displayPrice : numericPrice,
+      numericPrice: currentPrice,
       originalNumericPrice: numericPrice,
       categoryId: product.categoryId,
       subcategoryId: product.subcategoryId,
@@ -115,10 +127,14 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
   };
 
   return (
-    <div className="premium-card group bg-white border border-gray-200 rounded-xl sm:rounded-2xl overflow-hidden flex flex-col justify-between">
+    <div
+      className={`premium-card group bg-white border border-gray-200 rounded-xl sm:rounded-2xl flex flex-col justify-between relative transition-all ${
+        showDeliveryTooltip ? 'z-50' : 'hover:z-30 focus-within:z-30'
+      }`}
+    >
       <Link href={`/product/${product.id}`} className="block flex-1">
         {/* Image area */}
-        <div className="relative bg-[#EDE8DF] w-full h-[180px] sm:h-[220px] md:h-[260px]">
+        <div className="relative bg-[#EDE8DF] w-full h-[180px] sm:h-[220px] md:h-[260px] rounded-t-xl sm:rounded-t-2xl overflow-hidden">
           {/* Optional Badge */}
           {product.badge && (
             <span className="absolute top-2.5 left-2.5 z-10 bg-[#083028] text-white text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md uppercase tracking-wider">
@@ -202,24 +218,47 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
                     )}
                   </span>
                 )}
-                {/* Delivery badge: orange for low_margin, green for standard (zone-based) */}
-                {isLowMargin ? (
-                  <span className="relative group/tooltip inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200/70 cursor-pointer">
-                    <Package size={10} className="shrink-0" />
-                    <span>+ {chargeAmt > 0 ? `₹${chargeAmt}` : ''} Delivery</span>
-                    <Info size={9} className="shrink-0 text-orange-500" />
-                    <span className="pointer-events-none absolute bottom-full right-0 mb-1.5 w-56 z-50 rounded-xl bg-gray-900 text-white text-[10px] leading-relaxed p-2.5 shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200">
-                      <span className="font-bold block mb-0.5">Why No Free Delivery? / फ्री डिलीवरी क्यों नहीं?</span>
-                      Sold at razor-thin wholesale margins, this product does not count towards the Free Delivery threshold.
-                      <span className="block mt-0.5 text-gray-300">इस प्रोडक्ट की कीमत बहुत कम मार्जिन पर तय की गई है। इसलिए यह फ्री डिलीवरी छूट के अंतर्गत नहीं आता है।</span>
-                    </span>
-                  </span>
-                ) : showFreeDeliveryBadge ? (
+                {/* Delivery badge: green when free delivery qualifies, orange (+ Delivery) when below threshold or low margin */}
+                {qualifiesForFreeDelivery ? (
                   <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
                     <Truck size={10} className="shrink-0" />
                     <span>Free Delivery</span>
                   </span>
-                ) : null}
+                ) : (
+                  <span
+                    className="relative group/tooltip inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200/70 cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowDeliveryTooltip((prev) => !prev);
+                    }}
+                  >
+                    <Package size={10} className="shrink-0 text-orange-600" />
+                    <span>+ Delivery</span>
+                    <Info size={10} className="shrink-0 text-orange-500" />
+                    <div
+                      className={`absolute right-0 top-full mt-2 w-64 sm:w-72 z-[100] rounded-2xl bg-gray-950 text-white p-3.5 shadow-2xl border border-gray-800 text-left transition-all duration-200 ${
+                        showDeliveryTooltip
+                          ? 'opacity-100 pointer-events-auto visible'
+                          : 'opacity-0 pointer-events-none invisible group-hover/tooltip:opacity-100 group-hover/tooltip:pointer-events-auto group-hover/tooltip:visible'
+                      }`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
+                      <p className="font-bold text-xs sm:text-sm text-white leading-tight">
+                        Why No Free Delivery? / फ्री डिलीवरी क्यों नहीं?
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-gray-200 mt-2 leading-relaxed">
+                        Sold at razor-thin wholesale margins, this product does not count towards the Free Delivery threshold.
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-gray-300 mt-1.5 leading-relaxed">
+                        इस प्रोडक्ट की कीमत बहुत कम मार्जिन पर तय की गई है। इसलिए यह ऑर्डर फ्री डिलीवरी छूट के अंतर्गत नहीं आता है।
+                      </p>
+                    </div>
+                  </span>
+                )}
               </div>
             </div>
           </div>

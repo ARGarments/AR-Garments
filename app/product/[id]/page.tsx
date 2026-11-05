@@ -40,6 +40,9 @@ interface ProductData {
   active: boolean;
   isNewArrival?: boolean;
   isBestSeller?: boolean;
+  isPremium?: boolean;
+  isGold?: boolean;
+  tags?: string[];
   youtubeUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
@@ -235,6 +238,25 @@ export default function ProductDetailPage() {
           ...databaseImages.filter((image) => image !== primaryImage),
         ].filter(Boolean);
 
+        // Parse tags safely from array, JSON string, or Postgres text[] format
+        const rawTags = data.tags;
+        let parsedTags: string[] = [];
+        if (Array.isArray(rawTags)) {
+          parsedTags = rawTags.map(String).filter(Boolean);
+        } else if (typeof rawTags === 'string' && rawTags.trim()) {
+          try {
+            const json = JSON.parse(rawTags);
+            if (Array.isArray(json)) parsedTags = json.map(String).filter(Boolean);
+            else if (json) parsedTags = [String(json)];
+          } catch {
+            parsedTags = rawTags
+              .replace(/^\{|\}$/g, '')
+              .split(',')
+              .map((s) => s.trim().replace(/^"|"$/g, ''))
+              .filter(Boolean);
+          }
+        }
+
         const mapped: ProductData = {
           id: data.id as string,
           name: data.name as string,
@@ -252,6 +274,9 @@ export default function ProductDetailPage() {
           active: (data.active as boolean) ?? true,
           isNewArrival: (data.is_new_arrival as boolean) ?? false,
           isBestSeller: (data.is_best_seller as boolean) ?? false,
+          isPremium: (data.is_premium as boolean) ?? false,
+          isGold: (data.is_gold as boolean) ?? false,
+          tags: parsedTags,
           youtubeUrl: (data.youtube_url as string) || (data.youtubeUrl as string) || '',
           facebookUrl: (data.facebook_url as string) || (data.facebookUrl as string) || '',
           instagramUrl: (data.instagram_url as string) || (data.instagramUrl as string) || '',
@@ -745,18 +770,37 @@ export default function ProductDetailPage() {
                   </div>
                 )}
 
-                {/* Badges Overlay */}
-                <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col gap-2">
+                {/* Badges & Tags Overlay */}
+                <div className="pointer-events-none absolute left-3 top-3 sm:left-4 sm:top-4 z-10 flex flex-col gap-1.5 items-start">
                   {product.isNewArrival && (
-                    <span className="flex items-center gap-1 rounded-full bg-[#083028] px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
-                      <Sparkles size={12} /> New Arrival
+                    <span className="flex items-center gap-1 rounded-full bg-[#083028] px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      <Sparkles size={11} /> New Arrival
                     </span>
                   )}
                   {product.isBestSeller && (
-                    <span className="rounded-full bg-amber-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
+                    <span className="rounded-full bg-amber-600 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
                       ★ Best Seller
                     </span>
                   )}
+                  {product.isPremium && (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      👑 Premium
+                    </span>
+                  )}
+                  {product.isGold && (
+                    <span className="flex items-center gap-1 rounded-full bg-yellow-500 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
+                      ⭐ Gold
+                    </span>
+                  )}
+                  {/* Custom DB Tags — small compact badges */}
+                  {Array.isArray(product.tags) && product.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 rounded-full bg-[#083028]/95 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-white shadow-xs backdrop-blur-xs border border-white/20"
+                    >
+                      <Tag size={10} /> {tag}
+                    </span>
+                  ))}
                 </div>
 
                 {galleryImages.length > 0 && (
@@ -902,6 +946,17 @@ export default function ProductDetailPage() {
               <h1 className="mt-2 text-[1.55rem] font-black leading-[1.08] tracking-tight text-gray-950">
                 {product.name}
               </h1>
+
+              {/* Tags strip (mobile) */}
+              {product.tags && product.tags.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {product.tags.map((tag, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#083028]/10 text-[#083028] border border-[#083028]/25 text-[9px] min-[380px]:text-[10px] font-bold uppercase tracking-wide">
+                      <Tag size={9} /> {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-2 flex items-center gap-2 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-black text-emerald-800">
@@ -1050,27 +1105,31 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              {/* Delivery info box - Hidden for low_margin or if zone is OFF */}
-              {product?.deliveryType === 'low_margin' ? (
-                /* Orange box for low-margin products */
+              {/* Delivery info box */}
+              {product?.deliveryType === 'low_margin' || (!currentZoneResult.isFreeDelivery && currentZoneResult.zone.isActive) ? (
+                /* Orange box for low-margin products or standard products below zone threshold */
                 <div className="mt-3 flex min-h-[54px] items-center gap-2.5 rounded-2xl bg-orange-50 border border-orange-200/70 px-3 py-2 text-orange-700">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 shadow-sm">
                     <Package size={22} strokeWidth={2.2} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-black leading-tight min-[380px]:text-sm">
-                      + ₹{product.deliveryChargeAmount ?? 0} Delivery Charges
+                      + Delivery Charges
                     </p>
-                    <p className="mt-0.5 text-[9px] font-medium leading-none text-orange-500 min-[380px]:text-[10px]">
-                      Low margin product — does not qualify for free delivery
+                    <p className="mt-0.5 text-[9px] font-medium leading-none text-orange-600 min-[380px]:text-[10px]">
+                      {product?.deliveryType === 'low_margin'
+                        ? 'Low margin product — does not qualify for free delivery'
+                        : currentZoneResult.zone.freeDeliveryThreshold > 0
+                        ? `Add ₹${Math.max(0, currentZoneResult.zone.freeDeliveryThreshold - effectivePrice).toLocaleString('en-IN')} more for Free Delivery`
+                        : 'Standard delivery charges apply'}
                     </p>
                   </div>
                   <div className="relative group/dtip cursor-pointer">
-                    <Info size={18} className="text-orange-400" />
-                    <span className="pointer-events-none absolute bottom-full right-0 mb-2 w-60 z-50 rounded-xl bg-gray-900 text-white text-[10px] leading-relaxed p-2.5 shadow-xl opacity-0 group-hover/dtip:opacity-100 transition-opacity duration-200">
-                      <span className="font-bold block mb-0.5">Why No Free Delivery? / फ्री डिलीवरी क्यों नहीं?</span>
+                    <Info size={18} className="text-orange-500" />
+                    <span className="pointer-events-none absolute bottom-full right-0 mb-2 w-64 z-50 rounded-xl bg-gray-950 text-white text-[11px] leading-relaxed p-3 shadow-2xl opacity-0 group-hover/dtip:opacity-100 transition-opacity duration-200 border border-gray-800">
+                      <span className="font-bold block mb-1">Why No Free Delivery? / फ्री डिलीवरी क्यों नहीं?</span>
                       Sold at razor-thin wholesale margins, this product does not count towards the Free Delivery threshold.
-                      <span className="block mt-0.5 text-gray-300">इस प्रोडक्ट की कीमत बहुत कम मार्जिन पर तय की गई है। इसलिए यह फ्री डिलीवरी छूट के अंतर्गत नहीं आता है।</span>
+                      <span className="block mt-1 text-gray-300">इस प्रोडक्ट की कीमत बहुत कम मार्जिन पर तय की गई है। इसलिए यह ऑर्डर फ्री डिलीवरी छूट के अंतर्गत नहीं आता है।</span>
                     </span>
                   </div>
                 </div>
@@ -1185,6 +1244,18 @@ export default function ProductDetailPage() {
               <h1 className="text-[1.35rem] font-black leading-tight tracking-tight text-gray-950 min-[380px]:text-2xl sm:text-3xl">
                 {product.name}
               </h1>
+
+              {/* Tags strip (desktop) */}
+              {product.tags && product.tags.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {product.tags.map((tag, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#083028]/10 text-[#083028] border border-[#083028]/25 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide">
+                      <Tag size={9} /> {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-2 flex items-center gap-2 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-black text-emerald-800">
                   <Star size={13} className="fill-current" />

@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     const businessType = (formData.get('business_type') as string)?.trim();
     const hasGstin     = formData.get('has_gstin') === 'true';
     const gstin        = (formData.get('gstin') as string)?.trim() || '';
+    const directDocUrl = (formData.get('document_url') as string)?.trim() || '';
     const docFile      = formData.get('document') as File | null;
 
     // ── Validation ───────────────────────────────────────────────────────────
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (hasGstin && gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
       return NextResponse.json({ error: 'Please enter a valid 15-digit GSTIN number.' }, { status: 400 });
     }
-    if (!docFile) {
+    if (!directDocUrl && !docFile) {
       return NextResponse.json({ error: 'Please upload a verification document photo.' }, { status: 400 });
     }
 
@@ -87,11 +88,11 @@ export async function POST(req: NextRequest) {
       // Ignore if table not yet created
     }
 
-    // ── Upload document to ImageKit ──────────────────────────────────────────
-    let documentUrl = '';
+    // ── Document URL (pre-uploaded client-side, or fallback server-side upload) ──
+    let documentUrl = directDocUrl;
     const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
 
-    if (privateKey) {
+    if (!documentUrl && docFile && privateKey) {
       try {
         const buffer   = Buffer.from(await docFile.arrayBuffer());
         const base64   = buffer.toString('base64');
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
           documentUrl = ikData.url;
         }
       } catch (uploadErr) {
-        console.error('ImageKit upload failed for business doc:', uploadErr);
+        console.error('ImageKit fallback upload failed for business doc:', uploadErr);
       }
     }
 
@@ -154,7 +155,7 @@ export async function POST(req: NextRequest) {
       console.warn('business_registrations DB error:', bizErr);
     }
 
-    // Also store in memory fallback so instant login works even without database network latency
+    // Also store in memory fallback with status 'pending'
     const memUser = {
       id: registrationId,
       name: fullName,
@@ -162,6 +163,7 @@ export async function POST(req: NextRequest) {
       phone: mobile,
       passwordHash: hashedPassword,
       userType: 'business' as const,
+      businessStatus: 'pending' as const,
       createdAt: new Date().toISOString(),
     };
     const existingMemIndex = memoryUsers.findIndex((u) => u.email.toLowerCase() === email);

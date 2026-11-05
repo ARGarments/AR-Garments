@@ -294,8 +294,8 @@ export default function DeliveryPartnersPage() {
       if (data.success) {
         toast.success(
           nextStatus
-            ? `${zone.name}: Delivery चालू कर दी गई है (Delivery ON)`
-            : `${zone.name}: Delivery बंद कर दी गई है (Delivery OFF - Checkout Blocked)`
+            ? `${zone.name}: Delivery enabled (Delivery ON)`
+            : `${zone.name}: Delivery disabled (Delivery OFF - Checkout Blocked)`
         );
         fetchZones();
       } else {
@@ -623,16 +623,16 @@ export default function DeliveryPartnersPage() {
                             {zone.isActive ? (
                               <span className="font-extrabold text-blue-900 flex items-center gap-1.5">
                                 <span>✓</span>
-                                <span>Delivery चालू है (Delivery ON)</span>
+                                <span>Delivery ON</span>
                               </span>
                             ) : (
                               <div className="space-y-0.5 text-red-800">
                                 <span className="font-extrabold flex items-center gap-1.5 text-red-700">
                                   <span>🚫</span>
-                                  <span>Delivery बंद है (OFF)</span>
+                                  <span>Delivery OFF</span>
                                 </span>
                                 <p className="text-[10px] text-red-600 font-medium">
-                                  User cannot checkout. Message shown: &quot;Delivery temporarily closed here / आपके क्षेत्र में सेवा अभी बंद है&quot;
+                                  User cannot checkout. Message shown: &quot;Delivery temporarily closed in your area&quot;
                                 </p>
                               </div>
                             )}

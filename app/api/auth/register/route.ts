@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
         phone: cleanPhone,
         passwordHash: hashedPassword,
         userType: 'business' as const,
+        businessStatus: 'pending' as const,
         createdAt: new Date().toISOString(),
       };
       memoryUsers.push(fallbackUser);

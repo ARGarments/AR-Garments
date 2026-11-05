@@ -195,6 +195,8 @@ export async function POST(request: Request) {
     weight_unit: body.weightUnit || body.weight_unit || 'kg',
     gst_rate: body.gstRate || body.gst_rate || '5%',
     hsn_code: body.hsnCode || body.hsn_code || '',
+    sku_id: body.skuId || body.sku || body.sku_id || '',
+    sku: body.sku || body.skuId || body.sku_id || '',
     variants: Array.isArray(body.variants) ? body.variants : [],
     // Social Media Links
     youtube_url: body.youtubeUrl || body.youtube_url || '',
@@ -204,6 +206,7 @@ export async function POST(request: Request) {
     delivery_type: body.deliveryType || body.delivery_type || 'standard',
     delivery_charge_amount: Number(body.deliveryChargeAmount ?? body.delivery_charge_amount ?? 0),
     is_non_returnable: Boolean(body.isNonReturnable ?? body.is_non_returnable ?? false),
+    tags: Array.isArray(body.tags) ? body.tags : (body.tags ? [String(body.tags)] : []),
   };
 
   // Attempt insert
@@ -306,6 +309,7 @@ export async function PATCH(request: Request) {
   if (body.isBestSeller !== undefined) patch.is_best_seller = body.isBestSeller;
   if (body.isPremium !== undefined) patch.is_premium = body.isPremium;
   if (body.isGold !== undefined) patch.is_gold = body.isGold;
+  if (body.tags !== undefined) patch.tags = Array.isArray(body.tags) ? body.tags : [];
   if (body.order !== undefined) patch.sort_order = body.order;
 
   // Specifications
@@ -339,6 +343,18 @@ export async function PATCH(request: Request) {
   if (body.gst_rate !== undefined) patch.gst_rate = body.gst_rate;
   if (body.hsnCode !== undefined) patch.hsn_code = body.hsnCode;
   if (body.hsn_code !== undefined) patch.hsn_code = body.hsn_code;
+  if (body.skuId !== undefined) {
+    patch.sku_id = body.skuId;
+    patch.sku = body.skuId;
+  }
+  if (body.sku !== undefined) {
+    patch.sku = body.sku;
+    patch.sku_id = body.sku;
+  }
+  if (body.sku_id !== undefined) {
+    patch.sku_id = body.sku_id;
+    patch.sku = body.sku_id;
+  }
   if (body.variants !== undefined) patch.variants = body.variants;
 
   // Social Links

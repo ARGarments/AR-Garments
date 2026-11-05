@@ -88,6 +88,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(INVALID_CODE_RESPONSE, { status: 401 });
     }
 
+    // Check admin approval status
+    if (dbUser.status === 'pending') {
+      return NextResponse.json(
+        {
+          code: 'ACCOUNT_PENDING_APPROVAL',
+          error: 'Your registration is pending admin approval. You can only log in once approved. / आपका खाता अभी एडमिन अप्रूवल के लिए पेंडिंग है। अप्रूवल के बाद ही लॉगिन कर सकेंगे।',
+        },
+        { status: 403 }
+      );
+    }
+
+    if (dbUser.status === 'rejected') {
+      return NextResponse.json(
+        {
+          code: 'ACCOUNT_REJECTED',
+          error: 'Your registration was rejected by admin. Please contact support. / आपका पंजीकरण अस्वीकार कर दिया गया है। कृपया सहायता टीम से संपर्क करें।',
+        },
+        { status: 403 }
+      );
+    }
+
     const { data: consumedCode, error: consumeError } = await supabase
       .from('email_login_codes')
       .update({ consumed_at: new Date().toISOString() })

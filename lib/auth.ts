@@ -16,6 +16,7 @@ export interface AuthUser {
 // Allows instant signup/login even before database tables are created in Supabase
 export interface StoredUser extends AuthUser {
   passwordHash: string;
+  businessStatus?: 'pending' | 'approved' | 'rejected';
 }
 
 export const memoryUsers: StoredUser[] = [];

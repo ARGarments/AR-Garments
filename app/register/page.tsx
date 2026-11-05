@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Upload,
+  Camera,
+  ImageIcon,
   X,
   Clock,
 } from 'lucide-react';
@@ -32,6 +34,8 @@ const INDIAN_STATES = [
   'Delhi','Jammu & Kashmir','Ladakh','Lakshadweep','Puducherry',
 ];
 
+const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
+
 // ── Field component helpers ──────────────────────────────────────────────────
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +47,63 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function inputCls(extra = '') {
   return `w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all ${extra}`;
+}
+
+// ── Upload to ImageKit client-side with real XHR progress ───────────────────
+async function uploadToImageKit(
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  // 1. Fetch auth token from our secure backend
+  const tokenRes = await fetch('/api/imagekit/upload-token');
+  if (!tokenRes.ok) throw new Error('Could not get upload token.');
+  const { token, expire, signature, publicKey } = await tokenRes.json();
+
+  const fileName = `business_doc_${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('fileName', fileName);
+  fd.append('folder', '/business-docs');
+  fd.append('useUniqueFileName', 'true');
+  fd.append('tags', 'business-registration,verification');
+  fd.append('publicKey', publicKey);
+  fd.append('signature', signature);
+  fd.append('expire', String(expire));
+  fd.append('token', token);
+
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://upload.imagekit.io/api/v1/files/upload');
+
+    xhr.upload.onprogress = (evt) => {
+      if (evt.lengthComputable) {
+        const pct = Math.max(1, Math.min(99, Math.round((evt.loaded / evt.total) * 100)));
+        onProgress(pct);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.url) {
+            onProgress(100);
+            resolve(data.url);
+          } else {
+            reject(new Error('Upload succeeded but no URL returned.'));
+          }
+        } catch {
+          reject(new Error('Invalid response from upload server.'));
+        }
+      } else {
+        reject(new Error(`ImageKit upload failed (HTTP ${xhr.status}).`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during photo upload.'));
+    xhr.send(fd);
+  });
 }
 
 // ── Main Page ────────────────────────────────────────────────────────────────
@@ -61,46 +122,133 @@ export default function BusinessRegisterPage() {
   const [state, setState]             = useState('');
   const [pincode, setPincode]         = useState('');
 
-  // Business
-  const [businessType, setBusinessType] = useState<'retail_store' | 'hawker' | ''>('');
+  // Business type (default to retail_store)
+  const [businessType, setBusinessType] = useState<'retail_store' | 'hawker'>('retail_store');
   const [hasGstin, setHasGstin]         = useState(false);
   const [gstin, setGstin]               = useState('');
 
-  // Document upload
-  const [docFile, setDocFile]       = useState<File | null>(null);
-  const [docPreview, setDocPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── FIX: Separate state per business type (no bleed across tabs) ──
+  const [retailDocFile, setRetailDocFile]           = useState<File | null>(null);
+  const [retailDocPreview, setRetailDocPreview]     = useState<string | null>(null);
+  const [retailUploadedUrl, setRetailUploadedUrl]   = useState<string | null>(null);
+  const [retailProgress, setRetailProgress]         = useState<number>(0);
+  const [retailUploading, setRetailUploading]       = useState<boolean>(false);
+
+  const [hawkerDocFile, setHawkerDocFile]           = useState<File | null>(null);
+  const [hawkerDocPreview, setHawkerDocPreview]     = useState<string | null>(null);
+  const [hawkerUploadedUrl, setHawkerUploadedUrl]   = useState<string | null>(null);
+  const [hawkerProgress, setHawkerProgress]         = useState<number>(0);
+  const [hawkerUploading, setHawkerUploading]       = useState<boolean>(false);
+
+  // Active tab state getters
+  const isHawker          = businessType === 'hawker';
+  const docFile           = isHawker ? hawkerDocFile        : retailDocFile;
+  const docPreview        = isHawker ? hawkerDocPreview     : retailDocPreview;
+  const activeUploadedUrl = isHawker ? hawkerUploadedUrl   : retailUploadedUrl;
+  const isUploading       = isHawker ? hawkerUploading     : retailUploading;
+  const uploadProgress    = isHawker ? hawkerProgress      : retailProgress;
+
+  // ── File input refs (camera + gallery) ──────────────────────────────────
+  const cameraInputRef  = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // UI state
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  function handleDocChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // ── Handle file selection (shared by camera + gallery inputs) ────────────
+  async function handleDocChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Document photo must be under 5MB.');
+
+    if (file.size > MAX_FILE_BYTES) {
+      setError('Photo must be under 15MB.');
       return;
     }
-    setDocFile(file);
+
     setError(null);
+    const currentIsHawker = businessType === 'hawker';
+
+    // Show local preview immediately
     const reader = new FileReader();
-    reader.onload = () => setDocPreview(reader.result as string);
+    reader.onload = () => {
+      if (currentIsHawker) {
+        setHawkerDocFile(file);
+        setHawkerDocPreview(reader.result as string);
+      } else {
+        setRetailDocFile(file);
+        setRetailDocPreview(reader.result as string);
+      }
+    };
     reader.readAsDataURL(file);
+
+    // Reset upload state for this tab
+    if (currentIsHawker) {
+      setHawkerUploadedUrl(null);
+      setHawkerProgress(0);
+      setHawkerUploading(true);
+    } else {
+      setRetailUploadedUrl(null);
+      setRetailProgress(0);
+      setRetailUploading(true);
+    }
+
+    try {
+      const url = await uploadToImageKit(file, (pct) => {
+        if (currentIsHawker) setHawkerProgress(pct);
+        else setRetailProgress(pct);
+      });
+
+      if (currentIsHawker) {
+        setHawkerUploadedUrl(url);
+        setHawkerProgress(100);
+      } else {
+        setRetailUploadedUrl(url);
+        setRetailProgress(100);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError('Photo upload failed. Please try again.');
+      if (currentIsHawker) {
+        setHawkerDocFile(null);
+        setHawkerDocPreview(null);
+        setHawkerUploadedUrl(null);
+        setHawkerProgress(0);
+      } else {
+        setRetailDocFile(null);
+        setRetailDocPreview(null);
+        setRetailUploadedUrl(null);
+        setRetailProgress(0);
+      }
+    } finally {
+      if (currentIsHawker) setHawkerUploading(false);
+      else setRetailUploading(false);
+    }
   }
 
   function removeDoc() {
-    setDocFile(null);
-    setDocPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (businessType === 'hawker') {
+      setHawkerDocFile(null);
+      setHawkerDocPreview(null);
+      setHawkerUploadedUrl(null);
+      setHawkerProgress(0);
+      setHawkerUploading(false);
+    } else {
+      setRetailDocFile(null);
+      setRetailDocPreview(null);
+      setRetailUploadedUrl(null);
+      setRetailProgress(0);
+      setRetailUploading(false);
+    }
+    if (cameraInputRef.current)  cameraInputRef.current.value  = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // Basic client-side checks
     if (!password || password.length < 6) {
       setError('Password must be at least 6 characters long.');
       return;
@@ -113,9 +261,18 @@ export default function BusinessRegisterPage() {
       setError('Please upload a verification document photo.');
       return;
     }
+    if (isUploading) {
+      setError('Photo is still uploading. Please wait a moment.');
+      return;
+    }
+    if (!activeUploadedUrl) {
+      setError('Photo upload did not complete. Please remove and re-upload.');
+      return;
+    }
 
     setLoading(true);
     try {
+      // ── Send only the already-uploaded URL — no file blob, no blocking ImageKit call ──
       const fd = new FormData();
       fd.append('full_name', fullName);
       fd.append('mobile', mobile);
@@ -129,9 +286,9 @@ export default function BusinessRegisterPage() {
       fd.append('business_type', businessType);
       fd.append('has_gstin', String(hasGstin));
       fd.append('gstin', hasGstin ? gstin : '');
-      fd.append('document', docFile);
+      fd.append('document_url', activeUploadedUrl); // URL string, not a File blob
 
-      const res = await fetch('/api/business/register', { method: 'POST', body: fd });
+      const res  = await fetch('/api/business/register', { method: 'POST', body: fd });
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -159,23 +316,23 @@ export default function BusinessRegisterPage() {
             </div>
 
             <h2 className="text-2xl font-extrabold text-gray-900 mb-1">
-              Registration Submitted!
+              Registration Submitted! (पंजीकरण प्राप्त हुआ)
             </h2>
             <p className="text-sm font-semibold text-amber-600 mb-4">
-              STATUS: PENDING — Verification Under Review
+              STATUS: PENDING — Verification Under Review (सत्यापन प्रक्रियाधीन है)
             </p>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-left text-xs sm:text-sm text-gray-700 mb-6 space-y-1.5">
-              <p>✅ Your application has been received.</p>
-              <p>🔍 Our team will manually verify your document.</p>
-              <p>⏳ Approval takes <strong>24 to 48 hours</strong>.</p>
-              <p>📦 Once approved, you can access wholesale pricing and place bulk orders.</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-left text-xs sm:text-sm text-gray-700 mb-6 space-y-2">
+              <p>✅ <strong>Application Received:</strong> आपका आवेदन प्राप्त हो गया है।</p>
+              <p>🔍 <strong>Document Verification:</strong> हमारी टीम आपके फोटो और दस्तावेजों की जांच करेगी।</p>
+              <p>⏳ <strong>Review Time:</strong> इसमें <strong>24 से 48 घंटे</strong> का समय लगता है।</p>
+              <p>📦 <strong>Wholesale Access:</strong> अप्रूवल के बाद आप होलसेल रेट पर सीधे थोक माल खरीद सकेंगे।</p>
             </div>
 
             <p className="text-xs text-gray-500 mb-6">
-              Need help?{' '}
+              Need help? (मदद चाहिए?){' '}
               <Link href="/contact" className="font-bold text-[#083028] hover:underline">
-                Contact Support
+                Contact Support (सहायता संपर्क)
               </Link>
             </p>
 
@@ -183,13 +340,13 @@ export default function BusinessRegisterPage() {
               href="/"
               className="inline-flex items-center justify-center gap-2 w-full bg-[#083028] hover:bg-[#051e19] text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-md text-sm"
             >
-              Explore Catalog
+              Explore Catalog (कैटलॉग देखें)
               <ArrowRight size={15} />
             </Link>
 
             <div className="mt-4">
               <Link href="/login" className="text-xs font-bold text-[#083028] hover:underline">
-                Already registered? Sign In
+                Already registered? Sign In (पहले से खाता है? लॉगिन करें)
               </Link>
             </div>
           </div>
@@ -220,8 +377,8 @@ export default function BusinessRegisterPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               Business Registration
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Register your shop or business to buy wholesale from AR Garment
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 font-medium">
+              व्यापारी / दुकान पंजीकरण — होलसेल रेट पर कपड़े खरीदने के लिए अपनी दुकान या व्यापार रजिस्टर करें
             </p>
           </div>
 
@@ -237,12 +394,12 @@ export default function BusinessRegisterPage() {
 
             {/* ── Personal Info ── */}
             <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1">
-              Personal Details
+              Personal Details (व्यक्तिगत जानकारी)
             </p>
 
             {/* Full Name */}
             <div>
-              <Label>Full Name</Label>
+              <Label>Full Name / पूरा नाम</Label>
               <div className="relative">
                 <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -251,7 +408,7 @@ export default function BusinessRegisterPage() {
                   maxLength={100}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder="अपना पूरा नाम लिखें (e.g. Ramesh Kumar)"
                   className={inputCls()}
                 />
               </div>
@@ -259,7 +416,7 @@ export default function BusinessRegisterPage() {
 
             {/* Mobile */}
             <div>
-              <Label>Mobile Number</Label>
+              <Label>Mobile Number / 10 अंकों का मोबाइल नंबर</Label>
               <div className="relative">
                 <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -269,7 +426,7 @@ export default function BusinessRegisterPage() {
                   pattern="\d{10}"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="+91 | 10-digit mobile number"
+                  placeholder="10 अंकों का मोबाइल नंबर दर्ज करें"
                   className={inputCls()}
                 />
               </div>
@@ -277,7 +434,7 @@ export default function BusinessRegisterPage() {
 
             {/* Email */}
             <div>
-              <Label>Email ID</Label>
+              <Label>Email ID / ईमेल आईडी</Label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -285,7 +442,7 @@ export default function BusinessRegisterPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder="you@example.com (यदि नहीं है तो name@gmail.com लिखें)"
                   className={inputCls()}
                 />
               </div>
@@ -293,7 +450,7 @@ export default function BusinessRegisterPage() {
 
             {/* Password */}
             <div>
-              <Label>Password</Label>
+              <Label>Password / पासवर्ड (कम से कम 6 अक्षर)</Label>
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -302,7 +459,7 @@ export default function BusinessRegisterPage() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="कम से कम 6 अक्षरों का पासवर्ड बनाएं"
                   className="w-full pl-10 pr-10 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all"
                 />
                 <button
@@ -318,12 +475,12 @@ export default function BusinessRegisterPage() {
 
             {/* ── Address ── */}
             <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 pt-1">
-              Complete Address (पूरा पता)
+              Complete Address (दुकान या व्यापार का पूरा पता)
             </p>
 
             {/* Shop Address */}
             <div>
-              <Label>Shop Name / House No. / Gali / Mohalla</Label>
+              <Label>Shop Name / House No. / Gali (दुकान का नाम / मकान नं. / गली / मोहल्ला)</Label>
               <div className="relative">
                 <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -332,7 +489,7 @@ export default function BusinessRegisterPage() {
                   maxLength={200}
                   value={shopAddress}
                   onChange={(e) => setShopAddress(e.target.value)}
-                  placeholder="Shop name, house no., street"
+                  placeholder="दुकान का नाम, मकान नंबर, गली या मोहल्ला लिखें"
                   className={inputCls()}
                 />
               </div>
@@ -341,7 +498,7 @@ export default function BusinessRegisterPage() {
             {/* Landmark */}
             <div>
               <Label>
-                Landmark <span className="text-gray-400 font-normal">(Optional — लैंडमार्क)</span>
+                Landmark / लैंडमार्क <span className="text-gray-400 font-normal">(Optional — आसपास की प्रसिद्ध जगह)</span>
               </Label>
               <div className="relative">
                 <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -350,7 +507,7 @@ export default function BusinessRegisterPage() {
                   maxLength={100}
                   value={landmark}
                   onChange={(e) => setLandmark(e.target.value)}
-                  placeholder="Near landmark, market, etc."
+                  placeholder="जैसे: मंदिर के पास, मेन मार्केट, अस्पताल के सामने"
                   className={inputCls()}
                 />
               </div>
@@ -359,7 +516,7 @@ export default function BusinessRegisterPage() {
             {/* City & State row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>City / Town</Label>
+                <Label>City / शहर या कस्बा</Label>
                 <div className="relative">
                   <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -368,7 +525,7 @@ export default function BusinessRegisterPage() {
                     maxLength={80}
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="City / शहर"
+                    placeholder="शहर (City)"
                     className={inputCls()}
                   />
                 </div>
@@ -379,9 +536,9 @@ export default function BusinessRegisterPage() {
                   required
                   value={state}
                   onChange={(e) => setState(e.target.value)}
-                  className="w-full px-3 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all"
+                  className="w-full px-3 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all font-semibold"
                 >
-                  <option value="">Select state</option>
+                  <option value="">राज्य चुनें (Select State)</option>
                   {INDIAN_STATES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -391,7 +548,7 @@ export default function BusinessRegisterPage() {
 
             {/* PIN Code */}
             <div>
-              <Label>6-digit PIN Code / पिन कोड</Label>
+              <Label>6-digit PIN Code / 6 अंकों का पिन कोड</Label>
               <div className="relative">
                 <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -402,7 +559,7 @@ export default function BusinessRegisterPage() {
                   inputMode="numeric"
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="6-digit PIN code"
+                  placeholder="6 अंकों का पिन कोड लिखें (e.g. 211003)"
                   className={inputCls()}
                 />
               </div>
@@ -410,21 +567,21 @@ export default function BusinessRegisterPage() {
 
             {/* ── Business Type ── */}
             <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 pt-1">
-              Select Business Type (बिजनेस का प्रकार चुनें)
+              Select Business Type (व्यापार का प्रकार चुनें)
             </p>
 
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  { value: 'retail_store', label: 'Retail Store Owner' },
-                  { value: 'hawker',       label: 'Hawker / Pheri' },
+                  { value: 'retail_store', label: 'Retail Store (दुकानदार / रिटेलर)' },
+                  { value: 'hawker',       label: 'Hawker (फेरी वाला / ठेला)' },
                 ] as const
               ).map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setBusinessType(value)}
-                  className={`py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all duration-150 ${
+                  className={`py-2.5 px-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all duration-150 text-center ${
                     businessType === value
                       ? 'bg-[#083028] text-white border-[#083028] shadow-md'
                       : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-[#083028] hover:text-[#083028]'
@@ -440,7 +597,7 @@ export default function BusinessRegisterPage() {
             {businessType === 'retail_store' && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>GSTIN (Optional)</Label>
+                  <Label>GSTIN / GST नंबर (Optional - यदि हो)</Label>
                   <div className="flex gap-2">
                     {(['Yes', 'No'] as const).map((opt) => (
                       <button
@@ -453,7 +610,7 @@ export default function BusinessRegisterPage() {
                             : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-[#083028]'
                         }`}
                       >
-                        {opt}{(opt === 'Yes') === hasGstin ? ' ✓' : ''}
+                        {opt === 'Yes' ? 'हाँ (Yes)' : 'नहीं (No)'}{(opt === 'Yes') === hasGstin ? ' ✓' : ''}
                       </button>
                     ))}
                   </div>
@@ -464,7 +621,7 @@ export default function BusinessRegisterPage() {
                     maxLength={15}
                     value={gstin}
                     onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                    placeholder="Enter 15-digit GSTIN (if available)"
+                    placeholder="15 अंकों का GSTIN नंबर दर्ज करें"
                     className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all font-mono tracking-widest"
                   />
                 )}
@@ -473,56 +630,120 @@ export default function BusinessRegisterPage() {
 
             {/* ── Document Upload ── */}
             <div>
-              <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 mb-3">
+              <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 mb-2">
                 {businessType === 'hawker'
-                  ? 'Upload Verification Document'
-                  : 'Upload Visiting Card or Shop Front Photo'}
+                  ? 'Verification Photo (सत्यापन फोटो)'
+                  : 'Shop / Card Photo (दुकान या विजिटिंग कार्ड की फोटो)'}
               </p>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-600 mb-3 leading-relaxed">
                 {businessType === 'hawker'
-                  ? 'Upload a photo with your cart, vehicle, or goods (फेरी पर जाते समय गाड़ी, ठेले या माल के साथ फोटो)'
-                  : 'Upload your visiting card or shop front photo (अपनी दुकान का Visiting Card या दुकान के सामने की फोटो)'}
+                  ? 'फेरी पर जाते समय माल, ठेले या गाड़ी के साथ अपनी फोटो अपलोड करें (Upload photo with goods/cart)'
+                  : 'दुकान के बोर्ड के साथ सामने की फोटो या अपना Visiting Card अपलोड करें (Upload shop front or visiting card)'}
               </p>
+
+              {/* ── Upload progress bar (shown while uploading) ── */}
+              {isUploading && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-[#083028]">फोटो अपलोड हो रही है (Uploading photo)…</span>
+                    <span className="text-xs font-bold text-[#083028]">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#083028] h-2 rounded-full transition-all duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {docPreview ? (
                 <div className="relative rounded-xl overflow-hidden border border-gray-200">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={docPreview} alt="Document preview" className="w-full max-h-52 object-contain bg-gray-50" />
-                  <button
-                    type="button"
-                    onClick={removeDoc}
-                    className="absolute top-2 right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow"
-                  >
-                    <X size={14} />
-                  </button>
-                  <div className="px-3 py-2 bg-green-50 border-t border-green-100 flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />
-                    <p className="text-xs text-green-700 font-medium truncate">{docFile?.name}</p>
+                  {!isUploading && (
+                    <button
+                      type="button"
+                      onClick={removeDoc}
+                      className="absolute top-2 right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                  <div className={`px-3 py-2 border-t flex items-center gap-2 ${
+                    isUploading
+                      ? 'bg-blue-50 border-blue-100'
+                      : activeUploadedUrl
+                      ? 'bg-green-50 border-green-100'
+                      : 'bg-red-50 border-red-100'
+                  }`}>
+                    {isUploading ? (
+                      <Loader2 size={14} className="text-blue-600 flex-shrink-0 animate-spin" />
+                    ) : activeUploadedUrl ? (
+                      <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle size={14} className="text-red-600 flex-shrink-0" />
+                    )}
+                    <p className={`text-xs font-medium truncate ${
+                      isUploading ? 'text-blue-700' : activeUploadedUrl ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {isUploading
+                        ? `अपलोड हो रहा है… ${uploadProgress}%`
+                        : activeUploadedUrl
+                        ? `फोटो तैयार है: ${docFile?.name}`
+                        : 'अपलोड विफल रहा — कृपया दोबारा फोटो चुनें'}
+                    </p>
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 hover:border-[#083028] rounded-xl py-8 px-4 flex flex-col items-center gap-2.5 transition-all group"
-                >
-                  <div className="flex gap-3 text-gray-400 group-hover:text-[#083028] transition-colors">
-                    <Upload size={28} />
+                /* ── Two-button upload: Camera + Gallery ── */
+                <div className="border-2 border-dashed border-gray-300 hover:border-[#083028] rounded-xl py-6 px-4 transition-all bg-gray-50/50">
+                  <div className="flex items-center justify-center mb-2">
+                    <Upload size={26} className="text-gray-400" />
                   </div>
-                  <p className="text-xs text-gray-500 group-hover:text-[#083028] font-medium transition-colors">
-                    Tap to upload photo — Max 5MB
+                  <p className="text-xs text-center text-gray-700 mb-1 font-bold">
+                    Upload Photo / फोटो अपलोड करें
                   </p>
-                  <p className="text-[11px] text-gray-400">
-                    कैमरा से फोटो लें या अपलोड करें
+                  <p className="text-[11px] text-center text-gray-400 mb-3">
+                    JPG, PNG — अधिकतम 15MB
                   </p>
-                </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Camera button */}
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[#083028] text-[#083028] text-xs font-bold hover:bg-[#083028] hover:text-white transition-all duration-150"
+                    >
+                      <Camera size={15} />
+                      कैमरा (Take Photo)
+                    </button>
+                    {/* Gallery button */}
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:border-[#083028] hover:text-[#083028] transition-all duration-150"
+                    >
+                      <ImageIcon size={15} />
+                      गैलरी (From Gallery)
+                    </button>
+                  </div>
+                </div>
               )}
 
+              {/* Hidden camera input */}
               <input
-                ref={fileInputRef}
+                ref={cameraInputRef}
                 type="file"
                 accept="image/*"
                 capture="environment"
+                className="hidden"
+                onChange={handleDocChange}
+              />
+              {/* Hidden gallery input */}
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
                 className="hidden"
                 onChange={handleDocChange}
               />
@@ -531,27 +752,32 @@ export default function BusinessRegisterPage() {
             {/* ── Submit ── */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-3 bg-[#083028] hover:bg-[#051e19] text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+              disabled={loading || isUploading}
+              className="w-full mt-3 bg-[#083028] hover:bg-[#051e19] text-white font-bold py-3.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Submitting...</span>
+                  <span>Submitting Details... (जमा हो रहा है...)</span>
+                </>
+              ) : isUploading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Uploading photo… {uploadProgress}% (फोटो अपलोड हो रही है)</span>
                 </>
               ) : (
                 <>
-                  <span>Submit for Verification — सबमिट करें</span>
+                  <span>Submit for Verification (सत्यापन के लिए सबमिट करें)</span>
                   <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs sm:text-sm text-gray-500">
-            Already registered?{' '}
+          <div className="mt-6 text-center text-xs sm:text-sm text-gray-600">
+            Already registered? (पहले से खाता है?){' '}
             <Link href="/login" className="font-bold text-[#083028] hover:underline">
-              Sign In
+              Sign In (यहाँ लॉगिन करें)
             </Link>
           </div>
         </div>

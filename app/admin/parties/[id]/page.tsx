@@ -116,7 +116,7 @@ export default function PartyDetailsPage() {
               <span className="text-xs font-black uppercase text-[#083028] tracking-wider block">
                 Independent Stock Meter
               </span>
-              <h2 className="text-xl font-black text-gray-900 mt-0.5">लाइव स्टॉक और वैल्यूएशन मीटर</h2>
+              <h2 className="text-xl font-black text-gray-900 mt-0.5">Live Stock & Valuation Meter</h2>
             </div>
             <div className="text-right">
               <span className="text-xs text-gray-500 font-medium">Total Invested in this Party</span>
@@ -205,7 +205,7 @@ export default function PartyDetailsPage() {
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
           <div>
-            <h3 className="text-lg font-black text-gray-900">बैच-वार इनवर्ड और खरीद रिकॉर्ड</h3>
+            <h3 className="text-lg font-black text-gray-900">Batch-Wise Inward & Purchase Records</h3>
             <p className="text-xs text-gray-500">
               Batch-wise records preserving differing party cost prices over time
             </p>

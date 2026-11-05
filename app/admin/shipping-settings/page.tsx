@@ -251,10 +251,10 @@ export default function ShippingSettingsPage() {
             <span>Zone-Wise Shipping & Pricing</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-            ज़ोन सेटिंग्स
+            Zone Settings
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            डिलीवरी चार्ज, प्राइस मार्कअप और डिस्काउंट सेट करें
+            Configure delivery fees, price markup, and zone discounts
           </p>
         </div>
         {activeTab === 'delivery' ? (
@@ -273,7 +273,7 @@ export default function ShippingSettingsPage() {
           <button type="button" onClick={() => { setShowForm(true); setEditingRuleId(null); setRuleForm(EMPTY_RULE); }}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#B8860B] hover:bg-[#9a700a] text-white rounded-2xl text-xs sm:text-sm font-bold transition shadow-md">
             <Plus size={16} />
-            <span>Add Price Rule / प्राइस रूल जोड़ें</span>
+            <span>Add Price Rule</span>
           </button>
         )}
       </div>
@@ -320,7 +320,7 @@ export default function ShippingSettingsPage() {
           <div className="bg-white rounded-3xl border-2 border-gray-200 p-5 sm:p-8 shadow-sm space-y-6">
             <div className="text-center pb-2">
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                Free Delivery Configuration / फ्री डिलीवरी सेटिंग
+                Free Delivery Configuration
               </h2>
               <p className="text-xs text-gray-500 mt-1">
                 Configure individual criteria, delivery fees, and activate/deactivate free shipping per zone.
@@ -339,7 +339,6 @@ export default function ShippingSettingsPage() {
                     className="bg-white rounded-2xl border-2 border-gray-200 overflow-hidden shadow-xs hover:border-[#083028]/40 transition-all flex flex-col">
                     <div className="bg-[#E67E22] px-4 py-3.5 text-center text-white border-b border-[#D35400]">
                       <h3 className="font-extrabold text-sm sm:text-base leading-tight">{zone.zoneName}</h3>
-                      <p className="text-xs font-semibold opacity-95 mt-0.5">({zone.zoneNameHi})</p>
                     </div>
                     <div className="p-5 space-y-5 flex-1 flex flex-col justify-between">
                       <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -350,14 +349,14 @@ export default function ShippingSettingsPage() {
                             zone.isActive ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-red-600 text-white hover:bg-red-700'
                           }`}>
                           <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                          <span>{zone.isActive ? 'ON (चालू)' : 'OFF (बंद)'}</span>
+                          <span>{zone.isActive ? 'ON' : 'OFF'}</span>
                         </button>
                       </div>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-[11px] font-bold text-gray-700 leading-tight mb-1.5">
                             Free Delivery Threshold<br />
-                            <span className="text-[10px] text-gray-500 font-normal">(न्यूनतम आर्डर मूल्य):</span>
+                            <span className="text-[10px] text-gray-500 font-normal">(Minimum Order Value):</span>
                           </label>
                           <div className="relative flex items-center">
                             <span className="absolute left-3 text-sm font-bold text-gray-500">₹</span>
@@ -369,7 +368,7 @@ export default function ShippingSettingsPage() {
                         <div>
                           <label className="block text-[11px] font-bold text-gray-700 leading-tight mb-1.5">
                             Standard Delivery Fee<br />
-                            <span className="text-[10px] text-gray-500 font-normal">(कम आर्डर पर चार्ज):</span>
+                            <span className="text-[10px] text-gray-500 font-normal">(Fee on below-threshold orders):</span>
                           </label>
                           <div className="relative flex items-center">
                             <span className="absolute left-3 text-sm font-bold text-gray-500">₹</span>
@@ -380,7 +379,7 @@ export default function ShippingSettingsPage() {
                         </div>
                         <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
                           <label className="block text-[11px] font-black text-blue-900 leading-tight mb-1.5 flex items-center justify-between">
-                            <span>Online Payment Discount (ऑनलाइन छूट):</span>
+                            <span>Online Payment Discount:</span>
                             <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold">UPI / Card</span>
                           </label>
                           <div className="relative flex items-center">
@@ -447,10 +446,10 @@ export default function ShippingSettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-gray-900">
-                    {editingRuleId ? 'Edit Price Rule / रूल एडिट करें' : 'Add Price Rule / प्राइस रूल जोड़ें'}
+                    {editingRuleId ? 'Edit Price Rule' : 'Add Price Rule'}
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Zone-wise price markup, markdown & discount / ज़ोन के हिसाब से कीमत बढ़ाएं या घटाएं
+                    Zone-wise price markup, markdown & discount
                   </p>
                 </div>
                 <button onClick={resetForm} className="text-gray-400 hover:text-gray-700 p-1 rounded-lg transition">
@@ -468,7 +467,7 @@ export default function ShippingSettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Category / कैटेगरी <span className="text-red-500">*</span>
+                    Category <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <select value={ruleForm.categoryId} onChange={(e) => handleCategoryChange(e.target.value)}
@@ -508,14 +507,14 @@ export default function ShippingSettingsPage() {
 
                   {/* ON/OFF */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wide text-gray-600">ZONE STATUS / ज़ोन की स्थिति</span>
+                    <span className="text-[10px] font-black uppercase tracking-wide text-gray-600">ZONE STATUS</span>
                     <button type="button"
                       onClick={() => updateRuleField('zone1Active', !ruleForm.zone1Active)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                         ruleForm.zone1Active ? 'bg-emerald-600 text-white' : 'bg-gray-400 text-white'
                       }`}>
                       <span className="w-2 h-2 rounded-full bg-white" />
-                      {ruleForm.zone1Active ? 'ON' : 'OFF'} / {ruleForm.zone1Active ? 'चालू' : 'बंद'}
+                      {ruleForm.zone1Active ? 'ON' : 'OFF'}
                     </button>
                   </div>
 
@@ -530,9 +529,9 @@ export default function ShippingSettingsPage() {
                           className="accent-[#083028]" />
                         <span className="text-xs font-semibold text-gray-700">
                           {t === 'none' && 'No change (base price)'}
-                          {t === 'increase' && '(+) Increase / बढ़ाएं'}
-                          {t === 'decrease' && '(-) Decrease / घटाएं'}
-                          {t === 'discount' && '% Discount / डिस्काउंट'}
+                          {t === 'increase' && '(+) Increase'}
+                          {t === 'decrease' && '(-) Decrease'}
+                          {t === 'discount' && '% Discount'}
                         </span>
                       </label>
                     ))}
@@ -565,14 +564,14 @@ export default function ShippingSettingsPage() {
 
                   {/* ON/OFF */}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wide text-gray-600">ZONE STATUS / ज़ोन की स्थिति</span>
+                    <span className="text-[10px] font-black uppercase tracking-wide text-gray-600">ZONE STATUS</span>
                     <button type="button"
                       onClick={() => updateRuleField('zone2Active', !ruleForm.zone2Active)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                         ruleForm.zone2Active ? 'bg-emerald-600 text-white' : 'bg-gray-400 text-white'
                       }`}>
                       <span className="w-2 h-2 rounded-full bg-white" />
-                      {ruleForm.zone2Active ? 'ON' : 'OFF'} / {ruleForm.zone2Active ? 'चालू' : 'बंद'}
+                      {ruleForm.zone2Active ? 'ON' : 'OFF'}
                     </button>
                   </div>
 
@@ -586,9 +585,9 @@ export default function ShippingSettingsPage() {
                           onChange={() => updateRuleField('zone2Type', t)}
                           className="accent-[#B8860B]" />
                         <span className="text-xs font-semibold text-gray-700">
-                          {t === 'increase' && '(+) Increase / बढ़ाएं'}
-                          {t === 'decrease' && '(-) Decrease / घटाएं'}
-                          {t === 'discount' && '% Discount / डिस्काउंट'}
+                          {t === 'increase' && '(+) Increase'}
+                          {t === 'decrease' && '(-) Decrease'}
+                          {t === 'discount' && '% Discount'}
                         </span>
                       </label>
                     ))}
@@ -603,7 +602,7 @@ export default function ShippingSettingsPage() {
                         className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#B8860B]" />
                       <span className="text-sm font-bold text-gray-500">%</span>
                     </div>
-                    <p className="text-[9px] text-gray-400 mt-1">यहाँ % डालने से बाहर के कस्टमर का रेट बढ़ या घटेगा</p>
+                    <p className="text-[9px] text-gray-400 mt-1">This % markup or markdown applies to customers outside Prayagraj</p>
                   </div>
 
                   {/* Extra Discount Toggle */}
@@ -613,11 +612,11 @@ export default function ShippingSettingsPage() {
                         checked={ruleForm.zone2DiscountActive}
                         onChange={(e) => updateRuleField('zone2DiscountActive', e.target.checked)}
                         className="accent-[#B8860B] w-4 h-4 rounded" />
-                      <span className="text-xs font-bold text-gray-700">Apply Offer/Discount? / डिस्काउंट लगाएं?</span>
+                      <span className="text-xs font-bold text-gray-700">Apply Offer/Discount?</span>
                     </label>
                     {ruleForm.zone2DiscountActive && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 mb-1">% Discount / डिस्काउंट:</label>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-1">% Discount:</label>
                         <div className="flex items-center gap-2">
                           <input type="number" min="0" max="100" step="0.5"
                             value={ruleForm.zone2DiscountValue}
@@ -640,7 +639,7 @@ export default function ShippingSettingsPage() {
                 <button type="button" disabled={ruleSaving} onClick={handleSaveRule}
                   className="flex-1 inline-flex items-center justify-center gap-2 py-3 bg-[#B8860B] hover:bg-[#9a700a] text-white rounded-2xl text-sm font-black transition shadow-md disabled:opacity-50">
                   {ruleSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                  <span>Apply Rules / सेव करें</span>
+                  <span>Apply Rules</span>
                 </button>
               </div>
             </div>
@@ -650,7 +649,7 @@ export default function ShippingSettingsPage() {
           <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-base font-black text-gray-900">Existing Rules / मौजूदा रूल्स</h2>
+                <h2 className="text-base font-black text-gray-900">Existing Rules</h2>
                 <p className="text-xs text-gray-500">
                   {rules.length === 0 ? 'No rules yet. Click "Add Price Rule" to create one.' : `${rules.length} rule${rules.length > 1 ? 's' : ''} configured`}
                 </p>

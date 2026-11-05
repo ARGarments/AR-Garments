@@ -393,18 +393,8 @@ export default function CartPage() {
                         {/* Delivery type badge for low-margin items */}
                         {item.deliveryType === 'low_margin' && (
                           <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-bold text-orange-700 bg-orange-50 border border-orange-200/70 px-1.5 py-0.5 rounded">
-                            📦 + ₹{item.deliveryChargeAmount ?? 0} Delivery
+                            📦 + {item.deliveryChargeAmount && item.deliveryChargeAmount > 0 ? `₹${item.deliveryChargeAmount} ` : ''}Delivery
                           </span>
-                        )}
-
-                        {/* Non-Returnable Warning Badge */}
-                        {item.isNonReturnable && (
-                          <div className="mt-1.5">
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-red-700 bg-red-50 border border-red-300 px-2 py-0.5 rounded-md shadow-2xs">
-                              <span className="text-xs">⚠</span>
-                              <span>Non-Returnable Item (वापस नहीं होगा)</span>
-                            </span>
-                          </div>
                         )}
 
                         {/* Mobile Stepper & Remove */}

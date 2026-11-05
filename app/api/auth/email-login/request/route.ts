@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Query business_registrations table (since users table was dropped)
     const { data: user, error: userError } = await supabase
       .from('business_registrations')
-      .select('id, full_name, applicant_email')
+      .select('id, full_name, applicant_email, status')
       .eq('applicant_email', email)
       .maybeSingle();
 
@@ -40,6 +40,29 @@ export async function POST(request: NextRequest) {
     }
     if (!user) {
       return NextResponse.json(ACCOUNT_NOT_FOUND_RESPONSE, { status: 404 });
+    }
+
+    // Check admin approval status
+    if (user.status === 'pending') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ACCOUNT_PENDING_APPROVAL',
+          error: 'Your registration is pending admin approval. You can only log in once approved. / आपका खाता अभी एडमिन अप्रूवल के लिए पेंडिंग है। अप्रूवल के बाद ही लॉगिन कर सकेंगे।',
+        },
+        { status: 403 }
+      );
+    }
+
+    if (user.status === 'rejected') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ACCOUNT_REJECTED',
+          error: 'Your registration was rejected by admin. Please contact support. / आपका पंजीकरण अस्वीकार कर दिया गया है। कृपया सहायता टीम से संपर्क करें।',
+        },
+        { status: 403 }
+      );
     }
 
     const cooldownStart = new Date(Date.now() - EMAIL_LOGIN_RESEND_SECONDS * 1000).toISOString();

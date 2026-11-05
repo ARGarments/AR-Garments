@@ -178,7 +178,7 @@ export default function PartiesManagementPage() {
             <span>Inventory & Vendor Ledger</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-            पार्टी सेल्स & स्टॉक मीटर सिस्टम
+            Party Sales & Stock Meter System
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Party-Wise Sales, Inward Stock, Hold Value & 7-Day Return Window Meter
@@ -205,7 +205,7 @@ export default function PartiesManagementPage() {
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#083028] hover:bg-[#051e19] text-white rounded-2xl text-xs sm:text-sm font-bold transition shadow-md"
           >
             <Plus size={16} />
-            <span>Add New Party (पार्टी जोड़ें)</span>
+            <span>Add New Party</span>
           </button>
         </div>
       </div>
@@ -214,16 +214,16 @@ export default function PartiesManagementPage() {
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
           <Calendar size={16} className="text-[#B8860B]" />
-          <span>Timeline Filter / समय फ़िल्टर:</span>
+          <span>Timeline Filter:</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {(
             [
               { key: 'all', label: 'All Time' },
-              { key: 'today', label: 'Today (आज)' },
-              { key: 'month', label: 'This Month (इस माह)' },
-              { key: '6months', label: 'Last 6 Months (6 महीने)' },
+              { key: 'today', label: 'Today' },
+              { key: 'month', label: 'This Month' },
+              { key: '6months', label: 'Last 6 Months' },
               { key: 'custom', label: 'Custom Range' },
             ] as const
           ).map((item) => (
@@ -270,7 +270,7 @@ export default function PartiesManagementPage() {
                 <ShieldCheck size={14} /> Master Store & Party Combined Inventory
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                कुल स्टोर इन्वेंटरी & वैल्यूएशन
+                Total Store Inventory & Valuation
               </h2>
             </div>
             <div className="text-right">
@@ -363,7 +363,7 @@ export default function PartiesManagementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-lg sm:text-xl font-black text-gray-900">
-              पार्टी-वार स्टॉक मीटर (Party-Wise Stock Cards)
+              Party-Wise Stock Cards
             </h3>
             <p className="text-xs text-gray-500">
               Independent stock progress, cleared cost, and hold metrics per party
@@ -453,7 +453,7 @@ export default function PartiesManagementPage() {
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h3 className="text-lg font-black text-gray-900">
-                {modalMode === 'edit' ? 'Edit Party Details / पार्टी एडिट करें' : 'Add New Party / नई पार्टी जोड़ें'}
+                {modalMode === 'edit' ? 'Edit Party Details' : 'Add New Party'}
               </h3>
               <button
                 type="button"
@@ -467,7 +467,7 @@ export default function PartiesManagementPage() {
             <form onSubmit={handleSaveParty} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Party Name / पार्टी का नाम <span className="text-red-500">*</span>
+                  Party Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

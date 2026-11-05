@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
           createdAt: memUser.createdAt,
         };
         storedPasswordHash = memUser.passwordHash;
+        businessStatus = memUser.businessStatus || 'pending';
       }
     }
 
@@ -83,7 +84,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Generate session token
+    // 4. Check admin approval status for business users (Retail store / Hawker)
+    if (businessStatus === 'pending') {
+      return NextResponse.json(
+        {
+          code: 'ACCOUNT_PENDING_APPROVAL',
+          error: 'Your account is under review by admin. You will be able to log in once approved. / आपका खाता एडमिन सत्यापन के अधीन है। मंज़ूरी के बाद ही आप लॉगिन कर सकेंगे।',
+        },
+        { status: 403 }
+      );
+    }
+
+    if (businessStatus === 'rejected') {
+      return NextResponse.json(
+        {
+          code: 'ACCOUNT_REJECTED',
+          error: 'Your registration was rejected by admin. Please contact support. / आपका पंजीकरण एडमिन द्वारा अस्वीकार कर दिया गया है। कृपया सहायता टीम से संपर्क करें।',
+        },
+        { status: 403 }
+      );
+    }
+
+    // 5. Generate session token
     const token = createSessionToken(foundUser);
 
     const response = NextResponse.json({

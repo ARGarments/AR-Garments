@@ -33,6 +33,7 @@ export interface Product {
   isBestSeller?: boolean; // Direct flag for Best Sellers
   isPremium?: boolean;
   isGold?: boolean;
+  tags?: string[];
   order: number;
   // Specifications
   fabric?: string;
@@ -54,6 +55,8 @@ export interface Product {
   weightUnit?: string;
   gstRate?: string;
   hsnCode?: string;
+  sku?: string;
+  skuId?: string;
   variants?: Array<{
     id: string;
     size?: string;
