@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,7 +8,7 @@ import {
   ArrowLeft, Check, Box, Tag, DollarSign, Scale, Percent,
   FileCheck, Shirt, Trash2, Edit2, Plus, Info,
   Search, Layers, ImageIcon, Loader2, Package, Palette,
-  Scissors, Ruler, Star, RefreshCw
+  Scissors, Ruler, Star, RefreshCw, X, Settings
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
@@ -41,6 +41,12 @@ export type VariantFormData = {
   sleeveLength: string;
   length: string;
   occasion: string;
+  description?: string;
+  images?: string[];
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
   customSpecifications: CustomSpec[];
 };
 
@@ -48,8 +54,14 @@ type ParentProduct = {
   id: string;
   name: string;
   category: string;
+  categoryId?: string;
+  category_id?: string;
   subcategory?: string;
+  subcategoryId?: string | null;
+  subcategory_id?: string | null;
+  brand?: string;
   image?: string;
+  images?: string[];
   price?: string;
   totalSetPrice?: number;
   pricePerPiece?: number;
@@ -58,6 +70,15 @@ type ParentProduct = {
   weight?: string;
   weightUnit?: string;
   gstRate?: string;
+  size?: string;
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
+  size_chart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
 };
 
 const COMMON_HSN_CODES = [
@@ -131,11 +152,42 @@ function VariantPageContent() {
   const [selectedProduct, setSelectedProduct] = useState<ParentProduct | null>(null);
   const [existingVariants, setExistingVariants] = useState<VariantFormData[]>([]);
   const [loadingVariants, setLoadingVariants] = useState(false);
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(queryVariantId || null);
   const [autoCopy, setAutoCopy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showHsnModal, setShowHsnModal] = useState(false);
   const [newSpecLabel, setNewSpecLabel] = useState('');
   const [newSpecValue, setNewSpecValue] = useState('');
+  const [editingSpecIndex, setEditingSpecIndex] = useState<number | null>(null);
+  const [editingSpecLabel, setEditingSpecLabel] = useState('');
+  const [editingSpecValue, setEditingSpecValue] = useState('');
+
+  // Description editor
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [description, setDescription] = useState('');
+  const [descCharCount, setDescCharCount] = useState(0);
+
+  // Image upload
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+
+  // Dynamic sizes list from DB
+  const [sizesList, setSizesList] = useState<string[]>(SIZE_OPTIONS);
+  const [showManageSizesModal, setShowManageSizesModal] = useState(false);
+  const [showSizeChartModal, setShowSizeChartModal] = useState(false);
+  const [newSizeInput, setNewSizeInput] = useState('');
+
+  // Size chart state
+  const [sizeChartMetrics, setSizeChartMetrics] = useState<string[]>([
+    'Top Chest', 'Top Waist', 'Top Length', 'Shoulder', 'Inseam (Custom)'
+  ]);
+  const [sizeChartRows, setSizeChartRows] = useState<Array<{ size: string; values: Record<string, string> }>>([
+    { size: 'M', values: { 'Top Chest': '38 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '24 in', 'Inseam (Custom)': '30 in' } },
+    { size: 'S', values: { 'Top Chest': '39 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '26 in', 'Inseam (Custom)': '30 in' } },
+    { size: 'L', values: { 'Top Chest': '32 in', 'Top Waist': '32 in', 'Top Length': '25 in', 'Shoulder': '26 in', 'Inseam (Custom)': '37 in' } },
+    { size: 'Free Size', values: { 'Top Chest': '34 in', 'Top Waist': '32 in', 'Top Length': '26 in', 'Shoulder': '26 in', 'Inseam (Custom)': '26 in' } },
+  ]);
 
   const [variantForm, setVariantForm] = useState<VariantFormData>({
     id: queryVariantId || `var-${Date.now()}`,
@@ -164,7 +216,25 @@ function VariantPageContent() {
     customSpecifications: [],
   });
 
-  // Fetch products list
+  // Fetch sizes from DB
+  useEffect(() => {
+    async function loadSizes() {
+      try {
+        const res = await fetch('/api/sizes');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setSizesList(data.map((item: { name: string }) => item.name));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching sizes:', err);
+      }
+    }
+    loadSizes();
+  }, []);
+
+  // Fetch products list & categories
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -175,7 +245,26 @@ function VariantPageContent() {
             setProducts(data);
             if (queryProductId) {
               const matched = data.find((p: ParentProduct) => String(p.id) === String(queryProductId));
-              if (matched) setSelectedProduct(matched);
+              if (matched) {
+                setSelectedProduct(matched);
+                // Pre-populate variant specs, size, and size chart from parent product!
+                const sc = matched.sizeChart || matched.size_chart;
+                if (sc && Array.isArray(sc.metrics) && Array.isArray(sc.rows)) {
+                  setSizeChartMetrics(sc.metrics);
+                  setSizeChartRows(sc.rows);
+                }
+                setVariantForm((prev) => ({
+                  ...prev,
+                  size: matched.size || prev.size,
+                  hsnCode: matched.hsnCode || prev.hsnCode,
+                  weight: matched.weight || prev.weight,
+                  weightUnit: matched.weightUnit || prev.weightUnit,
+                  gstRate: matched.gstRate || prev.gstRate,
+                  fabric: matched.fabric || prev.fabric,
+                  pricePerPiece: matched.pricePerPiece || prev.pricePerPiece,
+                  totalSetPrice: matched.totalSetPrice || prev.totalSetPrice,
+                }));
+              }
             }
           }
         }
@@ -221,6 +310,9 @@ function VariantPageContent() {
               sleeveLength: String(v.sleeve_length || ''),
               length: String(v.length || ''),
               occasion: String(v.occasion || ''),
+              description: String(v.description || ''),
+              images: Array.isArray(v.images) ? (v.images as string[]) : [],
+              sizeChart: (v.size_chart || v.sizeChart) as VariantFormData['sizeChart'],
               customSpecifications: Array.isArray(v.custom_specifications)
                 ? (v.custom_specifications as CustomSpec[])
                 : [],
@@ -229,7 +321,24 @@ function VariantPageContent() {
 
             if (queryVariantId) {
               const toEdit = mapped.find((item) => item.id === queryVariantId);
-              if (toEdit) setVariantForm(toEdit);
+              if (toEdit) {
+                setEditingVariantId(toEdit.id);
+                setVariantForm(toEdit);
+                if (toEdit.description) {
+                  setDescription(toEdit.description);
+                  setDescCharCount(toEdit.description.replace(/<[^>]*>/g, '').length);
+                  if (editorRef.current) {
+                    editorRef.current.innerHTML = toEdit.description;
+                  }
+                }
+                if (Array.isArray(toEdit.images) && toEdit.images.length > 0) {
+                  setUploadedImages(toEdit.images);
+                }
+                if (toEdit.sizeChart && Array.isArray(toEdit.sizeChart.metrics) && Array.isArray(toEdit.sizeChart.rows)) {
+                  setSizeChartMetrics(toEdit.sizeChart.metrics);
+                  setSizeChartRows(toEdit.sizeChart.rows);
+                }
+              }
             }
           }
         }
@@ -241,6 +350,109 @@ function VariantPageContent() {
     }
     loadVariants();
   }, [selectedProductId, queryVariantId]);
+
+  const applyFormat = (command: string) => {
+    document.execCommand(command, false);
+    editorRef.current?.focus();
+  };
+
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsImageUploading(true);
+    try {
+      const urls = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('folder', '/products');
+          fd.append('fileName', `product_${Date.now()}`);
+          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
+          return data.url as string;
+        })
+      );
+      setUploadedImages((prev) => [...prev, ...urls]);
+      toast.success(`${urls.length} image(s) uploaded!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setIsImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const handleAddCustomSize = async (nameToAdd?: string) => {
+    const sizeName = (nameToAdd || newSizeInput).trim();
+    if (!sizeName) return;
+    if (sizesList.includes(sizeName)) {
+      toast.info('This size already exists.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/sizes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: sizeName }),
+      });
+      if (res.ok) {
+        setSizesList((prev) => [...prev, sizeName]);
+        setVariantForm((prev) => ({ ...prev, size: sizeName }));
+        setNewSizeInput('');
+        toast.success(`Size "${sizeName}" added!`);
+      } else {
+        toast.error('Failed to add size.');
+      }
+    } catch {
+      toast.error('Network error adding size.');
+    }
+  };
+
+  const handleDeleteCustomSize = async (sizeName: string) => {
+    if (!confirm(`Delete size "${sizeName}"?`)) return;
+    try {
+      const res = await fetch(`/api/sizes?name=${encodeURIComponent(sizeName)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSizesList((prev) => prev.filter((s) => s !== sizeName));
+        if (variantForm.size === sizeName) {
+          setVariantForm((prev) => ({ ...prev, size: sizesList[0] || 'Free Size' }));
+        }
+        toast.success(`Size "${sizeName}" deleted.`);
+      }
+    } catch {
+      toast.error('Failed to delete size.');
+    }
+  };
+
+  const handleEditCustomSize = async (oldSizeName: string) => {
+    const newName = prompt(`Edit size name:`, oldSizeName);
+    if (!newName || !newName.trim() || newName.trim() === oldSizeName) return;
+    const trimmed = newName.trim();
+    try {
+      const res = await fetch('/api/sizes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldName: oldSizeName, newName: trimmed }),
+      });
+      if (res.ok) {
+        setSizesList((prev) => prev.map((s) => (s === oldSizeName ? trimmed : s)));
+        if (variantForm.size === oldSizeName) {
+          setVariantForm((prev) => ({ ...prev, size: trimmed }));
+        }
+        setSizeChartRows((prev) =>
+          prev.map((r) => (r.size === oldSizeName ? { ...r, size: trimmed } : r))
+        );
+        toast.success(`Size updated to "${trimmed}"!`);
+      } else {
+        toast.error('Failed to update size.');
+      }
+    } catch {
+      toast.error('Network error updating size.');
+    }
+  };
 
   const handlePricePerPieceChange = (val: number) => {
     const ppp = Math.max(0, val);
@@ -297,7 +509,10 @@ function VariantPageContent() {
   };
 
   const addCustomSpec = () => {
-    if (!newSpecLabel.trim() || !newSpecValue.trim()) return;
+    if (!newSpecLabel.trim() || !newSpecValue.trim()) {
+      toast.warning('Please enter both label and value');
+      return;
+    }
     setVariantForm((prev) => ({
       ...prev,
       customSpecifications: [
@@ -307,6 +522,37 @@ function VariantPageContent() {
     }));
     setNewSpecLabel('');
     setNewSpecValue('');
+    toast.success('Specification added');
+  };
+
+  const startEditCustomSpec = (index: number) => {
+    const spec = variantForm.customSpecifications[index];
+    if (!spec) return;
+    setEditingSpecIndex(index);
+    setEditingSpecLabel(spec.label);
+    setEditingSpecValue(spec.value);
+  };
+
+  const saveEditCustomSpec = (index: number) => {
+    if (!editingSpecLabel.trim() || !editingSpecValue.trim()) {
+      toast.warning('Label and value cannot be empty');
+      return;
+    }
+    setVariantForm((prev) => {
+      const updated = [...prev.customSpecifications];
+      updated[index] = { label: editingSpecLabel.trim(), value: editingSpecValue.trim() };
+      return { ...prev, customSpecifications: updated };
+    });
+    setEditingSpecIndex(null);
+    setEditingSpecLabel('');
+    setEditingSpecValue('');
+    toast.success('Specification updated');
+  };
+
+  const cancelEditCustomSpec = () => {
+    setEditingSpecIndex(null);
+    setEditingSpecLabel('');
+    setEditingSpecValue('');
   };
 
   const removeCustomSpec = (index: number) => {
@@ -314,6 +560,9 @@ function VariantPageContent() {
       ...prev,
       customSpecifications: prev.customSpecifications.filter((_, i) => i !== index),
     }));
+    if (editingSpecIndex === index) {
+      cancelEditCustomSpec();
+    }
   };
 
   const handleAddVariant = () => {
@@ -363,6 +612,7 @@ function VariantPageContent() {
     try {
       if (selectedProductId && selectedProductId !== 'draft') {
         const payload = {
+          id: editingVariantId || undefined,
           variant_type: variantForm.variantType,
           size: variantForm.size,
           pieces_per_set: variantForm.piecesPerSet,
@@ -384,11 +634,18 @@ function VariantPageContent() {
           sleeve_length: variantForm.sleeveLength,
           length: variantForm.length,
           occasion: variantForm.occasion,
+          description: description || '',
+          images: uploadedImages,
+          size_chart: {
+            metrics: sizeChartMetrics,
+            rows: sizeChartRows,
+          },
           custom_specifications: variantForm.customSpecifications,
         };
 
+        const method = editingVariantId ? 'PUT' : 'POST';
         const res = await fetch(`/api/products/${selectedProductId}/variants`, {
-          method: 'POST',
+          method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
@@ -398,7 +655,20 @@ function VariantPageContent() {
           throw new Error(errData.error || 'Failed to save variant.');
         }
 
-        toast.success('Product variant saved successfully!', { title: 'Variant Saved' });
+        // Update parent product description if provided
+        if (selectedProductId && description) {
+          try {
+            await fetch(`/api/products?id=${selectedProductId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ description }),
+            });
+          } catch (patchErr) {
+            console.error('Error updating parent product description:', patchErr);
+          }
+        }
+
+        toast.success(editingVariantId ? 'Product variant updated successfully!' : 'Product variant saved successfully!', { title: 'Variant Saved' });
         router.push('/admin/products');
       } else {
         const existingDraftStr = sessionStorage.getItem('ar_draft_variants') || '[]';
@@ -465,58 +735,48 @@ function VariantPageContent() {
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition disabled:opacity-60"
           >
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            Publish Product
+            {editingVariantId ? 'Update Variant' : 'Publish Product'}
           </button>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {/* Page Title */}
-        <div>
-          <h1 className="text-xl font-extrabold text-gray-900">Add New Product</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Fill in the details below to add a new product to your store.</p>
-        </div>
-
-        {/* ══════════════ VARIANT TYPE TOGGLE ══════════════ */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-5 py-4">
-          <div className="flex items-center gap-6 flex-wrap">
-            <span className="text-sm font-bold text-gray-900 whitespace-nowrap">Variant Type:</span>
-            <div className="flex items-center gap-3">
-              {/* Inventory (N) */}
-              <button
-                type="button"
-                onClick={() => handleVariantTypeToggle('individual')}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 text-sm font-bold transition ${
-                  !isSetSize
-                    ? 'bg-[#083028] border-[#083028] text-white shadow-md'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${!isSetSize ? 'border-white bg-white' : 'border-gray-400'}`}>
-                  {!isSetSize && <span className="w-2 h-2 rounded-full bg-[#083028] block" />}
-                </span>
-                <Package size={16} />
-                Inventory (N)
-              </button>
-
-              {/* Set Size */}
-              <button
-                type="button"
-                onClick={() => handleVariantTypeToggle('set_size')}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full border-2 text-sm font-bold transition ${
-                  isSetSize
-                    ? 'bg-[#083028] border-[#083028] text-white shadow-md'
-                    : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400'
-                }`}
-              >
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSetSize ? 'border-white bg-white' : 'border-gray-400'}`}>
-                  {isSetSize && <span className="w-2 h-2 rounded-full bg-[#083028] block" />}
-                </span>
-                <Layers size={16} />
-                Set Size
-              </button>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-extrabold text-gray-900">
+              {editingVariantId ? 'Edit Product Variant' : 'Add Product Variant'}
+            </h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {editingVariantId
+                ? `Editing variant SKU: ${variantForm.skuId || variantForm.id}. Update values and click Update Variant.`
+                : 'Configure sizes, colors, pricing, and stock for this product variant.'}
+            </p>
           </div>
+          {editingVariantId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingVariantId(null);
+                setVariantForm((prev) => ({
+                  ...prev,
+                  id: `var-${Date.now()}`,
+                  skuId: `SKU-${Date.now().toString().slice(-6)}`,
+                  colour: '',
+                  pricePerPiece: 0,
+                  totalSetPrice: 0,
+                  totalStockPieces: 0,
+                  availablePieces: 0,
+                  availableSets: 0,
+                }));
+                setUploadedImages([]);
+                toast.info('Switched to Add New Variant mode');
+              }}
+              className="text-xs font-bold text-[#083028] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition"
+            >
+              + Add New Variant Instead
+            </button>
+          )}
         </div>
 
         {/* ══════════════ PRODUCT DETAILS CARD ══════════════ */}
@@ -537,14 +797,22 @@ function VariantPageContent() {
                   const found = products.find((p) => String(p.id) === String(pid));
                   setSelectedProduct(found || null);
                   if (found) {
+                    const sc = found.sizeChart || found.size_chart;
+                    if (sc && Array.isArray(sc.metrics) && Array.isArray(sc.rows)) {
+                      setSizeChartMetrics(sc.metrics);
+                      setSizeChartRows(sc.rows);
+                    }
                     setVariantForm((prev) => ({
                       ...prev,
                       productId: pid,
+                      size: found.size || prev.size,
                       hsnCode: found.hsnCode || prev.hsnCode,
                       weight: found.weight || prev.weight,
                       weightUnit: found.weightUnit || prev.weightUnit,
                       gstRate: found.gstRate || prev.gstRate,
                       fabric: found.fabric || prev.fabric,
+                      pricePerPiece: found.pricePerPiece || prev.pricePerPiece,
+                      totalSetPrice: found.totalSetPrice || prev.totalSetPrice,
                     }));
                   }
                 }}
@@ -592,24 +860,30 @@ function VariantPageContent() {
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               {/* Toolbar */}
               <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50 flex-wrap">
-                {['B', 'I', 'U'].map((f) => (
-                  <button key={f} type="button" className={`w-7 h-7 rounded text-xs font-bold text-gray-700 hover:bg-gray-200 transition ${f === 'B' ? 'font-black' : f === 'I' ? 'italic' : 'underline'}`}>
-                    {f}
-                  </button>
-                ))}
+                <button type="button" onClick={() => applyFormat('bold')} title="Bold" className="w-7 h-7 rounded text-xs font-black text-gray-700 hover:bg-gray-200 transition">B</button>
+                <button type="button" onClick={() => applyFormat('italic')} title="Italic" className="w-7 h-7 rounded text-xs italic font-bold text-gray-700 hover:bg-gray-200 transition">I</button>
+                <button type="button" onClick={() => applyFormat('underline')} title="Underline" className="w-7 h-7 rounded text-xs underline font-bold text-gray-700 hover:bg-gray-200 transition">U</button>
                 <div className="w-px h-5 bg-gray-300 mx-1" />
-                {['🔗', '⭐', '≡', '☰', '⇤', '⇥', '⊟'].map((icon, i) => (
-                  <button key={i} type="button" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">
-                    {icon}
-                  </button>
-                ))}
+                <button type="button" onClick={() => applyFormat('insertUnorderedList')} title="Bullet List" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">≡</button>
+                <button type="button" onClick={() => applyFormat('insertOrderedList')} title="Numbered List" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">☰</button>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                <button type="button" onClick={() => applyFormat('justifyLeft')} title="Left" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">⇤</button>
+                <button type="button" onClick={() => applyFormat('justifyRight')} title="Right" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">⇥</button>
+                <button type="button" onClick={() => applyFormat('justifyFull')} title="Justify" className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition">⊟</button>
               </div>
-              <textarea
-                rows={4}
-                placeholder="Write product description here..."
-                className="w-full px-4 py-3 text-sm text-gray-700 focus:outline-none resize-none"
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  setDescription(el.innerHTML);
+                  setDescCharCount(el.innerText.length);
+                }}
+                className="w-full px-4 py-3 text-sm text-gray-700 focus:outline-none min-h-[100px] empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                data-placeholder="Write product description here..."
               />
-              <div className="px-3 py-1.5 border-t border-gray-100 text-right text-[10px] text-gray-400">0 / 8000</div>
+              <div className="px-3 py-1.5 border-t border-gray-100 text-right text-[10px] text-gray-400">{descCharCount} / 8000</div>
             </div>
           </div>
 
@@ -617,58 +891,92 @@ function VariantPageContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div>
               <FieldLabel>Product Images</FieldLabel>
-              <div className="flex gap-3 items-stretch">
-                {/* Main upload */}
-                <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center py-5 px-3 text-center cursor-pointer hover:border-[#083028] transition bg-gray-50">
-                  <div className="w-10 h-10 rounded-full bg-[#083028]/10 flex items-center justify-center mb-2">
-                    <ImageIcon size={20} className="text-[#083028]" />
-                  </div>
-                  <p className="text-xs font-semibold text-gray-700">Upload Product Image</p>
+              {/* Hidden file input */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleVariantImageUpload}
+              />
+              <div className="space-y-2">
+                {/* Main dropzone */}
+                <div
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex-1 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center py-5 px-3 text-center cursor-pointer hover:border-[#083028] transition bg-gray-50"
+                >
+                  {isImageUploading ? (
+                    <Loader2 size={20} className="animate-spin text-[#083028] mb-2" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-[#083028]/10 flex items-center justify-center mb-2">
+                      <ImageIcon size={20} className="text-[#083028]" />
+                    </div>
+                  )}
+                  <p className="text-xs font-semibold text-gray-700">
+                    {isImageUploading ? 'Uploading...' : 'Upload Product Image'}
+                  </p>
                   <p className="text-[10px] text-gray-400 mt-0.5">Click to upload or drag and drop (.JPG, .PNG, .WEBP - Max 1mb)</p>
                 </div>
-                {/* Add more */}
-                <div className="flex flex-col gap-2">
-                  <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-[#083028] transition bg-gray-50 text-gray-400">
-                    <ImageIcon size={18} />
+                {/* Add more images button */}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="px-3 py-1.5 border border-[#083028] text-[#083028] rounded-xl text-[10px] font-bold hover:bg-emerald-50 transition flex items-center gap-1"
+                >
+                  <Plus size={11} /> Add More Images
+                </button>
+                {/* Thumbnails */}
+                {uploadedImages.length > 0 && (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {uploadedImages.map((url, i) => (
+                      <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200">
+                        <Image src={url} alt={`img-${i}`} fill className="object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setUploadedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 text-[10px] rounded-bl flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <button type="button" className="px-2 py-1.5 border border-[#083028] text-[#083028] rounded-xl text-[10px] font-bold hover:bg-emerald-50 transition flex items-center gap-1">
-                    <Plus size={11} /> Add More Images
-                  </button>
-                </div>
+                )}
               </div>
             </div>
 
             <div>
-              <FieldLabel><span className="text-red-500 mr-0.5">*</span> Size</FieldLabel>
+              <div className="flex items-center justify-between mb-1.5">
+                <FieldLabel><span className="text-red-500 mr-0.5">*</span> Size</FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeChartModal(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#083028] hover:underline"
+                  >
+                    <Ruler size={12} /> Size Chart
+                  </button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManageSizesModal(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#083028] hover:underline"
+                  >
+                    <Settings size={12} /> Manage Sizes
+                  </button>
+                </div>
+              </div>
               <select
                 value={variantForm.size}
                 onChange={(e) => setVariantForm({ ...variantForm, size: e.target.value })}
                 className={inputCls()}
               >
-                {SIZE_OPTIONS.map((s) => (
+                {sizesList.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-gray-400 mt-1">Choose product size</p>
-
-              {/* Show selected product preview */}
-              {selectedProduct && (
-                <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
-                  {selectedProduct.image ? (
-                    <div className="w-10 h-12 relative bg-white rounded border border-emerald-200 overflow-hidden flex-shrink-0">
-                      <Image src={selectedProduct.image} alt={selectedProduct.name} fill className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-12 bg-white rounded border border-emerald-200 flex items-center justify-center flex-shrink-0">
-                      <ImageIcon size={16} className="text-gray-400" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">{selectedProduct.name}</p>
-                    <p className="text-[10px] text-emerald-800 font-semibold">{selectedProduct.category}</p>
-                  </div>
-                </div>
-              )}
+              <p className="text-[10px] text-gray-400 mt-1">Choose product size or add custom sizes</p>
             </div>
           </div>
         </SectionCard>
@@ -678,24 +986,6 @@ function VariantPageContent() {
           title="Product Specifications"
           subtitle="Add product specifications for this product."
           icon={<Tag size={18} />}
-          action={
-            <button
-              type="button"
-              onClick={() => {
-                const label = prompt('Specification label (e.g. Pattern):');
-                const value = prompt('Specification value:');
-                if (label && value) {
-                  setVariantForm((prev) => ({
-                    ...prev,
-                    customSpecifications: [...prev.customSpecifications, { label, value }],
-                  }));
-                }
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-[#083028] text-[#083028] rounded-xl text-xs font-bold hover:bg-emerald-50 transition"
-            >
-              <Plus size={13} /> Add Specification
-            </button>
-          }
         >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
@@ -773,50 +1063,122 @@ function VariantPageContent() {
             </div>
           </div>
 
-          {/* Custom Specs */}
+          {/* Custom Specs List & Inline Edit */}
           {variantForm.customSpecifications.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              {variantForm.customSpecifications.map((spec, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                  <div>
-                    <span className="font-bold text-gray-800">{spec.label}:</span>{' '}
-                    <span className="text-gray-600">{spec.value}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeCustomSpec(index)}
-                    className="p-1 text-red-400 hover:bg-red-50 rounded-lg transition"
+              <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Custom Specifications ({variantForm.customSpecifications.length})</p>
+              {variantForm.customSpecifications.map((spec, index) => {
+                const isEditing = editingSpecIndex === index;
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition ${
+                      isEditing ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-300' : 'bg-gray-50 border-gray-200 hover:bg-gray-100/60'
+                    }`}
                   >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                    {isEditing ? (
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-2 items-center mr-2">
+                        <input
+                          type="text"
+                          value={editingSpecLabel}
+                          onChange={(e) => setEditingSpecLabel(e.target.value)}
+                          placeholder="Label (e.g. Pattern)"
+                          className={`${inputCls()} sm:col-span-2 !py-1.5`}
+                        />
+                        <input
+                          type="text"
+                          value={editingSpecValue}
+                          onChange={(e) => setEditingSpecValue(e.target.value)}
+                          placeholder="Value"
+                          className={`${inputCls()} sm:col-span-2 !py-1.5`}
+                        />
+                        <div className="flex items-center gap-1.5 sm:col-span-1">
+                          <button
+                            type="button"
+                            onClick={() => saveEditCustomSpec(index)}
+                            className="px-2.5 py-1.5 bg-[#083028] text-white rounded-lg text-xs font-bold hover:bg-[#051e19] transition flex items-center gap-1"
+                          >
+                            <Check size={12} /> Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditCustomSpec}
+                            className="px-2 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs hover:bg-gray-300 transition"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <span className="font-bold text-gray-900 text-xs sm:text-sm">{spec.label}:</span>
+                          <span className="text-gray-700 text-xs sm:text-sm truncate">{spec.value}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditCustomSpec(index)}
+                            className="p-1.5 text-gray-500 hover:text-[#083028] hover:bg-emerald-50 rounded-lg transition"
+                            title="Edit specification"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeCustomSpec(index)}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Delete specification"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {/* Quick add spec row */}
-          <div className="grid grid-cols-5 gap-2 items-center">
-            <input
-              type="text"
-              value={newSpecLabel}
-              onChange={(e) => setNewSpecLabel(e.target.value)}
-              placeholder="Label (e.g. Pattern)"
-              className={`${inputCls()} col-span-2`}
-            />
-            <input
-              type="text"
-              value={newSpecValue}
-              onChange={(e) => setNewSpecValue(e.target.value)}
-              placeholder="Value"
-              className={`${inputCls()} col-span-2`}
-            />
-            <button
-              type="button"
-              onClick={addCustomSpec}
-              className="px-3 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
-            >
-              <Plus size={13} /> Add
-            </button>
+          <div className="pt-2">
+            <FieldLabel>Add Custom Specification</FieldLabel>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
+              <input
+                type="text"
+                value={newSpecLabel}
+                onChange={(e) => setNewSpecLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomSpec();
+                  }
+                }}
+                placeholder="Label (e.g. Pattern, Neck, Pocket)"
+                className={`${inputCls()} sm:col-span-2`}
+              />
+              <input
+                type="text"
+                value={newSpecValue}
+                onChange={(e) => setNewSpecValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomSpec();
+                  }
+                }}
+                placeholder="Value (e.g. Printed, V-Neck, 2 Pockets)"
+                className={`${inputCls()} sm:col-span-2`}
+              />
+              <button
+                type="button"
+                onClick={addCustomSpec}
+                className="px-4 py-2.5 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
+              >
+                <Plus size={14} /> Add Specification
+              </button>
+            </div>
           </div>
         </SectionCard>
 
@@ -853,7 +1215,7 @@ function VariantPageContent() {
                   />
                 </div>
                 <div>
-                  <FieldLabel icon={<DollarSign size={13} />}>Price Per Piece (₹)</FieldLabel>
+                  <FieldLabel icon={<span className="font-bold text-[#083028] text-xs">₹</span>}>Price Per Piece (₹)</FieldLabel>
                   <input
                     type="number"
                     min="0"
@@ -868,7 +1230,7 @@ function VariantPageContent() {
               {/* Row 2: Total Set Price | Total Stock | Purchase Price */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <FieldLabel icon={<DollarSign size={13} />}>Total Set Price</FieldLabel>
+                  <FieldLabel icon={<span className="font-bold text-[#083028] text-xs">₹</span>}>Total Set Price</FieldLabel>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-bold">₹</span>
                     <div className={`${inputCls('pl-8 bg-emerald-50/60 font-bold text-emerald-800 cursor-not-allowed')} flex items-center`}>
@@ -890,7 +1252,7 @@ function VariantPageContent() {
                   <p className="text-[10px] text-gray-400 mt-1">({variantForm.piecesPerSet} pcs × {variantForm.availableSets} sets)</p>
                 </div>
                 <div>
-                  <FieldLabel icon={<DollarSign size={13} />}>Purchase Price (₹)</FieldLabel>
+                  <FieldLabel icon={<span className="font-bold text-[#083028] text-xs">₹</span>}>Purchase Price (₹)</FieldLabel>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">₹</span>
                     <input
@@ -959,7 +1321,7 @@ function VariantPageContent() {
                   />
                 </div>
                 <div>
-                  <FieldLabel icon={<DollarSign size={13} />}>Price Per Piece (₹)</FieldLabel>
+                  <FieldLabel icon={<span className="font-bold text-[#083028] text-xs">₹</span>}>Price Per Piece (₹)</FieldLabel>
                   <input
                     type="number"
                     min="0"
@@ -970,7 +1332,7 @@ function VariantPageContent() {
                   />
                 </div>
                 <div>
-                  <FieldLabel icon={<DollarSign size={13} />}>Purchase Price (₹)</FieldLabel>
+                  <FieldLabel icon={<span className="font-bold text-[#083028] text-xs">₹</span>}>Purchase Price (₹)</FieldLabel>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">₹</span>
                     <input
@@ -1179,7 +1541,30 @@ function VariantPageContent() {
                             <button
                               type="button"
                               onClick={() => {
+                                setEditingVariantId(v.id);
                                 setVariantForm(v);
+                                if (v.description) {
+                                  setDescription(v.description);
+                                  setDescCharCount(v.description.replace(/<[^>]*>/g, '').length);
+                                  if (editorRef.current) {
+                                    editorRef.current.innerHTML = v.description;
+                                  }
+                                } else {
+                                  setDescription('');
+                                  setDescCharCount(0);
+                                  if (editorRef.current) {
+                                    editorRef.current.innerHTML = '';
+                                  }
+                                }
+                                if (Array.isArray(v.images) && v.images.length > 0) {
+                                  setUploadedImages(v.images);
+                                } else {
+                                  setUploadedImages([]);
+                                }
+                                if (v.sizeChart && Array.isArray(v.sizeChart.metrics) && Array.isArray(v.sizeChart.rows)) {
+                                  setSizeChartMetrics(v.sizeChart.metrics);
+                                  setSizeChartRows(v.sizeChart.rows);
+                                }
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                 toast.info(`Editing variant ${v.skuId || v.size}`);
                               }}
@@ -1209,62 +1594,339 @@ function VariantPageContent() {
       {/* ══════════════ BOTTOM ACTION BAR ══════════════ */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
-          {/* Auto-Copy Toggle */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={() => setAutoCopy(!autoCopy)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                autoCopy ? 'bg-[#083028]' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                  autoCopy ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-xs text-gray-700 font-medium leading-tight">
-              Auto-Copy (Clone) current data to next page? / जब भरा हुआ डेटा आगे पेज पर कॉपी करना है?
-            </span>
-          </div>
-
           {/* Buttons Row */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/admin/products"
+              className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition"
+            >
+              Cancel
+            </Link>
+
             <button
               type="button"
-              onClick={handleAddVariant}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition"
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition disabled:opacity-60 shadow-sm"
             >
-              <Plus size={14} />
-              + Add Variant (Clone Current Product Data)
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              {editingVariantId ? 'Update Variant' : 'Save Variant'}
             </button>
+          </div>
+        </div>
+      </div>
 
-            <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
-              <span>🌟</span>
-              <span>Will duplicate all specs, GST, and Category on click!</span>
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <Link
-                href="/admin/products"
-                className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition"
-              >
-                Cancel
-              </Link>
+      {/* ══════════════ MANAGE SIZES MODAL (Image 3 UI) ══════════════ */}
+      {showManageSizesModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h3 className="text-base font-extrabold text-gray-900">Manage Product Sizes</h3>
               <button
                 type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition disabled:opacity-60"
+                onClick={() => setShowManageSizesModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
               >
-                {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                Save Product
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Quick Add Custom Size */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter size (e.g. 5XL, 36, 38)"
+                value={newSizeInput}
+                onChange={(e) => setNewSizeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomSize();
+                  }
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#083028]"
+              />
+              <button
+                type="button"
+                onClick={() => handleAddCustomSize()}
+                className="px-4 py-2 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19]"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* List with Add/Remove buttons matching the reference image */}
+            <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-1">
+              {sizesList.map((s) => (
+                <div key={s} className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                    <span className="text-sm font-semibold text-gray-800 truncate">{s}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditCustomSize(s)}
+                      title="Edit size name"
+                      className="p-1 text-gray-400 hover:text-[#083028] hover:bg-emerald-50 rounded transition"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantForm((prev) => ({ ...prev, size: s }));
+                        toast.success(`Selected size "${s}"`);
+                      }}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
+                        variantForm.size === s
+                          ? 'bg-[#083028] text-white border-[#083028]'
+                          : 'border-[#083028] text-[#083028] hover:bg-emerald-50'
+                      }`}
+                    >
+                      {variantForm.size === s ? 'Selected' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomSize(s)}
+                      title="Delete size"
+                      className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowManageSizesModal(false)}
+              className="w-full py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ SIZE CHART MODAL (Image 2 UI styled to match website theme) ══════════════ */}
+      {showSizeChartModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95">
+            {/* Header with Dark Green Brand Color */}
+            <div className="bg-[#083028] text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Ruler size={18} className="text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold uppercase tracking-wide">Size Chart (All Sizes)</h3>
+                  <p className="text-[11px] text-emerald-200">AR Garments custom measurement chart</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSizeChartModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-center text-gray-600 font-medium">
+                Edit or type any value. Drag or delete columns and rows to customize.
+              </p>
+
+              {/* Responsive Table */}
+              <div className="overflow-x-auto border border-emerald-100 rounded-2xl bg-emerald-50/20">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-emerald-50 text-gray-800 border-b border-emerald-100">
+                      <th className="p-2.5 font-bold border-r border-emerald-100 w-24">Size</th>
+                      {sizeChartMetrics.map((metric, mIdx) => (
+                        <th key={mIdx} className="p-2.5 font-bold border-r border-emerald-100 text-center whitespace-nowrap min-w-[100px]">
+                          <div className="flex flex-col items-center gap-1">
+                            <span>{metric}</span>
+                            <div className="flex items-center gap-1 text-gray-400">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const rename = prompt('Rename metric:', metric);
+                                  if (rename && rename.trim()) {
+                                    const next = [...sizeChartMetrics];
+                                    next[mIdx] = rename.trim();
+                                    setSizeChartMetrics(next);
+                                  }
+                                }}
+                                title="Edit header"
+                                className="hover:text-emerald-800"
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSizeChartMetrics(sizeChartMetrics.filter((_, i) => i !== mIdx));
+                                }}
+                                title="Delete column"
+                                className="hover:text-red-600"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        </th>
+                      ))}
+                      <th className="p-2.5 text-center min-w-[90px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newMet = prompt('Add Custom Metric (e.g. Hip, Sleeve):');
+                            if (newMet && newMet.trim()) {
+                              setSizeChartMetrics([...sizeChartMetrics, newMet.trim()]);
+                            }
+                          }}
+                          className="text-[#083028] font-bold hover:underline flex items-center justify-center gap-1 mx-auto"
+                        >
+                          <Plus size={11} /> Metric
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sizeChartRows.map((row, rIdx) => (
+                      <tr key={rIdx} className="border-b border-emerald-100 hover:bg-emerald-50/30">
+                        <td className="p-2.5 border-r border-emerald-100 font-bold text-gray-900">
+                          <div className="flex items-center justify-between gap-1">
+                            <span>{row.size}</span>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const rename = prompt('Rename size:', row.size);
+                                  if (rename && rename.trim() && rename.trim() !== row.size) {
+                                    const trimmed = rename.trim();
+                                    const old = row.size;
+                                    const updated = [...sizeChartRows];
+                                    updated[rIdx].size = trimmed;
+                                    setSizeChartRows(updated);
+                                    if (sizesList.includes(old)) {
+                                      try {
+                                        await fetch('/api/sizes', {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ oldName: old, newName: trimmed }),
+                                        });
+                                        setSizesList((prev) => prev.map((s) => (s === old ? trimmed : s)));
+                                        if (variantForm.size === old) {
+                                          setVariantForm((prev) => ({ ...prev, size: trimmed }));
+                                        }
+                                      } catch {}
+                                    }
+                                    toast.success(`Size renamed to "${trimmed}"`);
+                                  }
+                                }}
+                                title="Edit size"
+                                className="text-gray-400 hover:text-emerald-800 p-0.5"
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSizeChartRows(sizeChartRows.filter((_, i) => i !== rIdx));
+                                }}
+                                title="Delete row"
+                                className="text-gray-400 hover:text-red-500 p-0.5"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        {sizeChartMetrics.map((metric, mIdx) => (
+                          <td key={mIdx} className="p-2 border-r border-emerald-100">
+                            <input
+                              type="text"
+                              value={row.values[metric] || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const updated = [...sizeChartRows];
+                                updated[rIdx].values[metric] = val;
+                                setSizeChartRows(updated);
+                              }}
+                              className="w-full text-center py-1 px-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#083028] bg-white"
+                            />
+                          </td>
+                        ))}
+                        <td className="p-2 bg-emerald-50/10"></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const addSize = prompt('Enter Size name to add row (e.g. XL, 38):');
+                    if (addSize && addSize.trim()) {
+                      const vals: Record<string, string> = {};
+                      sizeChartMetrics.forEach((m) => { vals[m] = '0 in'; });
+                      setSizeChartRows([...sizeChartRows, { size: addSize.trim(), values: vals }]);
+                    }
+                  }}
+                  className="w-full py-2.5 border-2 border-[#083028] text-[#083028] rounded-xl text-xs font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={14} /> Add Row Size
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newMet = prompt('Add Custom Metric (e.g. Hip, Sleeve):');
+                    if (newMet && newMet.trim()) {
+                      setSizeChartMetrics([...sizeChartMetrics, newMet.trim()]);
+                    }
+                  }}
+                  className="w-full py-2.5 border-2 border-[#083028] text-[#083028] rounded-xl text-xs font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={14} /> Add Custom Metric
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if (selectedProductId && selectedProductId !== 'draft') {
+                      await fetch(`/api/products?id=${selectedProductId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          size_chart: {
+                            metrics: sizeChartMetrics,
+                            rows: sizeChartRows,
+                          },
+                        }),
+                      });
+                    }
+                    toast.success('Size chart saved and applied to product!');
+                    setShowSizeChartModal(false);
+                  } catch {
+                    toast.error('Failed to save size chart.');
+                  }
+                }}
+                className="w-full py-3 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition flex items-center justify-center gap-2 shadow-md"
+              >
+                <Check size={15} /> Save & Apply to Product
               </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ══════════════ HSN LOOKUP MODAL ══════════════ */}
       {showHsnModal && (

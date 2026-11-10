@@ -72,6 +72,14 @@ export interface Product {
   deliveryType?: 'standard' | 'low_margin'; // 'standard' = green Free Delivery tag; 'low_margin' = orange + Delivery tag
   deliveryChargeAmount?: number;             // Fixed delivery charge in ₹ for low_margin products
   isNonReturnable?: boolean;                 // Non-returnable product flag
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
+  size_chart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
 }
 
 export interface Testimonial {

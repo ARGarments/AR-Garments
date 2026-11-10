@@ -1,5 +1,21 @@
 [
   {
+    "id": "00fbefca-f799-433a-8c55-d7e091ed9ef3",
+    "partyId": "6828a28a-5125-412e-985c-0f9c17cbf88a",
+    "productId": "prod-1793757961883",
+    "productName": "Cotton T-shirt",
+    "variantId": null,
+    "sku": null,
+    "inwardQuantity": 30,
+    "availableQuantity": 30,
+    "partyCostPrice": 75,
+    "sellingPrice": 255,
+    "batchNumber": "BATCH-494891",
+    "notes": "Party Stock Inward via Product Update (Party)",
+    "createdAt": "2026-11-10T14:21:34.891Z",
+    "updatedAt": "2026-11-10T14:21:34.891Z"
+  },
+  {
     "id": "545b8b54-9724-457d-80f3-47256130b66f",
     "partyId": "a5967ccb-8d3b-42c0-a28b-b75cccdae5d5",
     "productId": "prod-2",

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- AR GARMENT: PRODUCT VARIANTS TABLE
+-- AR GARMENT: PRODUCT VARIANTS TABLE UPDATE / MIGRATION
 -- Run this in: Supabase Dashboard -> SQL Editor -> New Query -> Run
 -- ==============================================================================
 
@@ -30,9 +30,19 @@ CREATE TABLE IF NOT EXISTS public.product_variants (
     fit_shape             TEXT DEFAULT '',
     sleeve_length         TEXT DEFAULT '',
     length                TEXT DEFAULT '',
+    occasion              TEXT DEFAULT '',
+    description           TEXT DEFAULT '',
+    images                TEXT[] DEFAULT '{}',
+    size_chart            JSONB DEFAULT NULL,
     custom_specifications JSONB DEFAULT '[]',
     created_at            TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure newly added columns exist if table was already created earlier
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS occasion TEXT DEFAULT '';
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS size_chart JSONB DEFAULT NULL;
 
 -- Enable Row Level Security
 ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;

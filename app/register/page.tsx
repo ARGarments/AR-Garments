@@ -21,6 +21,7 @@ import {
   ImageIcon,
   X,
   Clock,
+  ChevronDown,
 } from 'lucide-react';
 
 // ── Indian States ────────────────────────────────────────────────────────────
@@ -36,25 +37,11 @@ const INDIAN_STATES = [
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
 
-// ── Field component helpers ──────────────────────────────────────────────────
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-      {children}
-    </label>
-  );
-}
-
-function inputCls(extra = '') {
-  return `w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all ${extra}`;
-}
-
 // ── Upload to ImageKit client-side with real XHR progress ───────────────────
 async function uploadToImageKit(
   file: File,
   onProgress: (pct: number) => void,
 ): Promise<string> {
-  // 1. Fetch auth token from our secure backend
   const tokenRes = await fetch('/api/imagekit/upload-token');
   if (!tokenRes.ok) throw new Error('Could not get upload token.');
   const { token, expire, signature, publicKey } = await tokenRes.json();
@@ -127,7 +114,7 @@ export default function BusinessRegisterPage() {
   const [hasGstin, setHasGstin]         = useState(false);
   const [gstin, setGstin]               = useState('');
 
-  // ── FIX: Separate state per business type (no bleed across tabs) ──
+  // Upload state
   const [retailDocFile, setRetailDocFile]           = useState<File | null>(null);
   const [retailDocPreview, setRetailDocPreview]     = useState<string | null>(null);
   const [retailUploadedUrl, setRetailUploadedUrl]   = useState<string | null>(null);
@@ -140,7 +127,6 @@ export default function BusinessRegisterPage() {
   const [hawkerProgress, setHawkerProgress]         = useState<number>(0);
   const [hawkerUploading, setHawkerUploading]       = useState<boolean>(false);
 
-  // Active tab state getters
   const isHawker          = businessType === 'hawker';
   const docFile           = isHawker ? hawkerDocFile        : retailDocFile;
   const docPreview        = isHawker ? hawkerDocPreview     : retailDocPreview;
@@ -148,7 +134,6 @@ export default function BusinessRegisterPage() {
   const isUploading       = isHawker ? hawkerUploading     : retailUploading;
   const uploadProgress    = isHawker ? hawkerProgress      : retailProgress;
 
-  // ── File input refs (camera + gallery) ──────────────────────────────────
   const cameraInputRef  = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,7 +142,6 @@ export default function BusinessRegisterPage() {
   const [error, setError]         = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // ── Handle file selection (shared by camera + gallery inputs) ────────────
   async function handleDocChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -170,7 +154,6 @@ export default function BusinessRegisterPage() {
     setError(null);
     const currentIsHawker = businessType === 'hawker';
 
-    // Show local preview immediately
     const reader = new FileReader();
     reader.onload = () => {
       if (currentIsHawker) {
@@ -183,7 +166,6 @@ export default function BusinessRegisterPage() {
     };
     reader.readAsDataURL(file);
 
-    // Reset upload state for this tab
     if (currentIsHawker) {
       setHawkerUploadedUrl(null);
       setHawkerProgress(0);
@@ -249,50 +231,79 @@ export default function BusinessRegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!fullName.trim()) {
+      setError('Please enter your full name (अपना नाम दर्ज करें).');
       return;
     }
-    if (!businessType) {
-      setError('Please select your business type.');
+    if (!/^\d{10}$/.test(mobile.trim())) {
+      setError('Please enter a valid 10-digit mobile number (10 अंकों का मोबाइल नंबर).');
       return;
     }
-    if (!docFile) {
-      setError('Please upload a verification document photo.');
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email.trim())) {
+      setError('Please enter a valid email address (वैध ईमेल दर्ज करें).');
       return;
     }
-    if (isUploading) {
-      setError('Photo is still uploading. Please wait a moment.');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters (पासवर्ड कम से कम 6 अक्षरों का हो).');
+      return;
+    }
+    if (!shopAddress.trim()) {
+      setError('Please enter complete address / shop name (पता या दुकान का नाम दर्ज करें).');
+      return;
+    }
+    if (!city.trim()) {
+      setError('Please enter your city/town (शहर दर्ज करें).');
+      return;
+    }
+    if (!state) {
+      setError('Please select your state (राज्य चुनें).');
+      return;
+    }
+    if (!/^\d{6}$/.test(pincode.trim())) {
+      setError('Please enter a valid 6-digit PIN code (6 अंकों का पिन कोड दर्ज करें).');
+      return;
+    }
+    if (hasGstin && gstin.trim().length !== 15) {
+      setError('GSTIN must be exactly 15 characters (GSTIN 15 अंकों का होना चाहिए).');
       return;
     }
     if (!activeUploadedUrl) {
-      setError('Photo upload did not complete. Please remove and re-upload.');
+      setError(
+        businessType === 'hawker'
+          ? 'Please upload your photo with goods or vehicle (फेरी का फोटो अपलोड करें).'
+          : 'Please upload your visiting card or shop front photo (दुकान या विजिटिंग कार्ड की फोटो).'
+      );
       return;
     }
 
     setLoading(true);
     try {
-      // ── Send only the already-uploaded URL — no file blob, no blocking ImageKit call ──
-      const fd = new FormData();
-      fd.append('full_name', fullName);
-      fd.append('mobile', mobile);
-      fd.append('email', email);
-      fd.append('password', password);
-      fd.append('shop_address', shopAddress);
-      fd.append('landmark', landmark);
-      fd.append('city', city);
-      fd.append('state', state);
-      fd.append('pincode', pincode);
-      fd.append('business_type', businessType);
-      fd.append('has_gstin', String(hasGstin));
-      fd.append('gstin', hasGstin ? gstin : '');
-      fd.append('document_url', activeUploadedUrl); // URL string, not a File blob
+      const payload = {
+        fullName: fullName.trim(),
+        mobile: mobile.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        shopAddress: shopAddress.trim(),
+        landmark: landmark.trim() || null,
+        city: city.trim(),
+        state,
+        pincode: pincode.trim(),
+        businessType,
+        hasGstin,
+        gstin: hasGstin ? gstin.trim().toUpperCase() : null,
+        verificationDocUrl: activeUploadedUrl,
+      };
 
-      const res  = await fetch('/api/business/register', { method: 'POST', body: fd });
+      const res = await fetch('/api/business/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        setError(data.error || 'Registration failed. Please try again.');
+      if (!res.ok) {
+        setError(data.error || 'Registration failed. Please check your details.');
         return;
       }
 
@@ -304,483 +315,459 @@ export default function BusinessRegisterPage() {
     }
   }
 
-  // ── Success / Pending Screen ──────────────────────────────────────────────
+  // ── Success / Pending Verification Screen (Exact Screenshot 4 UI) ──────────
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-8 text-center">
-            {/* Clock icon */}
-            <div className="w-20 h-20 rounded-full bg-amber-50 border-4 border-amber-200 flex items-center justify-center mx-auto mb-5">
-              <Clock size={38} className="text-amber-500" />
+      <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_at_top_left,#182740_0%,transparent_50%),radial-gradient(ellipse_at_bottom_left,#182740_0%,transparent_50%),radial-gradient(ellipse_at_top_right,#635123_0%,transparent_55%),radial-gradient(ellipse_at_bottom_right,#635123_0%,transparent_55%)] relative overflow-hidden flex items-center justify-center px-4 py-8 text-white">
+        {/* Left Side Navy Blend (#182740) */}
+        <div className="pointer-events-none absolute -top-16 -left-16 w-[450px] h-[550px] rounded-full bg-[#182740]/85 blur-[100px]" />
+        <div className="pointer-events-none absolute -bottom-16 -left-16 w-[450px] h-[550px] rounded-full bg-[#182740]/85 blur-[100px]" />
+
+        {/* Right Side Gold Blend (#635123) */}
+        <div className="pointer-events-none absolute -top-16 -right-16 w-[450px] h-[550px] rounded-full bg-[#635123]/80 blur-[100px]" />
+        <div className="pointer-events-none absolute -bottom-16 -right-16 w-[450px] h-[550px] rounded-full bg-[#635123]/70 blur-[100px]" />
+
+        <div className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto text-center">
+          {/* Logo */}
+          <Link href="/" className="inline-block mb-3">
+            <div className="relative h-14 w-28 mx-auto filter drop-shadow-[0_2px_12px_rgba(245,208,97,0.4)]">
+              <Image
+                src="/home-images/logo.png"
+                alt="AR Garment"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
+            <span className="text-[10px] tracking-[0.35em] text-[#f5d061] uppercase font-bold mt-1 block">
+              A R GARMENT
+            </span>
+          </Link>
 
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-1">
-              Registration Submitted! (पंजीकरण प्राप्त हुआ)
-            </h2>
-            <p className="text-sm font-semibold text-amber-600 mb-4">
-              STATUS: PENDING — Verification Under Review (सत्यापन प्रक्रियाधीन है)
-            </p>
+          <h2 className="text-lg font-bold text-white tracking-wide">
+            Verification Status
+          </h2>
+          <p className="text-sm font-semibold text-[#f5d061] mb-6">
+            सत्यापन स्थिति
+          </p>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-left text-xs sm:text-sm text-gray-700 mb-6 space-y-2">
-              <p>✅ <strong>Application Received:</strong> आपका आवेदन प्राप्त हो गया है।</p>
-              <p>🔍 <strong>Document Verification:</strong> हमारी टीम आपके फोटो और दस्तावेजों की जांच करेगी।</p>
-              <p>⏳ <strong>Review Time:</strong> इसमें <strong>24 से 48 घंटे</strong> का समय लगता है।</p>
-              <p>📦 <strong>Wholesale Access:</strong> अप्रूवल के बाद आप होलसेल रेट पर सीधे थोक माल खरीद सकेंगे।</p>
+          {/* Golden Circular Status Badge (Screenshot 4) */}
+          <div className="relative w-36 h-36 mx-auto mb-6 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-4 border-amber-500/40 animate-pulse shadow-[0_0_35px_rgba(245,208,97,0.35)]" />
+            <div className="w-28 h-28 rounded-full border-2 border-amber-400 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-center p-2 shadow-inner">
+              <Clock size={32} className="text-[#f5d061] mb-1" />
+              <span className="text-[10px] uppercase font-bold text-[#f5d061] leading-tight">
+                Verification<br />Pending
+              </span>
             </div>
+          </div>
 
-            <p className="text-xs text-gray-500 mb-6">
-              Need help? (मदद चाहिए?){' '}
-              <Link href="/contact" className="font-bold text-[#083028] hover:underline">
-                Contact Support (सहायता संपर्क)
-              </Link>
+          <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-wider">
+            STATUS: <span className="text-[#f5d061]">PENDING</span>
+          </h3>
+          <p className="text-xs text-amber-200 font-semibold mb-3">
+            (जांच प्रगति पर है)
+          </p>
+
+          <p className="text-xs text-gray-300 mb-4 px-2">
+            Your registration is under manual review.<br />
+            आपका रजिस्ट्रेशन वेरिफिकेशन के लिए पेंडिंग है।
+          </p>
+
+          {/* Golden border card with explanation */}
+          <div className="rounded-2xl p-4 sm:p-5 border border-amber-500/30 bg-[#0d1624]/60 backdrop-blur-xl text-left text-xs text-gray-200 mb-6 space-y-2 leading-relaxed shadow-[0_0_20px_rgba(245,208,97,0.1)]">
+            <p className="text-center text-amber-100 font-medium">
+              You can explore the products, but wholesale prices will be visible once your profile is manually verified by the admin within 24 to 48 hours.
             </p>
+            <p className="text-center text-amber-300/80 text-[11px] pt-1 border-t border-white/10">
+              (आप प्रोडक्ट्स देख सकते हैं, लेकिन आपके प्रोफाइल को एडमिन द्वारा 24 से 48 घंटे में मैन्युअली वेरिफाई किए जाने के बाद ही थोक (wholesale) भाव दिखेंगे।)
+            </p>
+          </div>
 
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center gap-2 w-full bg-[#083028] hover:bg-[#051e19] text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-md text-sm"
-            >
-              Explore Catalog (कैटलॉग देखें)
-              <ArrowRight size={15} />
+          {/* Cyan Glow Pill Button */}
+          <Link
+            href="/"
+            className="w-full py-3.5 rounded-full font-bold text-sm text-white bg-gradient-to-r from-sky-500 via-cyan-500 to-blue-600 hover:brightness-110 active:scale-[0.99] transition-all shadow-[0_4px_25px_rgba(6,182,212,0.5)] flex flex-col items-center justify-center"
+          >
+            <span>Explore Catalog</span>
+            <span className="text-[10px] font-normal opacity-90">कैटलॉग देखें</span>
+          </Link>
+
+          <div className="mt-5 text-xs text-gray-400">
+            Need help?{' '}
+            <Link href="/contact" className="text-cyan-400 hover:underline">
+              Contact Support / सहायता चाहिए? संपर्क करें
             </Link>
-
-            <div className="mt-4">
-              <Link href="/login" className="text-xs font-bold text-[#083028] hover:underline">
-                Already registered? Sign In (पहले से खाता है? लॉगिन करें)
-              </Link>
-            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── Registration Form ─────────────────────────────────────────────────────
+  // ── Registration Form (Exact Screenshot 2 & 3 UI) ──────────────────────────
   return (
-    <div className="min-h-screen bg-[#FAF8F3] flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-lg">
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-6 sm:p-10">
+    <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_at_top_left,#182740_0%,transparent_50%),radial-gradient(ellipse_at_bottom_left,#182740_0%,transparent_50%),radial-gradient(ellipse_at_top_right,#635123_0%,transparent_55%),radial-gradient(ellipse_at_bottom_right,#635123_0%,transparent_55%)] relative overflow-hidden flex items-center justify-center px-4 py-8 text-white">
+      {/* ── Left Side Navy Blend (#182740) ── */}
+      <div className="pointer-events-none absolute -top-16 -left-16 w-[450px] h-[550px] rounded-full bg-[#182740]/85 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-16 -left-16 w-[450px] h-[550px] rounded-full bg-[#182740]/85 blur-[100px]" />
 
-          {/* Header */}
-          <div className="text-center mb-7">
-            <Link href="/" className="inline-block mb-3">
-              <div className="relative h-12 w-24 mx-auto">
-                <Image
-                  src="/home-images/logo.png"
-                  alt="AR Garment"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              Business Registration
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1 font-medium">
-              व्यापारी / दुकान पंजीकरण — होलसेल रेट पर कपड़े खरीदने के लिए अपनी दुकान या व्यापार रजिस्टर करें
-            </p>
+      {/* ── Right Side Gold Blend (#635123) ── */}
+      <div className="pointer-events-none absolute -top-16 -right-16 w-[450px] h-[550px] rounded-full bg-[#635123]/80 blur-[100px]" />
+      <div className="pointer-events-none absolute -bottom-16 -right-16 w-[450px] h-[550px] rounded-full bg-[#635123]/70 blur-[100px]" />
+
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto">
+        
+        {/* Header with ARG Logo */}
+        <div className="text-center mb-3">
+          <Link href="/" className="inline-block">
+            <div className="relative h-14 w-28 mx-auto filter drop-shadow-[0_2px_12px_rgba(245,208,97,0.4)]">
+              <Image
+                src="/home-images/logo.png"
+                alt="AR Garment"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <span className="text-[10px] tracking-[0.35em] text-[#f5d061] uppercase font-bold mt-1 block">
+              A R GARMENT
+            </span>
+          </Link>
+          <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide mt-1">
+            Business Registration
+          </h1>
+          <p className="text-xs text-gray-400">
+            Step 1 of 2: Business Details
+          </p>
+        </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-4 bg-red-950/70 border border-red-500/50 text-red-200 px-4 py-3 rounded-2xl text-xs flex items-start gap-2.5 backdrop-blur-md">
+            <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-400" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+
+          {/* Full Name */}
+          <div>
+            <input
+              type="text"
+              required
+              maxLength={100}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Full Name"
+              className="w-full px-4 py-2.5 bg-black/40 border border-amber-500/40 rounded-xl text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
+            />
           </div>
 
-          {/* Error Banner */}
-          {error && (
-            <div className="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs sm:text-sm flex items-start gap-2.5">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-              <p>{error}</p>
+          {/* Mobile */}
+          <div>
+            <input
+              type="tel"
+              required
+              maxLength={10}
+              pattern="\d{10}"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="Mobile Number (+91 | Enter 10-digit mobile"
+              className="w-full px-4 py-2.5 bg-black/40 border border-amber-500/40 rounded-xl text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
+            />
+          </div>
+
+          {/* Email ID */}
+          <div>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email ID"
+              className="w-full px-4 py-2.5 bg-black/40 border border-amber-500/40 rounded-xl text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
+            />
+          </div>
+
+          {/* Password (Required for account setup) */}
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create Password (कम से कम 6 अक्षर)"
+              className="w-full pl-4 pr-10 py-2.5 bg-black/40 border border-amber-500/40 rounded-xl text-xs sm:text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-300 p-0.5"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+
+          {/* ── Complete Address Box (Exact Screenshot 2 & 3 Cyan Box) ── */}
+          <div className="rounded-2xl p-3.5 border border-amber-500/30 bg-[#0d1624]/60 backdrop-blur-xl shadow-[0_0_15px_rgba(6,182,212,0.1)] space-y-2.5">
+            <p className="text-xs font-semibold text-[#f5d061]">
+              Complete Address (पूरा पता)
+            </p>
+
+            <input
+              type="text"
+              required
+              maxLength={200}
+              value={shopAddress}
+              onChange={(e) => setShopAddress(e.target.value)}
+              placeholder="Shop Name / House No. / गली / मोहल्ला"
+              className="w-full px-3.5 py-2 bg-black/40 border border-cyan-500/40 rounded-xl text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-cyan-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+            />
+
+            <input
+              type="text"
+              maxLength={100}
+              value={landmark}
+              onChange={(e) => setLandmark(e.target.value)}
+              placeholder="Landmark / लैंडमार्क (Optional)"
+              className="w-full px-3.5 py-2 bg-black/40 border border-cyan-500/40 rounded-xl text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-cyan-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+            />
+
+            <input
+              type="text"
+              required
+              maxLength={80}
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="City / Town / शहर"
+              className="w-full px-3.5 py-2 bg-black/40 border border-cyan-500/40 rounded-xl text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-cyan-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+            />
+
+            <div className="relative">
+              <select
+                required
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className="w-full px-3.5 py-2 bg-black/40 border border-cyan-500/40 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-400 appearance-none shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+              >
+                <option value="" className="bg-[#0d1624] text-gray-400">State / राज्य</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s} className="bg-[#0d1624] text-white">{s}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none" />
+            </div>
+
+            <input
+              type="text"
+              required
+              maxLength={6}
+              pattern="\d{6}"
+              inputMode="numeric"
+              value={pincode}
+              onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="6-digit PIN Code / पिन कोड"
+              className="w-full px-3.5 py-2 bg-black/40 border border-cyan-500/40 rounded-xl text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-cyan-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+            />
+          </div>
+
+          {/* ── Select Business Type (Exact Toggle UI in Screenshot 2 & 3) ── */}
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs font-semibold text-white">
+              Select Business Type <span className="text-[#f5d061] text-[11px] font-normal">(बिजनेस का प्रकार चुनें)</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBusinessType('retail_store')}
+                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  businessType === 'retail_store'
+                    ? 'bg-gradient-to-r from-[#e5a93b] to-[#d6982f] text-black border-amber-400 shadow-[0_2px_10px_rgba(245,208,97,0.3)]'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>Retail Store Owner</span>
+                {businessType === 'retail_store' && <span>✓</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBusinessType('hawker')}
+                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  businessType === 'hawker'
+                    ? 'bg-gradient-to-r from-[#e5a93b] to-[#d6982f] text-black border-amber-400 shadow-[0_2px_10px_rgba(245,208,97,0.3)]'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                }`}
+              >
+                <span>Hawker</span>
+                {businessType === 'hawker' && <span>✓</span>}
+              </button>
+            </div>
+          </div>
+
+          {/* ── GSTIN Optional (Retail Store Only — Screenshot 3) ── */}
+          {businessType === 'retail_store' && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#f5d061]">GSTIN (Optional)</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setHasGstin(true)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                      hasGstin
+                        ? 'bg-gradient-to-r from-[#e5a93b] to-[#d6982f] text-black border-amber-400'
+                        : 'bg-white/5 border-white/10 text-gray-400'
+                    }`}
+                  >
+                    Yes {hasGstin && '✓'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setHasGstin(false); setGstin(''); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                      !hasGstin
+                        ? 'bg-white/20 text-white border-white/30'
+                        : 'bg-white/5 border-white/10 text-gray-400'
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+
+              {hasGstin && (
+                <input
+                  type="text"
+                  maxLength={15}
+                  value={gstin}
+                  onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                  placeholder="Enter 15-digit GSTIN (if available)"
+                  className="w-full px-3.5 py-2 bg-black/40 border border-amber-500/40 rounded-xl text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-amber-400 font-mono tracking-wider shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]"
+                />
+              )}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* ── Personal Info ── */}
-            <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1">
-              Personal Details (व्यक्तिगत जानकारी)
+          {/* ── Document Upload Box (Exact Screenshot 2 & 3 UI) ── */}
+          <div className="space-y-1.5 pt-1">
+            <p className="text-xs font-semibold text-white">
+              Upload Verification Document
+            </p>
+            <p className="text-[11px] text-[#f5d061]">
+              (वेरिफिकेशन डॉक्यूमेंट अपलोड करें)
             </p>
 
-            {/* Full Name */}
-            <div>
-              <Label>Full Name / पूरा नाम</Label>
-              <div className="relative">
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  maxLength={100}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="अपना पूरा नाम लिखें (e.g. Ramesh Kumar)"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* Mobile */}
-            <div>
-              <Label>Mobile Number / 10 अंकों का मोबाइल नंबर</Label>
-              <div className="relative">
-                <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="tel"
-                  required
-                  maxLength={10}
-                  pattern="\d{10}"
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="10 अंकों का मोबाइल नंबर दर्ज करें"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label>Email ID / ईमेल आईडी</Label>
-              <div className="relative">
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com (यदि नहीं है तो name@gmail.com लिखें)"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <Label>Password / पासवर्ड (कम से कम 6 अक्षर)</Label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="कम से कम 6 अक्षरों का पासवर्ड बनाएं"
-                  className="w-full pl-10 pr-10 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* ── Address ── */}
-            <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 pt-1">
-              Complete Address (दुकान या व्यापार का पूरा पता)
-            </p>
-
-            {/* Shop Address */}
-            <div>
-              <Label>Shop Name / House No. / Gali (दुकान का नाम / मकान नं. / गली / मोहल्ला)</Label>
-              <div className="relative">
-                <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  maxLength={200}
-                  value={shopAddress}
-                  onChange={(e) => setShopAddress(e.target.value)}
-                  placeholder="दुकान का नाम, मकान नंबर, गली या मोहल्ला लिखें"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* Landmark */}
-            <div>
-              <Label>
-                Landmark / लैंडमार्क <span className="text-gray-400 font-normal">(Optional — आसपास की प्रसिद्ध जगह)</span>
-              </Label>
-              <div className="relative">
-                <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  maxLength={100}
-                  value={landmark}
-                  onChange={(e) => setLandmark(e.target.value)}
-                  placeholder="जैसे: मंदिर के पास, मेन मार्केट, अस्पताल के सामने"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* City & State row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>City / शहर या कस्बा</Label>
-                <div className="relative">
-                  <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    maxLength={80}
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="शहर (City)"
-                    className={inputCls()}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>State / राज्य</Label>
-                <select
-                  required
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  className="w-full px-3 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all font-semibold"
-                >
-                  <option value="">राज्य चुनें (Select State)</option>
-                  {INDIAN_STATES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* PIN Code */}
-            <div>
-              <Label>6-digit PIN Code / 6 अंकों का पिन कोड</Label>
-              <div className="relative">
-                <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  pattern="\d{6}"
-                  inputMode="numeric"
-                  value={pincode}
-                  onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="6 अंकों का पिन कोड लिखें (e.g. 211003)"
-                  className={inputCls()}
-                />
-              </div>
-            </div>
-
-            {/* ── Business Type ── */}
-            <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 pt-1">
-              Select Business Type (व्यापार का प्रकार चुनें)
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              {(
-                [
-                  { value: 'retail_store', label: 'Retail Store (दुकानदार / रिटेलर)' },
-                  { value: 'hawker',       label: 'Hawker (फेरी वाला / ठेला)' },
-                ] as const
-              ).map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBusinessType(value)}
-                  className={`py-2.5 px-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all duration-150 text-center ${
-                    businessType === value
-                      ? 'bg-[#083028] text-white border-[#083028] shadow-md'
-                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-[#083028] hover:text-[#083028]'
-                  }`}
-                >
-                  {label}
-                  {businessType === value && ' ✓'}
-                </button>
-              ))}
-            </div>
-
-            {/* ── GSTIN — only for retail store ── */}
-            {businessType === 'retail_store' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>GSTIN / GST नंबर (Optional - यदि हो)</Label>
-                  <div className="flex gap-2">
-                    {(['Yes', 'No'] as const).map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => { setHasGstin(opt === 'Yes'); if (opt === 'No') setGstin(''); }}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
-                          (opt === 'Yes') === hasGstin
-                            ? 'bg-[#083028] text-white border-[#083028]'
-                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-[#083028]'
-                        }`}
-                      >
-                        {opt === 'Yes' ? 'हाँ (Yes)' : 'नहीं (No)'}{(opt === 'Yes') === hasGstin ? ' ✓' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {hasGstin && (
-                  <input
-                    type="text"
-                    maxLength={15}
-                    value={gstin}
-                    onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                    placeholder="15 अंकों का GSTIN नंबर दर्ज करें"
-                    className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition-all font-mono tracking-widest"
-                  />
-                )}
-              </div>
-            )}
-
-            {/* ── Document Upload ── */}
-            <div>
-              <p className="text-[10px] font-bold text-[#083028] uppercase tracking-widest border-b border-gray-100 pb-1 mb-2">
-                {businessType === 'hawker'
-                  ? 'Verification Photo (सत्यापन फोटो)'
-                  : 'Shop / Card Photo (दुकान या विजिटिंग कार्ड की फोटो)'}
-              </p>
-              <p className="text-xs text-gray-600 mb-3 leading-relaxed">
-                {businessType === 'hawker'
-                  ? 'फेरी पर जाते समय माल, ठेले या गाड़ी के साथ अपनी फोटो अपलोड करें (Upload photo with goods/cart)'
-                  : 'दुकान के बोर्ड के साथ सामने की फोटो या अपना Visiting Card अपलोड करें (Upload shop front or visiting card)'}
-              </p>
-
-              {/* ── Upload progress bar (shown while uploading) ── */}
-              {isUploading && (
-                <div className="mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-[#083028]">फोटो अपलोड हो रही है (Uploading photo)…</span>
-                    <span className="text-xs font-bold text-[#083028]">{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-[#083028] h-2 rounded-full transition-all duration-200"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
+            {/* Upload Area */}
+            <div className="border border-dashed border-amber-400/40 rounded-2xl p-4 bg-[#0d1624]/60 backdrop-blur-xl text-center shadow-[0_0_15px_rgba(245,208,97,0.1)]">
               {docPreview ? (
-                <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                <div className="relative rounded-xl overflow-hidden border border-amber-400/30">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={docPreview} alt="Document preview" className="w-full max-h-52 object-contain bg-gray-50" />
+                  <img src={docPreview} alt="Doc preview" className="w-full max-h-40 object-contain bg-black/50" />
                   {!isUploading && (
                     <button
                       type="button"
                       onClick={removeDoc}
-                      className="absolute top-2 right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow"
+                      className="absolute top-2 right-2 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow"
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   )}
-                  <div className={`px-3 py-2 border-t flex items-center gap-2 ${
-                    isUploading
-                      ? 'bg-blue-50 border-blue-100'
-                      : activeUploadedUrl
-                      ? 'bg-green-50 border-green-100'
-                      : 'bg-red-50 border-red-100'
-                  }`}>
-                    {isUploading ? (
-                      <Loader2 size={14} className="text-blue-600 flex-shrink-0 animate-spin" />
-                    ) : activeUploadedUrl ? (
-                      <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />
-                    ) : (
-                      <AlertCircle size={14} className="text-red-600 flex-shrink-0" />
-                    )}
-                    <p className={`text-xs font-medium truncate ${
-                      isUploading ? 'text-blue-700' : activeUploadedUrl ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      {isUploading
-                        ? `अपलोड हो रहा है… ${uploadProgress}%`
-                        : activeUploadedUrl
-                        ? `फोटो तैयार है: ${docFile?.name}`
-                        : 'अपलोड विफल रहा — कृपया दोबारा फोटो चुनें'}
-                    </p>
+                  <div className="p-2 bg-black/70 text-[11px] text-amber-200 truncate">
+                    {isUploading ? `Uploading ${uploadProgress}%...` : activeUploadedUrl ? 'Document uploaded ✓' : 'Upload failed'}
                   </div>
                 </div>
               ) : (
-                /* ── Two-button upload: Camera + Gallery ── */
-                <div className="border-2 border-dashed border-gray-300 hover:border-[#083028] rounded-xl py-6 px-4 transition-all bg-gray-50/50">
-                  <div className="flex items-center justify-center mb-2">
-                    <Upload size={26} className="text-gray-400" />
-                  </div>
-                  <p className="text-xs text-center text-gray-700 mb-1 font-bold">
-                    Upload Photo / फोटो अपलोड करें
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-white">
+                    {businessType === 'hawker'
+                      ? 'Upload Photo with Cart, Vehicle, or Goods'
+                      : 'Upload Visiting Card or Shop Front Photo'}
                   </p>
-                  <p className="text-[11px] text-center text-gray-400 mb-3">
-                    JPG, PNG — अधिकतम 15MB
+                  <p className="text-[11px] text-gray-400">
+                    {businessType === 'hawker'
+                      ? '(फेरी पर जाते समय गाड़ी, ठेले या माल के साथ अपनी फोटो अपलोड करें)'
+                      : '(अपनी दुकान का Visiting Card या दुकान के सामने की फोटो अपलोड करें)'}
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Camera button */}
+
+                  {/* Camera / Upload Icons */}
+                  <div className="flex items-center justify-center gap-5 py-1 text-[#f5d061]">
                     <button
                       type="button"
                       onClick={() => cameraInputRef.current?.click()}
-                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-[#083028] text-[#083028] text-xs font-bold hover:bg-[#083028] hover:text-white transition-all duration-150"
+                      className="p-2 hover:scale-110 transition-transform"
+                      title="Take Photo"
                     >
-                      <Camera size={15} />
-                      कैमरा (Take Photo)
+                      <Camera size={26} />
                     </button>
-                    {/* Gallery button */}
                     <button
                       type="button"
                       onClick={() => galleryInputRef.current?.click()}
-                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:border-[#083028] hover:text-[#083028] transition-all duration-150"
+                      className="p-2 hover:scale-110 transition-transform"
+                      title="Upload from Gallery"
                     >
-                      <ImageIcon size={15} />
-                      गैलरी (From Gallery)
+                      <Upload size={26} />
                     </button>
                   </div>
+
+                  <p className="text-[11px] text-[#f5d061]">
+                    Tap to Capture or Upload (Max 5MB)
+                  </p>
+                  <p className="text-[10px] text-gray-400">
+                    / कैमरा से फोटो लें या अपलोड करें
+                  </p>
                 </div>
               )}
-
-              {/* Hidden camera input */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleDocChange}
-              />
-              {/* Hidden gallery input */}
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleDocChange}
-              />
             </div>
 
-            {/* ── Submit ── */}
-            <button
-              type="submit"
-              disabled={loading || isUploading}
-              className="w-full mt-3 bg-[#083028] hover:bg-[#051e19] text-white font-bold py-3.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 text-sm sm:text-base"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Submitting Details... (जमा हो रहा है...)</span>
-                </>
-              ) : isUploading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Uploading photo… {uploadProgress}% (फोटो अपलोड हो रही है)</span>
-                </>
-              ) : (
-                <>
-                  <span>Submit for Verification (सत्यापन के लिए सबमिट करें)</span>
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
+            {/* Hidden Inputs */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleDocChange}
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleDocChange}
+            />
+          </div>
 
-          <div className="mt-6 text-center text-xs sm:text-sm text-gray-600">
-            Already registered? (पहले से खाता है?){' '}
-            <Link href="/login" className="font-bold text-[#083028] hover:underline">
-              Sign In (यहाँ लॉगिन करें)
+          {/* ── Submit for Verification Golden Pill Button ── */}
+          <button
+            type="submit"
+            disabled={loading || isUploading}
+            className="w-full py-3.5 rounded-full font-extrabold text-sm text-black bg-gradient-to-r from-[#e5a93b] via-[#f5d061] to-[#d6982f] hover:brightness-110 active:scale-[0.99] transition-all shadow-[0_4px_20px_rgba(245,208,97,0.4)] flex flex-col items-center justify-center disabled:opacity-60 mt-4"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin text-black" />
+                <span>Submitting Details...</span>
+              </div>
+            ) : isUploading ? (
+              <span>Uploading photo... {uploadProgress}%</span>
+            ) : (
+              <>
+                <span>Submit for Verification</span>
+                <span className="text-[10px] font-bold opacity-90">सबमिट करें</span>
+              </>
+            )}
+          </button>
+
+          <div className="text-center pt-2 text-xs text-gray-400">
+            Already registered?{' '}
+            <Link href="/login" className="font-bold text-cyan-400 hover:underline">
+              Sign In
             </Link>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

@@ -207,6 +207,7 @@ export async function POST(request: Request) {
     delivery_charge_amount: Number(body.deliveryChargeAmount ?? body.delivery_charge_amount ?? 0),
     is_non_returnable: Boolean(body.isNonReturnable ?? body.is_non_returnable ?? false),
     tags: Array.isArray(body.tags) ? body.tags : (body.tags ? [String(body.tags)] : []),
+    size_chart: body.sizeChart || body.size_chart || null,
   };
 
   // Attempt insert
@@ -374,6 +375,10 @@ export async function PATCH(request: Request) {
   // Non-Returnable flag
   if (body.isNonReturnable !== undefined) patch.is_non_returnable = Boolean(body.isNonReturnable);
   if (body.is_non_returnable !== undefined) patch.is_non_returnable = Boolean(body.is_non_returnable);
+
+  // Size Chart
+  if (body.sizeChart !== undefined) patch.size_chart = body.sizeChart;
+  if (body.size_chart !== undefined) patch.size_chart = body.size_chart;
 
   // Category
   if (body.categoryId !== undefined || body.category !== undefined) {

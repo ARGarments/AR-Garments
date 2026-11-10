@@ -12,23 +12,55 @@ export const dynamic = 'force-dynamic';
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
+    let fullName = '';
+    let mobile = '';
+    let email = '';
+    let password = '';
+    let shopAddress = '';
+    let landmark = '';
+    let city = '';
+    let state = '';
+    let pincode = '';
+    let businessType = 'retail_store';
+    let hasGstin = false;
+    let gstin = '';
+    let directDocUrl = '';
+    let docFile: File | null = null;
 
-    // ── Extract fields ──────────────────────────────────────────────────────
-    const fullName     = (formData.get('full_name') as string)?.trim();
-    const mobile       = (formData.get('mobile') as string)?.trim();
-    const email        = (formData.get('email') as string)?.trim().toLowerCase();
-    const password     = (formData.get('password') as string)?.trim();
-    const shopAddress  = (formData.get('shop_address') as string)?.trim();
-    const landmark     = (formData.get('landmark') as string)?.trim() || '';
-    const city         = (formData.get('city') as string)?.trim();
-    const state        = (formData.get('state') as string)?.trim();
-    const pincode      = (formData.get('pincode') as string)?.trim();
-    const businessType = (formData.get('business_type') as string)?.trim();
-    const hasGstin     = formData.get('has_gstin') === 'true';
-    const gstin        = (formData.get('gstin') as string)?.trim() || '';
-    const directDocUrl = (formData.get('document_url') as string)?.trim() || '';
-    const docFile      = formData.get('document') as File | null;
+    const contentType = req.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const json = await req.json();
+      fullName     = String(json.fullName || json.full_name || '').trim();
+      mobile       = String(json.mobile || '').trim();
+      email        = String(json.email || json.applicant_email || '').trim().toLowerCase();
+      password     = String(json.password || '').trim();
+      shopAddress  = String(json.shopAddress || json.shop_address || '').trim();
+      landmark     = String(json.landmark || '').trim();
+      city         = String(json.city || '').trim();
+      state        = String(json.state || '').trim();
+      pincode      = String(json.pincode || '').trim();
+      businessType = String(json.businessType || json.business_type || 'retail_store').trim();
+      hasGstin     = Boolean(json.hasGstin || json.has_gstin);
+      gstin        = String(json.gstin || '').trim();
+      directDocUrl = String(json.verificationDocUrl || json.document_url || '').trim();
+    } else {
+      const formData = await req.formData();
+      fullName     = (formData.get('full_name') as string)?.trim() || (formData.get('fullName') as string)?.trim();
+      mobile       = (formData.get('mobile') as string)?.trim();
+      email        = (formData.get('email') as string)?.trim().toLowerCase();
+      password     = (formData.get('password') as string)?.trim();
+      shopAddress  = (formData.get('shop_address') as string)?.trim() || (formData.get('shopAddress') as string)?.trim();
+      landmark     = (formData.get('landmark') as string)?.trim() || '';
+      city         = (formData.get('city') as string)?.trim();
+      state        = (formData.get('state') as string)?.trim();
+      pincode      = (formData.get('pincode') as string)?.trim();
+      businessType = (formData.get('business_type') as string)?.trim() || (formData.get('businessType') as string)?.trim() || 'retail_store';
+      hasGstin     = formData.get('has_gstin') === 'true' || formData.get('hasGstin') === 'true';
+      gstin        = (formData.get('gstin') as string)?.trim() || '';
+      directDocUrl = (formData.get('document_url') as string)?.trim() || (formData.get('verificationDocUrl') as string)?.trim() || '';
+      docFile      = formData.get('document') as File | null;
+    }
 
     // ── Validation ───────────────────────────────────────────────────────────
     if (!fullName || fullName.length < 2) {

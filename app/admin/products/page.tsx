@@ -9,7 +9,7 @@ import {
   Info, Truck, ArrowLeft, Check, Box, Tag, Ruler,
   Shirt, DollarSign, Scale, Percent, FileCheck,
   Link as LinkIcon, Home, Crown, Award, Store,
-  Layers, Package, CheckCircle2, Bookmark, AlertCircle
+  Layers, Package, CheckCircle2, Bookmark, AlertCircle, Settings
 } from 'lucide-react';
 import { Product } from '@/lib/adminData';
 import { useToast } from '@/context/ToastContext';
@@ -128,6 +128,10 @@ type ProductFormData = {
   partyId: string;
   partyName: string;
   partyCostPrice: number;
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
 };
 
 const initialFormData = (): ProductFormData => ({
@@ -224,6 +228,13 @@ export default function AdminProductsPage() {
   const [tagInput, setTagInput] = useState('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
+  // Custom Specification inputs & edit state
+  const [newSpecLabel, setNewSpecLabel] = useState('');
+  const [newSpecValue, setNewSpecValue] = useState('');
+  const [editingSpecIndex, setEditingSpecIndex] = useState<number | null>(null);
+  const [editingSpecLabel, setEditingSpecLabel] = useState('');
+  const [editingSpecValue, setEditingSpecValue] = useState('');
+
   // Load saved custom tags from localStorage on mount
   useEffect(() => {
     try {
@@ -282,6 +293,123 @@ export default function AdminProductsPage() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [showHsnModal, setShowHsnModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  const applyFormat = (command: string) => {
+    document.execCommand(command, false);
+    editorRef.current?.focus();
+  };
+
+  // Dynamic sizes list from DB & modals
+  const [sizesList, setSizesList] = useState<string[]>([
+    'Free Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
+    'Set of All Sizes (S, M, L, XL, XXL)', 'Unstitched'
+  ]);
+  const [showManageSizesModal, setShowManageSizesModal] = useState(false);
+  const [showSizeChartModal, setShowSizeChartModal] = useState(false);
+  const [newSizeInput, setNewSizeInput] = useState('');
+
+  // Size chart state
+  const [sizeChartMetrics, setSizeChartMetrics] = useState<string[]>([
+    'Top Chest', 'Top Waist', 'Top Length', 'Shoulder', 'Inseam (Custom)'
+  ]);
+  const [sizeChartRows, setSizeChartRows] = useState<Array<{ size: string; values: Record<string, string> }>>([
+    { size: 'M', values: { 'Top Chest': '38 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '24 in', 'Inseam (Custom)': '30 in' } },
+    { size: 'S', values: { 'Top Chest': '39 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '26 in', 'Inseam (Custom)': '30 in' } },
+    { size: 'L', values: { 'Top Chest': '32 in', 'Top Waist': '32 in', 'Top Length': '25 in', 'Shoulder': '26 in', 'Inseam (Custom)': '37 in' } },
+    { size: 'Free Size', values: { 'Top Chest': '34 in', 'Top Waist': '32 in', 'Top Length': '26 in', 'Shoulder': '26 in', 'Inseam (Custom)': '26 in' } },
+  ]);
+
+  // Load Sizes from DB
+  const loadSizes = async () => {
+    try {
+      const res = await fetch('/api/sizes');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setSizesList(data.map((item: { name: string }) => item.name));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching sizes:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadSizes();
+  }, []);
+
+  const handleAddCustomSize = async (nameToAdd?: string) => {
+    const sizeName = (nameToAdd || newSizeInput).trim();
+    if (!sizeName) return;
+    if (sizesList.includes(sizeName)) {
+      toast.info('This size already exists.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/sizes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: sizeName }),
+      });
+      if (res.ok) {
+        setSizesList((prev) => [...prev, sizeName]);
+        setFormData((prev) => ({ ...prev, size: sizeName }));
+        setNewSizeInput('');
+        toast.success(`Size "${sizeName}" added!`);
+      } else {
+        toast.error('Failed to add size.');
+      }
+    } catch {
+      toast.error('Network error adding size.');
+    }
+  };
+
+  const handleDeleteCustomSize = async (sizeName: string) => {
+    if (!confirm(`Delete size "${sizeName}"?`)) return;
+    try {
+      const res = await fetch(`/api/sizes?name=${encodeURIComponent(sizeName)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSizesList((prev) => prev.filter((s) => s !== sizeName));
+        if (formData.size === sizeName) {
+          setFormData((prev) => ({ ...prev, size: sizesList[0] || 'Free Size' }));
+        }
+        toast.success(`Size "${sizeName}" deleted.`);
+      }
+    } catch {
+      toast.error('Failed to delete size.');
+    }
+  };
+
+  const handleEditCustomSize = async (oldSizeName: string) => {
+    const newName = prompt(`Edit size name:`, oldSizeName);
+    if (!newName || !newName.trim() || newName.trim() === oldSizeName) return;
+    const trimmed = newName.trim();
+    try {
+      const res = await fetch('/api/sizes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldName: oldSizeName, newName: trimmed }),
+      });
+      if (res.ok) {
+        setSizesList((prev) => prev.map((s) => (s === oldSizeName ? trimmed : s)));
+        if (formData.size === oldSizeName) {
+          setFormData((prev) => ({ ...prev, size: trimmed }));
+        }
+        // Also update size chart if it uses this size
+        setSizeChartRows((prev) =>
+          prev.map((r) => (r.size === oldSizeName ? { ...r, size: trimmed } : r))
+        );
+        toast.success(`Size updated to "${trimmed}"!`);
+      } else {
+        toast.error('Failed to update size.');
+      }
+    } catch {
+      toast.error('Network error updating size.');
+    }
+  };
 
   // Available Parties for Assignment
   const [availableParties, setAvailableParties] = useState<{ id: string; name: string }[]>([]);
@@ -338,6 +466,7 @@ export default function AdminProductsPage() {
         occasion: d.occasion ? String(d.occasion) : '',
         fitShape: d.fit_shape ? String(d.fit_shape) : '',
         sleeveLength: d.sleeve_length ? String(d.sleeve_length) : '',
+        customSpecifications: Array.isArray(d.custom_specifications) ? d.custom_specifications : [],
         size: d.size ? String(d.size) : 'Free Size',
         piecesPerSet: Number(d.pieces_per_set) || 1,
         pricePerPiece: Number(d.price_per_piece) || 0,
@@ -403,6 +532,9 @@ export default function AdminProductsPage() {
     });
     setUploadError('');
     setSaveError('');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -527,11 +659,21 @@ export default function AdminProductsPage() {
       partyId: assignedPartyId,
       partyName: assignedPartyName,
       partyCostPrice: assignedPartyCost,
+      sizeChart: p.sizeChart || p.size_chart,
     });
+    // If the product has a saved size chart, populate the modal state
+    const sc = p.sizeChart || p.size_chart;
+    if (sc && Array.isArray(sc.metrics) && Array.isArray(sc.rows)) {
+      setSizeChartMetrics(sc.metrics);
+      setSizeChartRows(sc.rows);
+    }
     setUploadError('');
     setSaveError('');
     if (Array.isArray(p.tags) && p.tags.length > 0) {
       setAvailableTags((prev) => Array.from(new Set([...prev, ...(p.tags || [])])));
+    }
+    if (editorRef.current) {
+      editorRef.current.innerHTML = p.description || '';
     }
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -620,10 +762,53 @@ export default function AdminProductsPage() {
 
   // ─── Custom Specifications ────────────────────────────────────────────────
   const addCustomSpec = () => {
+    if (!newSpecLabel.trim() || !newSpecValue.trim()) {
+      toast.warning('Please enter both specification name and value', { title: 'Missing Information' });
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
-      customSpecifications: [...prev.customSpecifications, { label: '', value: '' }],
+      customSpecifications: [
+        ...prev.customSpecifications,
+        { label: newSpecLabel.trim(), value: newSpecValue.trim() },
+      ],
     }));
+    setNewSpecLabel('');
+    setNewSpecValue('');
+    toast.success('Specification added');
+  };
+
+  const startEditCustomSpec = (index: number) => {
+    const spec = formData.customSpecifications[index];
+    if (!spec) return;
+    setEditingSpecIndex(index);
+    setEditingSpecLabel(spec.label);
+    setEditingSpecValue(spec.value);
+  };
+
+  const saveEditCustomSpec = (index: number) => {
+    if (!editingSpecLabel.trim() || !editingSpecValue.trim()) {
+      toast.warning('Please enter both specification name and value');
+      return;
+    }
+    setFormData((prev) => {
+      const updated = [...prev.customSpecifications];
+      updated[index] = {
+        label: editingSpecLabel.trim(),
+        value: editingSpecValue.trim(),
+      };
+      return { ...prev, customSpecifications: updated };
+    });
+    setEditingSpecIndex(null);
+    setEditingSpecLabel('');
+    setEditingSpecValue('');
+    toast.success('Specification updated');
+  };
+
+  const cancelEditCustomSpec = () => {
+    setEditingSpecIndex(null);
+    setEditingSpecLabel('');
+    setEditingSpecValue('');
   };
 
   const updateCustomSpec = (index: number, field: 'label' | 'value', val: string) => {
@@ -639,6 +824,9 @@ export default function AdminProductsPage() {
       ...prev,
       customSpecifications: prev.customSpecifications.filter((_, i) => i !== index),
     }));
+    if (editingSpecIndex === index) {
+      cancelEditCustomSpec();
+    }
   };
 
   // ─── Separate Variant Page Navigation ──────────────────────────────────────
@@ -770,6 +958,10 @@ export default function AdminProductsPage() {
         partyId: formData.partyId || null,
         partyName: formData.partyName || null,
         partyCostPrice: formData.partyCostPrice || formData.purchasePrice || 0,
+        sizeChart: {
+          metrics: sizeChartMetrics,
+          rows: sizeChartRows,
+        },
       };
 
       const url = editingProduct ? `/api/products?id=${editingProduct.id}` : '/api/products';
@@ -1036,23 +1228,96 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
-          {/* Product Description - Clean Textarea without bold/italic toolbar (SS3) */}
+          {/* Product Description with Rich Formatting Toolbar (B, I, U, Lists, Align) */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Product Description <span className="text-red-500">*</span>
+              <span className="text-red-500 mr-0.5">*</span> Product Description
             </label>
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-white focus-within:ring-2 focus-within:ring-[#083028]">
-              <textarea
-                rows={4}
-                required
-                maxLength={8000}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Write product description here..."
-                className="w-full p-3.5 text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none resize-y leading-relaxed"
+              {/* Toolbar */}
+              <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => applyFormat('bold')}
+                  title="Bold"
+                  className="w-7 h-7 rounded text-xs font-black text-gray-700 hover:bg-gray-200 transition"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat('italic')}
+                  title="Italic"
+                  className="w-7 h-7 rounded text-xs italic font-bold text-gray-700 hover:bg-gray-200 transition"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat('underline')}
+                  title="Underline"
+                  className="w-7 h-7 rounded text-xs underline font-bold text-gray-700 hover:bg-gray-200 transition"
+                >
+                  U
+                </button>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => applyFormat('insertUnorderedList')}
+                  title="Bullet List"
+                  className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition"
+                >
+                  ≡
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat('insertOrderedList')}
+                  title="Numbered List"
+                  className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition"
+                >
+                  ☰
+                </button>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => applyFormat('justifyLeft')}
+                  title="Left"
+                  className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition"
+                >
+                  ⇤
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat('justifyRight')}
+                  title="Right"
+                  className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition"
+                >
+                  ⇥
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyFormat('justifyFull')}
+                  title="Justify"
+                  className="w-7 h-7 rounded text-xs text-gray-600 hover:bg-gray-200 transition"
+                >
+                  ⊟
+                </button>
+              </div>
+
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  setFormData((prev) => ({ ...prev, description: el.innerHTML }));
+                }}
+                className="w-full p-3.5 text-xs sm:text-sm text-gray-800 focus:outline-none min-h-[120px] empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 leading-relaxed"
+                data-placeholder="Write product description here..."
               />
+
               <div className="px-3 py-1.5 bg-gray-50/50 border-t border-gray-100 text-right text-[11px] text-gray-400">
-                {formData.description.length}/8000
+                {(formData.description || '').replace(/<[^>]*>/g, '').length}/8000
               </div>
             </div>
           </div>
@@ -1185,23 +1450,14 @@ export default function AdminProductsPage() {
 
         {/* ════ SECTION 3: PRODUCT SPECIFICATIONS ════ */}
         <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 border border-emerald-200">
-                <Box size={18} />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">Product Specifications</h2>
-                <p className="text-[11px] text-gray-400">Add product specifications for this product.</p>
-              </div>
+          <div className="flex items-center gap-2.5 pb-3 border-b border-gray-100">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 border border-emerald-200">
+              <Box size={18} />
             </div>
-            <button
-              type="button"
-              onClick={addCustomSpec}
-              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 hover:text-emerald-950 border border-emerald-300 bg-emerald-50 px-3 py-1.5 rounded-xl transition"
-            >
-              <Plus size={13} /> Add Specification
-            </button>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Product Specifications</h2>
+              <p className="text-[11px] text-gray-400">Add product specifications for this product.</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -1297,36 +1553,124 @@ export default function AdminProductsPage() {
             </div>
           </div>
 
+          {/* Custom Specifications List */}
           {formData.customSpecifications.length > 0 && (
             <div className="pt-2 space-y-2 border-t border-gray-100">
-              <p className="text-xs font-bold text-gray-700">Custom Specifications:</p>
-              {formData.customSpecifications.map((spec, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={spec.label}
-                    onChange={(e) => updateCustomSpec(index, 'label', e.target.value)}
-                    placeholder="Specification Name"
-                    className="w-1/3 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800"
-                  />
-                  <input
-                    type="text"
-                    value={spec.value}
-                    onChange={(e) => updateCustomSpec(index, 'value', e.target.value)}
-                    placeholder="Value"
-                    className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeCustomSpec(index)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+              <p className="text-xs font-bold text-gray-700">Custom Specifications ({formData.customSpecifications.length}):</p>
+              <div className="space-y-2">
+                {formData.customSpecifications.map((spec, index) => {
+                  const isEditing = editingSpecIndex === index;
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl"
+                    >
+                      {isEditing ? (
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-2 items-center mr-2">
+                          <input
+                            type="text"
+                            value={editingSpecLabel}
+                            onChange={(e) => setEditingSpecLabel(e.target.value)}
+                            placeholder="Label (e.g. Pattern)"
+                            className="w-full px-2.5 py-1.5 bg-white border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#083028] sm:col-span-2"
+                          />
+                          <input
+                            type="text"
+                            value={editingSpecValue}
+                            onChange={(e) => setEditingSpecValue(e.target.value)}
+                            placeholder="Value"
+                            className="w-full px-2.5 py-1.5 bg-white border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#083028] sm:col-span-2"
+                          />
+                          <div className="flex items-center gap-1.5 sm:col-span-1">
+                            <button
+                              type="button"
+                              onClick={() => saveEditCustomSpec(index)}
+                              className="px-2.5 py-1.5 bg-[#083028] text-white rounded-lg text-xs font-bold hover:bg-[#051e19] transition flex items-center gap-1"
+                            >
+                              <Check size={12} /> Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditCustomSpec}
+                              className="px-2 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs hover:bg-gray-300 transition"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <span className="font-bold text-gray-900 text-xs sm:text-sm">{spec.label}:</span>
+                            <span className="text-gray-700 text-xs sm:text-sm truncate">{spec.value}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => startEditCustomSpec(index)}
+                              className="p-1.5 text-gray-500 hover:text-[#083028] hover:bg-emerald-50 rounded-lg transition"
+                              title="Edit specification"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCustomSpec(index)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Delete specification"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          {/* Quick Add Custom Spec Form Row */}
+          <div className="pt-2 border-t border-gray-100">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Add Custom Specification</label>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center">
+              <input
+                id="custom-spec-input-label"
+                type="text"
+                value={newSpecLabel}
+                onChange={(e) => setNewSpecLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomSpec();
+                  }
+                }}
+                placeholder="Label (e.g. Pattern, Neck, Pocket)"
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#083028] sm:col-span-2"
+              />
+              <input
+                type="text"
+                value={newSpecValue}
+                onChange={(e) => setNewSpecValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomSpec();
+                  }
+                }}
+                placeholder="Value (e.g. Printed, V-Neck, 2 Pockets)"
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#083028] sm:col-span-2"
+              />
+              <button
+                type="button"
+                onClick={addCustomSpec}
+                className="px-4 py-2.5 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
+              >
+                <Plus size={14} /> Add Specification
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ════ SECTION 4: MAIN PRODUCT INFO ════ */}
@@ -1343,24 +1687,38 @@ export default function AdminProductsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1">
-                <Tag size={13} className="text-emerald-700" /> Size
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                  <Tag size={13} className="text-emerald-700" /> Size
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeChartModal(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#083028] hover:underline"
+                  >
+                    <Ruler size={11} /> Size Chart
+                  </button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManageSizesModal(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#083028] hover:underline"
+                  >
+                    <Settings size={11} /> Manage Sizes
+                  </button>
+                </div>
+              </div>
               <select
                 value={formData.size}
                 onChange={(e) => setFormData({ ...formData, size: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#083028]"
               >
-                <option value="Free Size">Free Size</option>
-                <option value="S">S (Small)</option>
-                <option value="M">M (Medium)</option>
-                <option value="L">L (Large)</option>
-                <option value="XL">XL</option>
-                <option value="XXL">XXL</option>
-                <option value="3XL">3XL</option>
-                <option value="Set of All Sizes (S, M, L, XL, XXL)">Set of All Sizes (S, M, L, XL, XXL)</option>
-                <option value="Unstitched">Unstitched</option>
+                {sizesList.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
               </select>
+              <p className="text-[10px] text-gray-400 mt-1">Choose product size or add custom sizes</p>
             </div>
 
             <div>
@@ -1380,7 +1738,7 @@ export default function AdminProductsPage() {
 
             <div>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1">
-                <DollarSign size={13} className="text-emerald-700" /> Price Per Piece (₹)
+                <span className="font-bold text-emerald-700 text-xs">₹</span> Price Per Piece (₹)
               </label>
               <input
                 type="number"
@@ -1396,7 +1754,7 @@ export default function AdminProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex flex-col justify-between">
               <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold uppercase">
-                <DollarSign size={15} /> Total Set Price
+                <span className="font-black text-emerald-800 text-sm">₹</span> Total Set Price
               </div>
               <div className="my-2">
                 <span className="text-2xl font-black text-emerald-700">
@@ -1431,7 +1789,7 @@ export default function AdminProductsPage() {
 
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex flex-col justify-between">
               <div className="flex items-center gap-1.5 text-gray-700 text-xs font-bold uppercase">
-                <DollarSign size={15} className="text-emerald-700" /> Purchase Price (₹)
+                <span className="font-bold text-emerald-700 text-xs">₹</span> Purchase Price (₹)
               </div>
               <div className="relative my-2">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
@@ -1956,99 +2314,6 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        {/* ════ SECTION 8: PRODUCT VARIANTS LIST & "+ Add Variant" BUTTON (SS2) ════ */}
-        <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-            <div>
-              <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Layers size={17} className="text-[#083028]" />
-                Product Variants ({formData.variants.length})
-              </h2>
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                Add size, color, pieces per set, and stock variations for this product.
-              </p>
-            </div>
-
-            {/* + Add Variant Pill Button (Navigates to dedicated /admin/products/variants page) */}
-            <button
-              type="button"
-              onClick={() => navigateToVariantPage()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100/80 text-[#083028] border-2 border-emerald-400 rounded-full text-xs font-bold transition shadow-xs"
-            >
-              <Plus size={16} className="text-emerald-700" />
-              Add Variant
-            </button>
-          </div>
-
-          {formData.variants.length === 0 ? (
-            <div className="text-center py-8 px-4 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/30">
-              <Layers size={32} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-xs font-bold text-gray-700">No variants added yet</p>
-              <p className="text-[11px] text-gray-400 mt-0.5 mb-3">
-                Click &quot;+ Add Variant&quot; to configure Set Size or Individual Piece variants with separate pricing and inventory on the dedicated variant page.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigateToVariantPage()}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50 text-[#083028] border border-emerald-400 rounded-full text-xs font-bold"
-              >
-                <Plus size={14} /> Add Variant
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {formData.variants.map((v, vIdx) => (
-                <div
-                  key={v.id || vIdx}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-emerald-300 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center">
-                      #{vIdx + 1}
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-900">{v.size || 'Free Size'}</span>
-                        <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          {v.variantType === 'set_size' ? `${v.piecesPerSet} pcs/set` : 'Individual'}
-                        </span>
-                        {v.colour && (
-                          <span className="text-[11px] text-gray-500 font-medium">• {v.colour}</span>
-                        )}
-                        {v.fabric && (
-                          <span className="text-[11px] text-gray-500 font-medium">• {v.fabric}</span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-0.5 font-mono">
-                        SKU: {v.skuId || 'N/A'} | Price: ₹{v.pricePerPiece}/pc {v.variantType === 'set_size' ? `(Set: ₹${v.totalSetPrice})` : ''} | Stock: {v.variantType === 'set_size' ? `${v.availableSets} sets (${v.totalStockPieces} pcs)` : `${v.availablePieces} pcs`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    <button
-                      type="button"
-                      onClick={() => navigateToVariantPage(v.id)}
-                      className="p-1.5 text-gray-500 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition"
-                      title="Edit variant"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeVariant(vIdx)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                      title="Delete variant"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* ════ BOTTOM ACTIONS ════ */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
           <button
@@ -2068,6 +2333,338 @@ export default function AdminProductsPage() {
             {editingProduct ? 'Save Changes' : 'Save Product'}
           </button>
         </div>
+
+        {/* ══════════════ MANAGE SIZES MODAL (Image 3 UI) ══════════════ */}
+        {showManageSizesModal && (
+          <div
+            onClick={() => setShowManageSizesModal(false)}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl sm:rounded-3xl max-w-sm w-full p-4 sm:p-5 shadow-2xl space-y-3"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                <h3 className="text-sm sm:text-base font-extrabold text-gray-900">Manage Product Sizes</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowManageSizesModal(false)}
+                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Quick Add Custom Size */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter size (e.g. 5XL, 36, 38)"
+                  value={newSizeInput}
+                  onChange={(e) => setNewSizeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomSize();
+                    }
+                  }}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#083028]"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAddCustomSize()}
+                  className="px-3.5 py-1.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition"
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* List with Add/Remove buttons */}
+              <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-0.5">
+                {sizesList.map((s) => (
+                  <div key={s} className="flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
+                      <span className="text-xs sm:text-sm font-semibold text-gray-800 truncate">{s}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleEditCustomSize(s)}
+                        title="Edit size name"
+                        className="p-1 text-gray-400 hover:text-[#083028] hover:bg-emerald-50 rounded transition"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, size: s }));
+                          toast.success(`Selected size "${s}"`);
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${
+                          formData.size === s
+                            ? 'bg-[#083028] text-white border-[#083028]'
+                            : 'border-[#083028] text-[#083028] hover:bg-emerald-50'
+                        }`}
+                      >
+                        {formData.size === s ? 'Selected' : 'Add'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomSize(s)}
+                        title="Delete size"
+                        className="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowManageSizesModal(false)}
+                className="w-full py-2 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════ SIZE CHART MODAL (Image 2 UI styled to match website theme) ══════════════ */}
+        {showSizeChartModal && (
+          <div
+            onClick={() => setShowSizeChartModal(false)}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 my-auto"
+            >
+              {/* Header with Dark Green Brand Color */}
+              <div className="bg-[#083028] text-white px-4 sm:px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                    <Ruler size={16} className="text-emerald-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide">Size Chart (All Sizes)</h3>
+                    <p className="text-[10px] text-emerald-200">AR Garments custom measurement chart</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSizeChartModal(false)}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="p-3 sm:p-4 space-y-3">
+                <p className="text-[11px] text-center text-gray-500 font-medium">
+                  Edit or type any value. Drag or delete columns and rows to customize.
+                </p>
+
+                {/* Responsive Table */}
+                <div className="overflow-x-auto max-h-[45vh] border border-emerald-100 rounded-xl bg-emerald-50/20">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-emerald-50 text-gray-800 border-b border-emerald-100">
+                        <th className="p-2 font-bold border-r border-emerald-100 w-20 text-xs">Size</th>
+                        {sizeChartMetrics.map((metric, mIdx) => (
+                          <th key={mIdx} className="p-1.5 font-bold border-r border-emerald-100 text-center whitespace-nowrap min-w-[85px]">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-[11px] leading-tight">{metric}</span>
+                              <div className="flex items-center gap-1 text-gray-400">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const rename = prompt('Rename metric:', metric);
+                                    if (rename && rename.trim()) {
+                                      const next = [...sizeChartMetrics];
+                                      next[mIdx] = rename.trim();
+                                      setSizeChartMetrics(next);
+                                    }
+                                  }}
+                                  title="Edit header"
+                                  className="hover:text-emerald-800"
+                                >
+                                  <Edit2 size={10} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSizeChartMetrics(sizeChartMetrics.filter((_, i) => i !== mIdx));
+                                  }}
+                                  title="Delete column"
+                                  className="hover:text-red-600"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          </th>
+                        ))}
+                        <th className="p-1.5 text-center min-w-[75px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newMet = prompt('Add Custom Metric (e.g. Hip, Sleeve):');
+                              if (newMet && newMet.trim()) {
+                                setSizeChartMetrics([...sizeChartMetrics, newMet.trim()]);
+                              }
+                            }}
+                            className="text-[#083028] text-[11px] font-bold hover:underline flex items-center justify-center gap-0.5 mx-auto"
+                          >
+                            <Plus size={10} /> Metric
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sizeChartRows.map((row, rIdx) => (
+                        <tr key={rIdx} className="border-b border-emerald-100 hover:bg-emerald-50/30">
+                          <td className="p-1.5 border-r border-emerald-100 font-bold text-gray-900 text-xs">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="truncate max-w-[70px]">{row.size}</span>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const rename = prompt('Rename size:', row.size);
+                                    if (rename && rename.trim() && rename.trim() !== row.size) {
+                                      const trimmed = rename.trim();
+                                      const old = row.size;
+                                      const updated = [...sizeChartRows];
+                                      updated[rIdx].size = trimmed;
+                                      setSizeChartRows(updated);
+                                      // Also sync to DB if it exists in sizesList
+                                      if (sizesList.includes(old)) {
+                                        try {
+                                          await fetch('/api/sizes', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ oldName: old, newName: trimmed }),
+                                          });
+                                          setSizesList((prev) => prev.map((s) => (s === old ? trimmed : s)));
+                                          if (formData.size === old) {
+                                            setFormData((prev) => ({ ...prev, size: trimmed }));
+                                          }
+                                        } catch {}
+                                      }
+                                      toast.success(`Size renamed to "${trimmed}"`);
+                                    }
+                                  }}
+                                  title="Edit size"
+                                  className="text-gray-400 hover:text-emerald-800 p-0.5"
+                                >
+                                  <Edit2 size={10} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSizeChartRows(sizeChartRows.filter((_, i) => i !== rIdx));
+                                  }}
+                                  title="Delete row"
+                                  className="text-gray-400 hover:text-red-500 p-0.5"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          {sizeChartMetrics.map((metric, mIdx) => (
+                            <td key={mIdx} className="p-1 border-r border-emerald-100">
+                              <input
+                                type="text"
+                                value={row.values[metric] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const updated = [...sizeChartRows];
+                                  updated[rIdx].values[metric] = val;
+                                  setSizeChartRows(updated);
+                                }}
+                                className="w-full text-center py-1 px-1 border border-gray-200 rounded-md text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#083028] bg-white"
+                              />
+                            </td>
+                          ))}
+                          <td className="p-1 bg-emerald-50/10"></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const addSize = prompt('Enter Size name to add row (e.g. XL, 38):');
+                      if (addSize && addSize.trim()) {
+                        const vals: Record<string, string> = {};
+                        sizeChartMetrics.forEach((m) => { vals[m] = '0 in'; });
+                        setSizeChartRows([...sizeChartRows, { size: addSize.trim(), values: vals }]);
+                      }
+                    }}
+                    className="py-1.5 sm:py-2 border-2 border-[#083028] text-[#083028] rounded-xl text-xs font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-1"
+                  >
+                    <Plus size={13} /> Add Row Size
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMet = prompt('Add Custom Metric (e.g. Hip, Sleeve):');
+                      if (newMet && newMet.trim()) {
+                        setSizeChartMetrics([...sizeChartMetrics, newMet.trim()]);
+                      }
+                    }}
+                    className="py-1.5 sm:py-2 border-2 border-[#083028] text-[#083028] rounded-xl text-xs font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-1"
+                  >
+                    <Plus size={13} /> Add Custom Metric
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (editingProduct?.id) {
+                        await fetch(`/api/products?id=${editingProduct.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            size_chart: {
+                              metrics: sizeChartMetrics,
+                              rows: sizeChartRows,
+                            },
+                          }),
+                        });
+                      }
+                      setFormData((prev) => ({
+                        ...prev,
+                        sizeChart: {
+                          metrics: sizeChartMetrics,
+                          rows: sizeChartRows,
+                        },
+                      }));
+                      toast.success('Size chart saved and applied to product!');
+                      setShowSizeChartModal(false);
+                    } catch {
+                      toast.error('Failed to save size chart.');
+                    }
+                  }}
+                  className="w-full py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition flex items-center justify-center gap-2 shadow-md"
+                >
+                  <Check size={14} /> Save & Apply to Product
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -2164,9 +2761,15 @@ export default function AdminProductsPage() {
                         <div className="min-w-0">
                           <p className="font-bold text-gray-900 text-sm truncate">{product.name}</p>
                           {product.brand && <p className="text-xs text-emerald-700 font-semibold">{product.brand}</p>}
-                          <p className="text-[10px] text-gray-400 font-mono truncate">ID: {product.id}</p>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => router.push(`/admin/products/variants?productId=${encodeURIComponent(product.id)}`)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-[#083028] border border-emerald-300 rounded-lg text-[11px] font-bold"
+                            title="Add Variant"
+                          >
+                            <Plus size={11} /> Variant
+                          </button>
                           <button onClick={() => openEditForm(product)} className="p-1.5 text-gray-500 hover:text-[#083028] hover:bg-gray-100 rounded-lg transition" title="Edit">
                             <Edit2 size={15} />
                           </button>
@@ -2246,7 +2849,6 @@ export default function AdminProductsPage() {
                           {product.brand && (
                             <p className="text-[11px] font-semibold text-emerald-800">{product.brand}</p>
                           )}
-                          <p className="text-[11px] text-gray-400 font-mono">ID: {product.id}</p>
                         </div>
                       </div>
                     </td>
@@ -2331,21 +2933,31 @@ export default function AdminProductsPage() {
                         {product.active ? 'Active' : 'Draft'}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-2">
-                      <button
-                        onClick={() => openEditForm(product)}
-                        className="p-1.5 text-gray-500 hover:text-[#083028] hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => router.push(`/admin/products/variants?productId=${encodeURIComponent(product.id)}`)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#083028] border border-emerald-300 rounded-lg text-xs font-bold transition shadow-xs whitespace-nowrap"
+                          title="Add / Manage Variants for this product"
+                        >
+                          <Plus size={13} className="text-emerald-700" />
+                          <span>Add Variant</span>
+                        </button>
+                        <button
+                          onClick={() => openEditForm(product)}
+                          className="p-1.5 text-gray-500 hover:text-[#083028] hover:bg-gray-100 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

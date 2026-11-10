@@ -8,7 +8,7 @@ import {
   ShoppingCart, Share2, ShieldCheck, Truck, RotateCcw,
   CheckCircle2, ChevronRight, ArrowLeft, Loader2, Sparkles,
   Minus, Plus, CreditCard, Tag, Ticket, Check, AlertCircle, Percent, RefreshCw, Star, User, Heart,
-  PackageCheck, BadgeCheck, Package, Info
+  PackageCheck, BadgeCheck, Package, Info, Ruler, X, Layers
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -21,6 +21,39 @@ import { useShippingSettings } from '@/context/ShippingSettingsContext';
 import { useZonePriceRules } from '@/context/ZonePriceRulesContext';
 import { calculateZoneDelivery, DEFAULT_ZONE_SETTINGS, DetectedZoneResult } from '@/lib/zoneShipping';
 import { MapPin, Navigation, TrendingUp, TrendingDown } from 'lucide-react';
+
+interface ProductVariant {
+  id: string;
+  productId: string;
+  variantType: 'set_size' | 'individual';
+  size: string;
+  piecesPerSet: number;
+  pricePerPiece: number;
+  totalSetPrice: number;
+  availableSets: number;
+  totalStockPieces: number;
+  availablePieces: number;
+  weight: string;
+  weightUnit: string;
+  gstRate: string;
+  skuId: string;
+  purchasePrice: number;
+  hsnCode: string;
+  colour: string;
+  fabric: string;
+  work: string;
+  fitShape: string;
+  sleeveLength: string;
+  length: string;
+  occasion: string;
+  description?: string;
+  images: string[];
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
+  customSpecifications?: Array<{ label: string; value: string }>;
+}
 
 interface ProductData {
   id: string;
@@ -49,6 +82,23 @@ interface ProductData {
   deliveryType?: 'standard' | 'low_margin';
   deliveryChargeAmount?: number;
   isNonReturnable?: boolean;
+  fabric?: string;
+  colour?: string;
+  work?: string;
+  length?: string;
+  occasion?: string;
+  fitShape?: string;
+  sleeveLength?: string;
+  size?: string;
+  piecesPerSet?: number;
+  pricePerPiece?: number;
+  totalSetPrice?: number;
+  hsnCode?: string;
+  skuId?: string;
+  sizeChart?: {
+    metrics: string[];
+    rows: Array<{ size: string; values: Record<string, string> }>;
+  };
 }
 
 interface ProductReview {
@@ -79,6 +129,9 @@ export default function ProductDetailPage() {
   const [detectedLocationName, setDetectedLocationName] = useState('');
 
   const [product, setProduct] = useState<ProductData | null>(null);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [showSizeChartModal, setShowSizeChartModal] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
   const [productRefreshVersion, setProductRefreshVersion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -283,10 +336,65 @@ export default function ProductDetailPage() {
           deliveryType: (data.delivery_type === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
           deliveryChargeAmount: Number(data.delivery_charge_amount ?? 0),
           isNonReturnable: Boolean(data.is_non_returnable ?? data.isNonReturnable ?? false),
+          fabric: (data.fabric as string) || '',
+          colour: (data.colour as string) || '',
+          work: (data.work as string) || '',
+          length: (data.length as string) || '',
+          occasion: (data.occasion as string) || '',
+          fitShape: (data.fit_shape as string) || '',
+          sleeveLength: (data.sleeve_length as string) || '',
+          size: (data.size as string) || 'Free Size',
+          piecesPerSet: Number(data.pieces_per_set || 1),
+          pricePerPiece: Number(data.price_per_piece || 0),
+          totalSetPrice: Number(data.total_set_price || 0),
+          hsnCode: (data.hsn_code as string) || '',
+          skuId: (data.sku_id as string) || '',
+          sizeChart: (data.size_chart && typeof data.size_chart === 'object') ? (data.size_chart as ProductData['sizeChart']) : undefined,
         };
 
         setProduct(mapped);
         setSelectedImage(mapped.image || mapped.images?.[0] || '');
+
+        // Fetch variants for this product
+        fetch(`/api/products/${mapped.id}/variants`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((rawList) => {
+            if (Array.isArray(rawList)) {
+              const parsedVariants: ProductVariant[] = rawList.map((v: Record<string, unknown>) => ({
+                id: String(v.id),
+                productId: String(v.product_id || mapped.id),
+                variantType: (v.variant_type as 'set_size' | 'individual') || 'set_size',
+                size: String(v.size || ''),
+                piecesPerSet: Number(v.pieces_per_set || 1),
+                pricePerPiece: Number(v.price_per_piece || 0),
+                totalSetPrice: Number(v.total_set_price || 0),
+                availableSets: Number(v.available_sets || 0),
+                totalStockPieces: Number(v.total_stock_pieces || 0),
+                availablePieces: Number(v.available_pieces || 0),
+                weight: String(v.weight || ''),
+                weightUnit: String(v.weight_unit || 'kg'),
+                gstRate: String(v.gst_rate || '5%'),
+                skuId: String(v.sku_id || ''),
+                purchasePrice: Number(v.purchase_price || 0),
+                hsnCode: String(v.hsn_code || ''),
+                colour: String(v.colour || ''),
+                fabric: String(v.fabric || ''),
+                work: String(v.work || ''),
+                fitShape: String(v.fit_shape || ''),
+                sleeveLength: String(v.sleeve_length || ''),
+                length: String(v.length || ''),
+                occasion: String(v.occasion || ''),
+                description: String(v.description || ''),
+                images: Array.isArray(v.images) ? v.images : [],
+                sizeChart: v.size_chart && typeof v.size_chart === 'object' ? (v.size_chart as ProductVariant['sizeChart']) : undefined,
+                customSpecifications: Array.isArray(v.custom_specifications) ? v.custom_specifications : [],
+              }));
+              setVariants(parsedVariants);
+              // Don't auto-select any variant — show main product first
+              setSelectedVariant(null);
+            }
+          })
+          .catch(() => {});
 
         if (mapped.subcategoryId) {
           fetch('/api/categories?active=true', { cache: 'no-store' })
@@ -442,9 +550,12 @@ export default function ProductDetailPage() {
   };
 
   // ── Zone Price Markup & Pricing Calculations ──────────────────────────────
-  const rawUnitPrice = product
-    ? (product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10))
-    : 0;
+  // When a variant is selected, use its price; otherwise fall back to product's price
+  const baseItemPrice = selectedVariant
+    ? (selectedVariant.totalSetPrice || selectedVariant.pricePerPiece || 0)
+    : (product ? (product.numericPrice || parseInt(product.price.replace(/[^\d]/g, '') || '0', 10)) : 0);
+
+  const rawUnitPrice = baseItemPrice;
   const zonePrice = getZonePrice(
     rawUnitPrice,
     {
@@ -553,13 +664,20 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
+    const itemName = selectedVariant
+      ? `${product.name} - ${selectedVariant.colour || ''} (${selectedVariant.size || 'Free Size'})`.trim()
+      : product.name;
+    const itemImage = (selectedVariant && selectedVariant.images && selectedVariant.images[0])
+      ? selectedVariant.images[0]
+      : product.image;
+
     addToCart({
-      id: product.id,
-      name: product.name,
-      price: hasZoneMarkup ? `₹${effectiveUnitPrice.toLocaleString('en-IN')}` : product.price,
+      id: selectedVariant ? `${product.id}-${selectedVariant.id}` : product.id,
+      name: itemName,
+      price: hasZoneMarkup ? `₹${effectiveUnitPrice.toLocaleString('en-IN')}` : `₹${effectiveUnitPrice}`,
       numericPrice: effectiveUnitPrice,
       originalNumericPrice: rawUnitPrice,
-      image: product.image,
+      image: itemImage,
       category: product.category,
       categoryId: product.categoryId,
       subcategoryId: product.subcategoryId,
@@ -617,11 +735,21 @@ export default function ProductDetailPage() {
     );
   }
 
-  const galleryImages = [
-    product.image,
-    ...(product.images || []).filter((image) => image !== product.image),
-  ].filter(Boolean);
-  const selectedImageIndex = Math.max(0, galleryImages.indexOf(selectedImage));
+  const activeVariantImages = selectedVariant?.images && selectedVariant.images.length > 0
+    ? selectedVariant.images
+    : [];
+
+  const galleryImages = activeVariantImages.length > 0
+    ? activeVariantImages
+    : [
+        product.image,
+        ...(product.images || []).filter((image) => image !== product.image),
+      ].filter(Boolean);
+  // If selectedImage is not in current gallery, reset to first
+  if (galleryImages.length > 0 && !galleryImages.includes(selectedImage)) {
+    // handled reactively below
+  }
+  const selectedImageIndex = Math.max(0, galleryImages.indexOf(selectedImage) === -1 ? 0 : galleryImages.indexOf(selectedImage));
 
   const selectGalleryImage = (index: number) => {
     const image = galleryImages[index];
@@ -917,10 +1045,6 @@ export default function ProductDetailPage() {
                   <span className="break-words">{product.category}</span>
                 </span>
                 <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                  <span className="inline-flex max-w-[132px] items-center gap-1 rounded-full border border-[#DCE9E3] bg-[#F4FBF7] px-1.5 py-1 font-mono text-[9px] font-bold leading-tight text-[#0B5B47] min-[380px]:max-w-[158px] min-[380px]:px-2 min-[380px]:text-[11px]">
-                    <Tag size={10} className="shrink-0" />
-                    <span className="break-all text-center">Product ID: {product.id}</span>
-                  </span>
                   <button
                     type="button"
                     onClick={() => toggleWishlist({
@@ -973,6 +1097,148 @@ export default function ProductDetailPage() {
                     : '(No Reviews)'}
                 </button>
               </div>
+
+              {/* Amazon-Style Variants Selector (Mobile) */}
+              {variants.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold text-gray-900">
+                      Colour: <span className="text-[#083028] font-black">{selectedVariant?.colour || 'Select Variant'}</span>
+                    </p>
+                    {selectedVariant?.size && (
+                      <span className="text-[11px] font-semibold text-gray-600">
+                        Size: <span className="font-bold text-[#083028]">{selectedVariant.size}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {/* Main Product Card with product's actual name */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedVariant(null);
+                        setSelectedImage(product.image || (product.images && product.images[0]) || '');
+                      }}
+                      className={`relative flex flex-col items-center flex-shrink-0 w-[84px] rounded-xl border-2 p-1.5 transition-all text-left bg-white ${
+                        !selectedVariant
+                          ? 'border-[#083028] shadow-md ring-2 ring-[#083028]/20'
+                          : 'border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      <div className="relative w-full h-16 rounded-lg overflow-hidden bg-gray-50 mb-1">
+                        <Image
+                          src={product.image || '/placeholder.png'}
+                          alt={product.name}
+                          fill
+                          sizes="84px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <span className="w-full text-center text-[10px] font-bold text-gray-900 truncate" title={product.name}>
+                        {product.name}
+                      </span>
+                      <span className="w-full text-center text-[11px] font-black text-[#083028]">
+                        {product.price}
+                      </span>
+                      {product.piecesPerSet && product.piecesPerSet > 1 ? (
+                        <span className="text-[9px] text-gray-500 font-medium">
+                          {product.piecesPerSet} pcs/set
+                        </span>
+                      ) : null}
+                    </button>
+
+                    {/* Variant Cards */}
+                    {variants.map((v) => {
+                      const isSelected = selectedVariant?.id === v.id;
+                      const thumb = (v.images && v.images[0]) || product.image;
+                      const priceVal = v.totalSetPrice || (v.pricePerPiece * (v.piecesPerSet || 1)) || v.pricePerPiece || 0;
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVariant(v);
+                            if (v.images && v.images.length > 0) {
+                              setSelectedImage(v.images[0]);
+                            }
+                          }}
+                          className={`relative flex flex-col items-center flex-shrink-0 w-[84px] rounded-xl border-2 p-1.5 transition-all text-left bg-white ${
+                            isSelected
+                              ? 'border-[#083028] shadow-md ring-2 ring-[#083028]/20'
+                              : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="relative w-full h-16 rounded-lg overflow-hidden bg-gray-50 mb-1">
+                            <Image
+                              src={thumb}
+                              alt={v.colour || 'Variant'}
+                              fill
+                              sizes="84px"
+                              className="object-cover"
+                            />
+                          </div>
+                          <span className="w-full text-center text-[10px] font-bold text-gray-900 truncate">
+                            {v.colour || 'Variant'}
+                          </span>
+                          <span className="w-full text-center text-[11px] font-black text-[#083028]">
+                            ₹{priceVal.toLocaleString('en-IN')}
+                          </span>
+                          {v.piecesPerSet > 1 && (
+                            <span className="text-[9px] text-gray-500 font-medium">
+                              {v.piecesPerSet} pcs/set
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Inline Size Chart (Mobile) */}
+              {(() => {
+                const activeChart = selectedVariant?.sizeChart || product.sizeChart;
+                if (!activeChart || !activeChart.metrics || activeChart.metrics.length === 0 || !activeChart.rows || activeChart.rows.length === 0) return null;
+                return (
+                  <div className="mt-3 rounded-2xl border border-[#083028]/15 bg-white overflow-hidden shadow-xs">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-[#E8F5E9] border-b border-[#083028]/10">
+                      <Ruler size={14} className="text-[#083028]" />
+                      <span className="text-xs font-black text-[#083028] uppercase tracking-wide">Size Chart</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                            <th className="py-2 px-3 font-bold sticky left-0 bg-gray-50 z-10 border-r border-gray-100">Size</th>
+                            {activeChart.metrics.map((m, idx) => (
+                              <th key={idx} className="py-2 px-3 font-semibold text-center border-r border-gray-100 last:border-r-0 whitespace-nowrap">{m}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {activeChart.rows.map((row, rIdx) => {
+                            const isCurrentSize = (selectedVariant?.size || product.size) === row.size;
+                            return (
+                              <tr key={rIdx} className={isCurrentSize ? 'bg-[#083028]/5 font-bold' : 'hover:bg-gray-50'}>
+                                <td className="py-2 px-3 font-bold text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-100">
+                                  {row.size}
+                                  {isCurrentSize && <span className="ml-1 text-[8px] text-[#083028] font-black">✓</span>}
+                                </td>
+                                {activeChart.metrics.map((m, cIdx) => (
+                                  <td key={cIdx} className="py-2 px-3 text-center text-gray-700 border-r border-gray-100 last:border-r-0 whitespace-nowrap">
+                                    {row.values?.[m] || '-'}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
                 <div className="flex min-w-0 items-center rounded-2xl bg-gradient-to-br from-[#F0FBF5] to-[#E5F7ED] px-3 py-2.5">
@@ -1238,9 +1504,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#DCE9E3] bg-[#F4FBF7] px-2.5 py-1 font-mono text-xs font-bold text-[#0B5B47]">
-                <Tag size={11} /> Product ID: {product.id}
-              </div>
               <h1 className="text-[1.35rem] font-black leading-tight tracking-tight text-gray-950 min-[380px]:text-2xl sm:text-3xl">
                 {product.name}
               </h1>
@@ -1272,6 +1535,153 @@ export default function ProductDetailPage() {
                 </button>
               </div>
             </div>
+
+            {/* Amazon-Style Variants Selector (Desktop only) */}
+            {variants.length > 0 && (
+              <div className="hidden sm:block rounded-2xl border border-gray-200/90 bg-white p-4 shadow-xs">
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-sm font-semibold text-gray-900">
+                    Colour: <span className="font-bold text-[#083028]">{selectedVariant?.colour || 'Select Variant'}</span>
+                  </p>
+                  <div className="flex items-center gap-3">
+                    {selectedVariant?.size && (
+                      <span className="text-xs font-semibold text-gray-700">
+                        Size: <span className="font-bold text-[#083028]">{selectedVariant.size}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {/* Main Product Card with actual product name */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedVariant(null);
+                      setSelectedImage(product.image || (product.images && product.images[0]) || '');
+                    }}
+                    className={`group relative flex flex-col items-center flex-shrink-0 w-24 rounded-xl border-2 p-2 transition-all text-left bg-white ${
+                      !selectedVariant
+                        ? 'border-[#083028] shadow-md ring-2 ring-[#083028]/20'
+                        : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="relative w-full h-20 rounded-lg overflow-hidden bg-gray-50 mb-1.5">
+                      <Image
+                        src={product.image || '/placeholder.png'}
+                        alt={product.name}
+                        fill
+                        sizes="96px"
+                        className="object-cover transition-transform group-hover:scale-105"
+                      />
+                    </div>
+                    <span className="w-full text-center text-xs font-bold text-gray-900 truncate" title={product.name}>
+                      {product.name}
+                    </span>
+                    <span className="w-full text-center text-xs font-black text-[#083028] mt-0.5">
+                      {product.price}
+                    </span>
+                    {product.piecesPerSet && product.piecesPerSet > 1 ? (
+                      <span className="text-[10px] text-gray-500 font-medium">
+                        {product.piecesPerSet} pcs/set
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {/* Variant Cards */}
+                  {variants.map((v) => {
+                    const isSelected = selectedVariant?.id === v.id;
+                    const thumb = (v.images && v.images[0]) || product.image;
+                    const priceVal = v.totalSetPrice || (v.pricePerPiece * (v.piecesPerSet || 1)) || v.pricePerPiece || 0;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedVariant(v);
+                          if (v.images && v.images.length > 0) {
+                            setSelectedImage(v.images[0]);
+                          }
+                        }}
+                        className={`group relative flex flex-col items-center flex-shrink-0 w-24 rounded-xl border-2 p-2 transition-all text-left bg-white ${
+                          isSelected
+                            ? 'border-[#083028] shadow-md ring-2 ring-[#083028]/20'
+                            : 'border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="relative w-full h-20 rounded-lg overflow-hidden bg-gray-50 mb-1.5">
+                          <Image
+                            src={thumb}
+                            alt={v.colour || 'Variant'}
+                            fill
+                            sizes="96px"
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        </div>
+                        <span className="w-full text-center text-xs font-bold text-gray-900 truncate">
+                          {v.colour || 'Variant'}
+                        </span>
+                        <span className="w-full text-center text-xs font-black text-[#083028] mt-0.5">
+                          ₹{priceVal.toLocaleString('en-IN')}
+                        </span>
+                        {v.piecesPerSet > 1 && (
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            {v.piecesPerSet} pcs/set
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Inline Size Chart (Desktop only) */}
+            {(() => {
+              const activeChart = selectedVariant?.sizeChart || product.sizeChart;
+              if (!activeChart || !activeChart.metrics || activeChart.metrics.length === 0 || !activeChart.rows || activeChart.rows.length === 0) return null;
+              return (
+                <div className="hidden sm:block rounded-2xl border border-[#083028]/15 bg-white overflow-hidden shadow-xs">
+                  <div className="flex items-center gap-2.5 px-4 py-3 bg-[#E8F5E9] border-b border-[#083028]/10">
+                    <Ruler size={16} className="text-[#083028]" />
+                    <span className="text-sm font-black text-[#083028] uppercase tracking-wide">Size Chart</span>
+                    <span className="text-xs text-gray-600 ml-auto">
+                      {selectedVariant?.colour ? `${product.name} — ${selectedVariant.colour}` : product.name}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                          <th className="py-2.5 px-4 font-bold sticky left-0 bg-gray-50 z-10 border-r border-gray-100">Size</th>
+                          {activeChart.metrics.map((m, idx) => (
+                            <th key={idx} className="py-2.5 px-4 font-semibold text-center border-r border-gray-100 last:border-r-0 whitespace-nowrap">{m}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {activeChart.rows.map((row, rIdx) => {
+                          const isCurrentSize = (selectedVariant?.size || product.size) === row.size;
+                          return (
+                            <tr key={rIdx} className={isCurrentSize ? 'bg-[#083028]/5 font-bold' : 'hover:bg-gray-50'}>
+                              <td className="py-2.5 px-4 font-bold text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-100">
+                                {row.size}
+                                {isCurrentSize && <span className="ml-1.5 rounded-full bg-[#083028] px-1.5 py-0.5 text-[8px] font-bold text-white">Selected</span>}
+                              </td>
+                              {activeChart.metrics.map((m, cIdx) => (
+                                <td key={cIdx} className="py-2.5 px-4 text-center text-gray-700 border-r border-gray-100 last:border-r-0 whitespace-nowrap">
+                                  {row.values?.[m] || '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Price Showcase from DB with Dynamic Coupon Discount */}
             <div className="hidden min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2.5 sm:grid sm:gap-3">
@@ -1700,10 +2110,11 @@ export default function ProductDetailPage() {
               {/* Tab 1: Description from DB */}
               {activeTab === 'description' && (
                 <div className="text-sm text-gray-700 space-y-3 leading-relaxed">
-                  {product.description ? (
-                    <div className="bg-[#FAF8F3] p-4 rounded-2xl border border-gray-200/80 whitespace-pre-line leading-relaxed">
-                      {product.description}
-                    </div>
+                  {(selectedVariant?.description || product.description) ? (
+                    <div
+                      className="bg-[#FAF8F3] p-4 rounded-2xl border border-gray-200/80 leading-relaxed whitespace-pre-line [&_b]:font-bold [&_strong]:font-bold [&_i]:italic [&_em]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-[#083028] [&_a]:underline"
+                      dangerouslySetInnerHTML={{ __html: selectedVariant?.description || product.description || '' }}
+                    />
                   ) : (
                     <p className="text-xs text-gray-400 italic">
                       No description has been added for this product in the admin panel yet.
@@ -1712,28 +2123,106 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Tab 2: Specifications from DB */}
+              {/* Tab 2: Specifications from DB & Selected Variant */}
               {activeTab === 'specifications' && (
                 <div className="text-xs text-gray-700 space-y-3">
-                  {product.specification ? (
-                    <div className="bg-[#FAF8F3] p-4 rounded-2xl border border-gray-200/80 leading-relaxed whitespace-pre-line text-sm text-gray-800">
-                      {product.specification}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">
-                      No specifications have been added for this product in the admin panel yet.
-                    </p>
-                  )}
-                  <div className="divide-y divide-gray-100 bg-white border border-gray-100 rounded-xl p-3">
+                  {/* Dynamic Variant & Product Specifications Grid */}
+                  <div className="divide-y divide-gray-100 bg-white border border-gray-100 rounded-xl p-3 shadow-xs">
                     <div className="flex gap-3 py-1.5">
                       <span className="font-semibold text-gray-500">Category</span>
                       <span className="ml-auto break-words text-right font-medium text-gray-900">{product.category}</span>
                     </div>
+                    {product.subcategoryName && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Subcategory</span>
+                        <span className="ml-auto break-words text-right font-medium text-gray-900">{product.subcategoryName}</span>
+                      </div>
+                    )}
                     <div className="flex gap-3 py-1.5">
                       <span className="font-semibold text-gray-500">Product Code</span>
                       <span className="ml-auto break-all text-right font-mono text-gray-700">{product.id}</span>
                     </div>
+                    {(selectedVariant?.skuId || product.skuId) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">SKU / Item Code</span>
+                        <span className="ml-auto break-all text-right font-mono text-gray-700">{selectedVariant?.skuId || product.skuId}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.colour || product.colour) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Colour</span>
+                        <span className="ml-auto font-bold text-[#083028]">{selectedVariant?.colour || product.colour}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.fabric || product.fabric) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Fabric</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.fabric || product.fabric}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.size || product.size) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Size</span>
+                        <span className="ml-auto font-bold text-[#083028]">{selectedVariant?.size || product.size}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.piecesPerSet || product.piecesPerSet) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Pieces Per Set</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.piecesPerSet || product.piecesPerSet} pcs</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.work || product.work) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Work / Pattern</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.work || product.work}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.fitShape || product.fitShape) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Fit / Shape</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.fitShape || product.fitShape}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.sleeveLength || product.sleeveLength) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Sleeve Length</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.sleeveLength || product.sleeveLength}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.length || product.length) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Length</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.length || product.length}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.occasion || product.occasion) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">Occasion</span>
+                        <span className="ml-auto font-medium text-gray-900">{selectedVariant?.occasion || product.occasion}</span>
+                      </div>
+                    )}
+                    {(selectedVariant?.hsnCode || product.hsnCode) && (
+                      <div className="flex gap-3 py-1.5">
+                        <span className="font-semibold text-gray-500">HSN Code</span>
+                        <span className="ml-auto font-mono text-gray-700">{selectedVariant?.hsnCode || product.hsnCode}</span>
+                      </div>
+                    )}
+                    {selectedVariant?.customSpecifications && selectedVariant.customSpecifications.length > 0 && (
+                      selectedVariant.customSpecifications.map((cs, idx) => (
+                        <div key={idx} className="flex gap-3 py-1.5">
+                          <span className="font-semibold text-gray-500">{cs.label}</span>
+                          <span className="ml-auto font-medium text-gray-900">{cs.value}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
+
+                  {product.specification && (
+                    <div className="bg-[#FAF8F3] p-4 rounded-2xl border border-gray-200/80 leading-relaxed whitespace-pre-line text-sm text-gray-800">
+                      {product.specification}
+                    </div>
+                  )}
                 </div>
               )}
 
