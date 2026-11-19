@@ -89,33 +89,139 @@ function normalizeItems(rawItems: unknown): CheckoutItemInput[] {
   return Array.from(quantities, ([id, quantity]) => ({ id, quantity }));
 }
 
-async function getProducts(items: CheckoutItemInput[]): Promise<Map<string, ProductRow>> {
+const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+
+async function fetchProductsByIds(ids: string[]): Promise<ProductRow[]> {
+  if (ids.length === 0) return [];
   const supabase = getServiceSupabase();
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, numeric_price, image, category, category_id, subcategory_id, subcategory_name, delivery_type, delivery_charge_amount, stock, active')
-      .in('id', items.map((item) => item.id));
+      .select('id, name, price, numeric_price, image, category, category_id, subcategory_id, delivery_type, delivery_charge_amount, stock, active')
+      .in('id', ids);
 
-    if (!error && data) {
-      const rows = data as ProductRow[];
-      return new Map(rows.map((row) => [String(row.id), row]));
+    if (!error && Array.isArray(data)) {
+      return data as ProductRow[];
     }
+
+    const fallback = await supabase
+      .from('products')
+      .select('id, name, price, numeric_price, image, category, stock, active')
+      .in('id', ids);
+    return Array.isArray(fallback.data) ? (fallback.data as unknown as ProductRow[]) : [];
   } catch {
-    // If newer columns don't exist yet, fallback to basic select
+    return [];
+  }
+}
+
+async function getProducts(items: CheckoutItemInput[]): Promise<Map<string, ProductRow>> {
+  const productMap = new Map<string, ProductRow>();
+  const rawIds = items.map((item) => String(item.id).trim());
+
+  // 1. Direct fetch from products table
+  const directRows = await fetchProductsByIds(rawIds);
+  for (const row of directRows) {
+    productMap.set(String(row.id), row);
   }
 
-  const { data: fallbackData, error: fallbackError } = await supabase
-    .from('products')
-    .select('id, name, price, numeric_price, image, category, stock, active')
-    .in('id', items.map((item) => item.id));
+  // 2. Resolve any missing items that represent variants (e.g. composite "prod-XXXXX-UUID" or raw variant ID)
+  const missingItems = items.filter((item) => !productMap.has(String(item.id).trim()));
 
-  if (fallbackError) {
-    throw new CheckoutPricingError(`Unable to validate catalogue prices: ${fallbackError.message}`);
+  if (missingItems.length > 0) {
+    const supabase = getServiceSupabase();
+    const variantUuidToItemIds = new Map<string, string[]>();
+
+    for (const item of missingItems) {
+      const itemIdStr = String(item.id).trim();
+      const match = itemIdStr.match(UUID_REGEX);
+      if (match) {
+        const vUuid = match[0];
+        const existing = variantUuidToItemIds.get(vUuid) || [];
+        existing.push(itemIdStr);
+        variantUuidToItemIds.set(vUuid, existing);
+      }
+    }
+
+    const variantUuids = Array.from(variantUuidToItemIds.keys());
+    if (variantUuids.length > 0) {
+      try {
+        const { data: variants, error: vErr } = await supabase
+          .from('product_variants')
+          .select('*')
+          .in('id', variantUuids);
+
+        if (!vErr && Array.isArray(variants) && variants.length > 0) {
+          const parentIds = Array.from(new Set(variants.map((v) => String(v.product_id)).filter(Boolean)));
+          const parentRows = await fetchProductsByIds(parentIds);
+          const parentMap = new Map(parentRows.map((p) => [String(p.id), p]));
+
+          for (const variant of variants) {
+            const parent = parentMap.get(String(variant.product_id));
+            if (!parent) continue;
+
+            const variantStock = Number(
+              variant.available_sets !== undefined && variant.available_sets !== null
+                ? variant.available_sets
+                : (variant.available_pieces ?? variant.total_stock_pieces ?? parent.stock ?? 0)
+            );
+
+            const variantPrice = Number(
+              variant.total_set_price || variant.price_per_piece || parent.numeric_price || 0
+            );
+
+            const variantImage = (Array.isArray(variant.images) && variant.images[0]) || parent.image || '';
+
+            const variantName = (variant.colour || variant.size)
+              ? `${parent.name} - ${variant.colour || ''} (${variant.size || ''})`.replace(/\(\s*\)/, '').trim()
+              : parent.name;
+
+            const matchedItemIds = variantUuidToItemIds.get(variant.id) || [variant.id];
+            for (const origId of matchedItemIds) {
+              productMap.set(origId, {
+                id: origId,
+                name: variantName,
+                price: `₹${variantPrice}`,
+                numeric_price: variantPrice,
+                image: variantImage,
+                category: parent.category,
+                category_id: parent.category_id,
+                subcategory_id: parent.subcategory_id,
+                subcategory_name: parent.subcategory_name,
+                delivery_type: variant.delivery_type || parent.delivery_type,
+                delivery_charge_amount: variant.delivery_charge_amount ?? parent.delivery_charge_amount,
+                stock: variantStock,
+                active: variant.active !== undefined && variant.active !== null ? Boolean(variant.active) : Boolean(parent.active),
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[getProducts] Variant resolution error:', err);
+      }
+    }
+
+    // 3. Fallback for any still missing items: try stripping variant suffix to match parent product
+    const stillMissing = items.filter((item) => !productMap.has(String(item.id).trim()));
+    if (stillMissing.length > 0) {
+      for (const item of stillMissing) {
+        const idStr = String(item.id).trim();
+        const parts = idStr.split('-');
+        if (parts.length >= 2 && parts[0] === 'prod') {
+          const possibleParentId = `${parts[0]}-${parts[1]}`;
+          const parentRows = await fetchProductsByIds([possibleParentId]);
+          if (parentRows.length > 0) {
+            const p = parentRows[0];
+            productMap.set(idStr, {
+              ...p,
+              id: idStr,
+            });
+          }
+        }
+      }
+    }
   }
 
-  const fallbackRows = (fallbackData || []) as ProductRow[];
-  return new Map(fallbackRows.map((row) => [String(row.id), row]));
+  return productMap;
 }
 
 async function getZonePriceRules(): Promise<ZonePriceRule[]> {

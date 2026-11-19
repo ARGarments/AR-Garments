@@ -11,14 +11,7 @@ import {
   OrderStatus,
   memoryOrders,
 } from '@/lib/orders';
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-function generateOrderId(): string {
-  return `ORD-${Date.now()}`;
-}
+import { generateNextOrderId } from '@/lib/orderIdGenerator';
 
 function isValidUuid(val?: string | null): boolean {
   if (!val) return false;
@@ -35,20 +28,45 @@ function mapDbOrder(row: Record<string, unknown>): Order {
   const optionalString = (value: unknown): string | undefined =>
     value ? String(value) : undefined;
 
+  let parsedItems: OrderItem[] = [];
+  if (Array.isArray(row.items)) {
+    parsedItems = row.items as OrderItem[];
+  } else if (typeof row.items === 'string') {
+    try {
+      const p = JSON.parse(row.items);
+      if (Array.isArray(p)) parsedItems = p;
+    } catch {}
+  }
+
+  let shippingAddr: ShippingAddress = {
+    fullName: '',
+    phone: '',
+    addressLine1: '',
+    city: '',
+    state: '',
+    pincode: '',
+  };
+  if (row.shipping_address && typeof row.shipping_address === 'object') {
+    shippingAddr = row.shipping_address as ShippingAddress;
+  } else if (typeof row.shipping_address === 'string') {
+    try {
+      shippingAddr = JSON.parse(row.shipping_address);
+    } catch {}
+  }
+
+  const rawName = row.user_name ? String(row.user_name).trim() : '';
+  const resolvedUserName =
+    rawName && rawName !== 'null' && rawName !== 'undefined'
+      ? rawName
+      : shippingAddr.fullName || (row.user_email ? String(row.user_email).split('@')[0] : 'Customer');
+
   return {
     id: String(row.id),
     userId: String(row.user_id),
-    userName: String(row.user_name),
-    userEmail: String(row.user_email),
-    items: Array.isArray(row.items) ? (row.items as OrderItem[]) : [],
-    shippingAddress: (row.shipping_address as ShippingAddress) || {
-      fullName: '',
-      phone: '',
-      addressLine1: '',
-      city: '',
-      state: '',
-      pincode: '',
-    },
+    userName: resolvedUserName,
+    userEmail: String(row.user_email || ''),
+    items: parsedItems,
+    shippingAddress: shippingAddr,
     paymentMethod: row.payment_method === 'online' ? 'online' : 'cod',
     paymentStatus:
       row.payment_status === 'paid' || row.payment_status === 'failed'
@@ -299,8 +317,9 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Build order object ---
+    const supabaseForId = getServiceSupabase();
     const newOrder: Order = {
-      id: generateOrderId(),
+      id: await generateNextOrderId(supabaseForId),
       userId: authenticatedUser.id,
       userName: resolvedUserName,
       userEmail: authenticatedUser.email,
@@ -327,7 +346,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Insert into Supabase Orders table
     try {
-      const supabase = getServiceSupabase();
+      const supabase = supabaseForId;
 
       // Core payload — guaranteed to work on foundational orders table schema
       const standardPayload = {
@@ -431,12 +450,19 @@ export async function POST(request: NextRequest) {
     // 2. Persist to in-memory store (always — ensures order is never lost)
     memoryOrders.unshift(newOrder);
 
-    // 3. Allocate items to Party Stock Meter / Main Store batches
+    // 3. Allocate items to Party Stock Meter / Main Store batches & deduct stock
     try {
+      const supabase = getServiceSupabase();
       const { createAllocation, getPartyBatches } = await import('@/lib/partyService');
       const allBatches = await getPartyBatches();
+      const fs = await import('fs');
+      const path = await import('path');
+      const BATCHES_FILE = path.join(process.cwd(), 'data', 'product_party_batches.json');
+      let batchesModified = false;
 
       for (const item of newOrder.items) {
+        const itemQty = Number(item.quantity) || 1;
+
         // Find if this product belongs to a specific party batch
         const matchedBatch = allBatches.find((b) => b.productId === item.id && b.availableQuantity > 0)
           || allBatches.find((b) => b.productId === item.id);
@@ -452,11 +478,100 @@ export async function POST(request: NextRequest) {
           productName: item.name,
           partyId: assignedPartyId,
           batchId: matchedBatch ? matchedBatch.id : null,
-          quantity: item.quantity || 1,
+          quantity: itemQty,
           unitCostPrice: unitCost,
           unitSellingPrice: sellingPrice,
           status: 'allocated',
         });
+
+        // Decrement available quantity from matched batch
+        if (matchedBatch) {
+          matchedBatch.availableQuantity = Math.max(0, (matchedBatch.availableQuantity || 0) - itemQty);
+          matchedBatch.updatedAt = new Date().toISOString();
+          batchesModified = true;
+
+          try {
+            await supabase
+              .from('product_party_batches')
+              .update({
+                available_quantity: matchedBatch.availableQuantity,
+                updated_at: matchedBatch.updatedAt,
+              })
+              .eq('id', matchedBatch.id);
+          } catch {}
+        }
+
+        // Auto-decrement product and variant stock in Supabase
+        if (item.id) {
+          try {
+            let baseProductId = String(item.id);
+
+            // 1. Check if item represents a variant and deduct from product_variants
+            const uuidMatch = String(item.id).match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);
+            const variantUuid = uuidMatch ? uuidMatch[0] : null;
+
+            if (variantUuid) {
+              const { data: vData } = await supabase
+                .from('product_variants')
+                .select('id, product_id, available_sets, total_stock_pieces, available_pieces')
+                .eq('id', variantUuid)
+                .maybeSingle();
+
+              if (vData) {
+                baseProductId = vData.product_id || baseProductId;
+                const newSets = Math.max(0, (Number(vData.available_sets) || 0) - itemQty);
+                const newPieces = Math.max(0, (Number(vData.total_stock_pieces) || 0) - itemQty);
+                const newAvailPieces = Math.max(0, (Number(vData.available_pieces) || 0) - itemQty);
+
+                await supabase
+                  .from('product_variants')
+                  .update({
+                    available_sets: newSets,
+                    total_stock_pieces: newPieces,
+                    available_pieces: newAvailPieces,
+                  })
+                  .eq('id', vData.id);
+              }
+            } else if (String(item.id).includes('-')) {
+              const parts = String(item.id).split('-');
+              if (parts[0] === 'prod' && parts[1]) {
+                baseProductId = `${parts[0]}-${parts[1]}`;
+              }
+            }
+
+            // 2. Also deduct from main products table
+            const { data: prodData } = await supabase
+              .from('products')
+              .select('id, stock, total_stock_pieces')
+              .or(`id.eq.${item.id},id.eq.${baseProductId}`)
+              .maybeSingle();
+
+            if (prodData) {
+              const currentStock = Number(prodData.stock) || 0;
+              const newStock = Math.max(0, currentStock - itemQty);
+
+              const prodUpdate: Record<string, any> = {
+                stock: newStock,
+              };
+
+              if (prodData.total_stock_pieces !== null && prodData.total_stock_pieces !== undefined) {
+                const currentPieces = Number(prodData.total_stock_pieces) || 0;
+                prodUpdate.total_stock_pieces = Math.max(0, currentPieces - itemQty);
+              }
+
+              await supabase
+                .from('products')
+                .update(prodUpdate)
+                .eq('id', prodData.id);
+            }
+          } catch (stockDeductErr) {
+            console.warn(`[POST /api/orders] Could not deduct product/variant stock for ${item.id}:`, stockDeductErr);
+          }
+        }
+      }
+
+      if (batchesModified && fs.existsSync(path.join(process.cwd(), 'data'))) {
+        fs.writeFileSync(BATCHES_FILE, JSON.stringify(allBatches, null, 2), 'utf8');
       }
     } catch (allocErr) {
       console.warn('Could not auto-create party allocation on order placement:', allocErr);
@@ -633,11 +748,75 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
+      // If status changed to Cancelled via standard PATCH, also restore inventory to products & batches
+      if (normalizedStatus === 'Cancelled') {
+        const orderData = memoryOrders.find((o) => o.id === orderId);
+        let itemsToRestore = orderData?.items || [];
+        if (itemsToRestore.length === 0) {
+          try {
+            const supabase = getServiceSupabase();
+            const { data: dbO } = await supabase.from('orders').select('items').eq('id', orderId).maybeSingle();
+            if (dbO?.items && Array.isArray(dbO.items)) {
+              itemsToRestore = dbO.items;
+            }
+          } catch {}
+        }
+
+        const supabase = getServiceSupabase();
+        const { getPartyBatches } = await import('@/lib/partyService');
+        const allBatches = await getPartyBatches();
+        let batchesRestored = false;
+
+        for (const item of itemsToRestore) {
+          const qty = Number(item.quantity) || 1;
+          const pId = item.id;
+          if (pId) {
+            try {
+              const { data: prodData } = await supabase
+                .from('products')
+                .select('id, stock, total_stock_pieces')
+                .eq('id', pId)
+                .maybeSingle();
+
+              if (prodData) {
+                const newStock = (Number(prodData.stock) || 0) + qty;
+                const updatePayload: Record<string, any> = { stock: newStock };
+                if (prodData.total_stock_pieces !== null && prodData.total_stock_pieces !== undefined) {
+                  updatePayload.total_stock_pieces = (Number(prodData.total_stock_pieces) || 0) + qty;
+                }
+                await supabase.from('products').update(updatePayload).eq('id', pId);
+              }
+            } catch {}
+
+            // Also restore batch
+            const matchedBatch = allBatches.find((b) => b.productId === pId);
+            if (matchedBatch) {
+              matchedBatch.availableQuantity = (matchedBatch.availableQuantity || 0) + qty;
+              matchedBatch.updatedAt = now;
+              batchesRestored = true;
+              try {
+                await supabase.from('product_party_batches').update({
+                  available_quantity: matchedBatch.availableQuantity,
+                  updated_at: now,
+                }).eq('id', matchedBatch.id);
+              } catch {}
+            }
+          }
+        }
+
+        if (batchesRestored) {
+          const fs = await import('fs');
+          const path = await import('path');
+          const batchFile = path.join(process.cwd(), 'data', 'product_party_batches.json');
+          fs.writeFileSync(batchFile, JSON.stringify(allBatches, null, 2), 'utf8');
+        }
+      }
+
       // Persist allocation changes
-      const fs = await import('fs');
-      const path = await import('path');
-      const allocFile = path.join(process.cwd(), 'data', 'order_item_party_allocations.json');
-      fs.writeFileSync(allocFile, JSON.stringify(allAllocations, null, 2), 'utf8');
+      const fsModule = await import('fs');
+      const pathModule = await import('path');
+      const allocFile = pathModule.join(process.cwd(), 'data', 'order_item_party_allocations.json');
+      fsModule.writeFileSync(allocFile, JSON.stringify(allAllocations, null, 2), 'utf8');
     } catch (allocUpdateErr) {
       console.warn('Could not update party allocations on status change:', allocUpdateErr);
     }

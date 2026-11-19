@@ -185,7 +185,7 @@ export async function POST(request: Request) {
       ? body.customSpecifications
       : (body.custom_specifications || []),
     // Main Product Info
-    size: body.size || 'Free Size',
+    size: body.size || '',
     pieces_per_set: piecesPerSet,
     price_per_piece: pricePerPiece,
     total_set_price: totalSetPrice,

@@ -23,6 +23,7 @@ export interface CartItem {
   deliveryType?: 'standard' | 'low_margin';
   deliveryChargeAmount?: number;
   isNonReturnable?: boolean;
+  stock?: number;
   // Computed zone price info
   zonePrice?: ZonePriceResult;
   effectivePrice?: number;
@@ -44,6 +45,7 @@ interface CartContextType {
     deliveryType?: 'standard' | 'low_margin';
     deliveryChargeAmount?: number;
     isNonReturnable?: boolean;
+    stock?: number;
   }, quantity?: number) => void;
   removeFromCart: (productId: string | number) => void;
   updateQuantity: (productId: string | number, quantity: number) => void;
@@ -181,6 +183,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       deliveryType?: 'standard' | 'low_margin';
       deliveryChargeAmount?: number;
       isNonReturnable?: boolean;
+      stock?: number;
     },
     quantity = 1
   ) => {
@@ -192,7 +195,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existingIndex = prev.findIndex((item) => item.id === pId);
       if (existingIndex > -1) {
         const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
+        const existing = updated[existingIndex];
+        const currentStock = typeof (product.stock ?? existing.stock) === 'number'
+          ? (product.stock ?? existing.stock)!
+          : 999;
+        const targetQty = existing.quantity + quantity;
+        updated[existingIndex].quantity = currentStock > 0 ? Math.min(targetQty, currentStock) : targetQty;
+        if (product.stock !== undefined) {
+          updated[existingIndex].stock = product.stock;
+        }
         return updated;
       } else {
         return [
@@ -212,6 +223,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             deliveryType: product.deliveryType || 'standard',
             deliveryChargeAmount: product.deliveryChargeAmount ?? 0,
             isNonReturnable: Boolean(product.isNonReturnable),
+            stock: product.stock,
           },
         ];
       }
@@ -236,7 +248,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setRawItems((prev) =>
-      prev.map((item) => (item.id === pId ? { ...item, quantity } : item))
+      prev.map((item) => {
+        if (item.id === pId) {
+          const maxStock = typeof item.stock === 'number' && item.stock >= 0 ? item.stock : 999;
+          const cappedQty = maxStock > 0 ? Math.min(quantity, maxStock) : quantity;
+          return { ...item, quantity: cappedQty };
+        }
+        return item;
+      })
     );
   };
 

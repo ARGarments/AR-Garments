@@ -147,3 +147,21 @@ export function sendRegistrationCode(input: SendLoginCodeInput): Promise<string>
     tag: 'email-registration',
   });
 }
+
+export function sendPasswordResetCode(input: SendLoginCodeInput): Promise<string> {
+  return sendCodeEmail(input, {
+    subject: 'Your AR Garment password reset code',
+    instruction: 'Use this one-time code to reset your AR Garment account password:',
+    tag: 'email-password-reset',
+  });
+}
+
+export function sendEmailChangeCode(input: SendLoginCodeInput): Promise<string> {
+  return sendCodeEmail(input, {
+    subject: 'Your AR Garment email verification code',
+    instruction: 'Use this one-time code to verify and link your new email address to your AR Garment account:',
+    tag: 'email-change',
+  });
+}
+
+

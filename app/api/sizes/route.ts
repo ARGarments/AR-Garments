@@ -12,7 +12,7 @@ function getAdminClient() {
 }
 
 const DEFAULT_SIZES = [
-  'Free Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
+  'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
   'Set of All Sizes (S, M, L, XL, XXL)', 'Unstitched'
 ];
 

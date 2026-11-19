@@ -104,6 +104,62 @@ export default function CartPage() {
 
   const pageSize = 4; // 4 items per page for clean desktop & mobile row layout
 
+  // Live stock map: productId or variantId -> stock count from DB
+  const [stockMap, setStockMap] = useState<Record<string, number>>({});
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Record<string, unknown>[]) => {
+        if (Array.isArray(data)) {
+          const map: Record<string, number> = {};
+          data.forEach((d) => {
+            if (d.id) map[String(d.id)] = typeof d.stock === 'number' ? d.stock : 0;
+          });
+          setStockMap((prev) => ({ ...prev, ...map }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch variant stock for any cart items that may be variants
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    const checkedProdIds = new Set<string>();
+
+    items.forEach((item) => {
+      const parts = String(item.id).split('-');
+      // Check if item.id has format prod-xxx-var-yyy or contains '-'
+      let prodId = parts[0];
+      if (parts.length >= 2 && parts[0] === 'prod') {
+        prodId = `${parts[0]}-${parts[1]}`;
+      }
+
+      if (!checkedProdIds.has(prodId)) {
+        checkedProdIds.add(prodId);
+        fetch(`/api/products/${prodId}/variants`)
+          .then((res) => (res.ok ? res.json() : []))
+          .then((variants: Record<string, unknown>[]) => {
+            if (Array.isArray(variants) && variants.length > 0) {
+              setStockMap((prev) => {
+                const next = { ...prev };
+                variants.forEach((v) => {
+                  const vStock = Number(
+                    v.available_sets !== undefined && v.available_sets !== null
+                      ? v.available_sets
+                      : (v.total_stock_pieces ?? v.available_pieces ?? 0)
+                  );
+                  next[`${prodId}-${v.id}`] = vStock;
+                  next[String(v.id)] = vStock;
+                });
+                return next;
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    });
+  }, [items]);
+
   // Fetch available coupons
   useEffect(() => {
     fetch('/api/coupons?active=true')
@@ -413,7 +469,8 @@ export default function CartPage() {
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-r-lg transition-colors"
+                              disabled={item.quantity >= (stockMap[item.id] ?? item.stock ?? 999)}
+                              className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               aria-label="Increase quantity"
                             >
                               <Plus size={13} />
@@ -484,7 +541,8 @@ export default function CartPage() {
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-r-lg transition-colors"
+                          disabled={item.quantity >= (stockMap[item.id] ?? item.stock ?? 999)}
+                          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-r-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           aria-label="Increase quantity"
                         >
                           <Plus size={14} />

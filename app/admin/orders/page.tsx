@@ -15,8 +15,10 @@ import {
   ExternalLink,
   Save,
   Printer,
+  XCircle,
 } from 'lucide-react';
 import ShippingLabelModal from '@/components/admin/ShippingLabelModal';
+import AdminOrderCancelModal from '@/components/admin/AdminOrderCancelModal';
 import {
   OrderFulfillmentProgress,
   OrderShipmentTracking,
@@ -228,6 +230,7 @@ function AdminOrderCard({
   onToggle,
   onStatusChange,
   onOpenShippingLabel,
+  onOpenCancelModal,
 }: {
   order: Order;
   expanded: boolean;
@@ -235,6 +238,7 @@ function AdminOrderCard({
   onToggle: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onOpenShippingLabel: (order: Order) => void;
+  onOpenCancelModal: (order: Order) => void;
 }) {
   const address = order.shippingAddress;
   const paymentLabel = order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (Razorpay)';
@@ -313,6 +317,16 @@ function AdminOrderCard({
               <Printer size={14} className="text-[#C9972B]" />
               <span>Generate &amp; Print Shipping Label</span>
             </button>
+            {order.status !== 'Cancelled' && (
+              <button
+                type="button"
+                onClick={() => onOpenCancelModal(order)}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <XCircle size={15} />
+                <span>Cancel Order (ऑर्डर कैंसिल करें)</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -464,6 +478,10 @@ export default function AdminOrdersPage() {
   const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<Order | null>(null);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
 
+  // Cancellation Modal State
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+
   useEffect(() => {
     async function fetchOrders() {
       try {
@@ -587,6 +605,10 @@ export default function AdminOrdersPage() {
                 setSelectedOrderForLabel(o);
                 setLabelModalOpen(true);
               }}
+              onOpenCancelModal={(o) => {
+                setSelectedOrderForCancel(o);
+                setCancelModalOpen(true);
+              }}
             />
           ))}
         </div>
@@ -600,6 +622,39 @@ export default function AdminOrdersPage() {
           onClose={() => {
             setLabelModalOpen(false);
             setSelectedOrderForLabel(null);
+          }}
+        />
+      )}
+
+      {/* Admin Order Cancellation Modal with Dynamic Stock Control */}
+      {selectedOrderForCancel && (
+        <AdminOrderCancelModal
+          order={selectedOrderForCancel}
+          isOpen={cancelModalOpen}
+          onClose={() => {
+            setCancelModalOpen(false);
+            setSelectedOrderForCancel(null);
+          }}
+          onSuccess={(cancelledId, details) => {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === cancelledId
+                  ? {
+                      ...o,
+                      status: 'Cancelled',
+                      cancelledAt: new Date().toISOString(),
+                      cancelledBy: 'admin',
+                      cancellationReason: details.reason,
+                    }
+                  : o
+              )
+            );
+            toast.success(
+              details.stockRestored
+                ? `Order #${cancelledId} cancelled. Stock restored to inventory and customer notified!`
+                : `Order #${cancelledId} cancelled (Out of Stock). Inventory was not restored & customer notified!`,
+              { title: 'Order Cancelled' }
+            );
           }}
         />
       )}

@@ -58,7 +58,7 @@ type SectionTab =
 function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading, updateUser } = useAuth();
   const { toast } = useToast();
 
   // Active view on desktop
@@ -218,21 +218,64 @@ function AccountContent() {
     });
   };
 
-  // Save profile handler
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Save profile handler — calls API to update DB, then syncs AuthContext + localStorage
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingProfile) return;
+    setSavingProfile(true);
+
     try {
-      localStorage.setItem(
-        'ar_user_profile',
-        JSON.stringify({
-          name: profileName,
-          phone: profilePhone,
-          email: profileEmail,
-        })
+      const token = typeof window !== 'undefined' ? localStorage.getItem('ar_token') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          name: profileName.trim(),
+          phone: profilePhone.trim(),
+          email: profileEmail.trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        toast.error(data?.error || 'Could not save profile. Please try again.', {
+          title: 'Update Failed',
+        });
+        return;
+      }
+
+      // Persist new token (refreshed JWT with updated name/phone)
+      if (data.token) {
+        localStorage.setItem('ar_token', data.token);
+      }
+
+      // Sync the in-memory AuthContext user immediately
+      updateUser({
+        name: profileName.trim(),
+        phone: profilePhone.trim(),
+        email: profileEmail.trim(),
+      });
+
+      toast.success(
+        data.dbUpdated
+          ? 'Profile saved to database successfully! ✓'
+          : 'Profile updated locally. Will sync when connection is available.',
+        { title: 'Profile Updated' }
       );
-    } catch {}
-    toast.success('Profile details updated successfully! ✓', { title: 'Profile Updated' });
-    setActiveModal(null);
+      setActiveModal(null);
+    } catch (err) {
+      toast.error('Network error. Please check your connection and try again.', {
+        title: 'Update Failed',
+      });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   // Save address handler (syncs to DB and localStorage)
@@ -751,9 +794,13 @@ function AccountContent() {
                     </div>
                     <button
                       type="submit"
-                      className="px-6 py-3 bg-[#D81A24] hover:bg-[#b8141d] text-white font-bold text-xs rounded-xl transition-colors shadow-sm"
+                      disabled={savingProfile}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#D81A24] hover:bg-[#b8141d] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition-colors shadow-sm"
                     >
-                      Save Profile Changes
+                      {savingProfile && (
+                        <Loader2 size={14} className="animate-spin" />
+                      )}
+                      {savingProfile ? 'Saving...' : 'Save Profile Changes'}
                     </button>
                   </form>
                 </div>

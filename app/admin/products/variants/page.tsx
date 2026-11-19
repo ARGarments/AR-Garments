@@ -8,7 +8,8 @@ import {
   ArrowLeft, Check, Box, Tag, DollarSign, Scale, Percent,
   FileCheck, Shirt, Trash2, Edit2, Plus, Info,
   Search, Layers, ImageIcon, Loader2, Package, Palette,
-  Scissors, Ruler, Star, RefreshCw, X, Settings
+  Scissors, Ruler, Star, RefreshCw, X, Settings, ChevronDown,
+  LinkIcon, Truck, AlertCircle, Home, Sparkles, Crown, Award, Flame, Store
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
@@ -48,6 +49,18 @@ export type VariantFormData = {
     rows: Array<{ size: string; values: Record<string, string> }>;
   };
   customSpecifications: CustomSpec[];
+  youtubeUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  deliveryType: 'standard' | 'low_margin';
+  deliveryChargeAmount: number;
+  isNonReturnable: boolean;
+  isNewArrival: boolean;
+  isBestSeller: boolean;
+  isPremium: boolean;
+  isGold: boolean;
+  tags: string[];
+  active: boolean;
 };
 
 type ParentProduct = {
@@ -93,7 +106,7 @@ const COMMON_HSN_CODES = [
 const GST_OPTIONS = ['0%', '5%', '12%', '18%', '28%'];
 
 const SIZE_OPTIONS = [
-  'Free Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
+  'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
   'Set of All Sizes (S, M, L, XL, XXL)', 'Unstitched',
 ];
 
@@ -178,6 +191,11 @@ function VariantPageContent() {
   const [showSizeChartModal, setShowSizeChartModal] = useState(false);
   const [newSizeInput, setNewSizeInput] = useState('');
 
+  // Manage variant images directly from table
+  const [imageModalVariant, setImageModalVariant] = useState<VariantFormData | null>(null);
+  const [isUpdatingVariantImages, setIsUpdatingVariantImages] = useState(false);
+  const tableImageInputRef = useRef<HTMLInputElement>(null);
+
   // Size chart state
   const [sizeChartMetrics, setSizeChartMetrics] = useState<string[]>([
     'Top Chest', 'Top Waist', 'Top Length', 'Shoulder', 'Inseam (Custom)'
@@ -186,14 +204,57 @@ function VariantPageContent() {
     { size: 'M', values: { 'Top Chest': '38 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '24 in', 'Inseam (Custom)': '30 in' } },
     { size: 'S', values: { 'Top Chest': '39 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '26 in', 'Inseam (Custom)': '30 in' } },
     { size: 'L', values: { 'Top Chest': '32 in', 'Top Waist': '32 in', 'Top Length': '25 in', 'Shoulder': '26 in', 'Inseam (Custom)': '37 in' } },
-    { size: 'Free Size', values: { 'Top Chest': '34 in', 'Top Waist': '32 in', 'Top Length': '26 in', 'Shoulder': '26 in', 'Inseam (Custom)': '26 in' } },
+
   ]);
+
+  // Tags state
+  const [tagInput, setTagInput] = useState('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // Load saved custom tags from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ar_available_tags');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAvailableTags((prev) => Array.from(new Set([...prev, ...parsed])));
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleAddTag = () => {
+    const newTag = tagInput.trim().replace(/,$/, '');
+    if (!newTag) return;
+    setAvailableTags((prev) => {
+      const updated = Array.from(new Set([...prev, newTag]));
+      try { localStorage.setItem('ar_available_tags', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    if (!(variantForm.tags || []).includes(newTag)) {
+      setVariantForm((prev) => ({ ...prev, tags: [...(prev.tags || []), newTag] }));
+    }
+    setTagInput('');
+  };
+
+  const handleDeleteAvailableTag = (tagToDelete: string) => {
+    setAvailableTags((prev) => {
+      const updated = prev.filter((t) => t !== tagToDelete);
+      try { localStorage.setItem('ar_available_tags', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    setVariantForm((prev) => ({
+      ...prev,
+      tags: (prev.tags || []).filter((t) => t !== tagToDelete),
+    }));
+  };
 
   const [variantForm, setVariantForm] = useState<VariantFormData>({
     id: queryVariantId || `var-${Date.now()}`,
     productId: queryProductId,
     variantType: 'set_size',
-    size: 'Free Size',
+    size: '',
     piecesPerSet: 6,
     pricePerPiece: 135,
     totalSetPrice: 810,
@@ -214,6 +275,18 @@ function VariantPageContent() {
     length: '',
     occasion: '',
     customSpecifications: [],
+    youtubeUrl: '',
+    facebookUrl: '',
+    instagramUrl: '',
+    deliveryType: 'standard',
+    deliveryChargeAmount: 0,
+    isNonReturnable: false,
+    isNewArrival: false,
+    isBestSeller: false,
+    isPremium: false,
+    isGold: false,
+    tags: [],
+    active: true,
   });
 
   // Fetch sizes from DB
@@ -255,7 +328,7 @@ function VariantPageContent() {
                 }
                 setVariantForm((prev) => ({
                   ...prev,
-                  size: matched.size || prev.size,
+                  size: (matched.size || '').split(',').map((x: string) => x.trim()).filter((x: string) => x && x.toLowerCase() !== 'free size').join(', ') || prev.size,
                   hsnCode: matched.hsnCode || prev.hsnCode,
                   weight: matched.weight || prev.weight,
                   weightUnit: matched.weightUnit || prev.weightUnit,
@@ -290,7 +363,7 @@ function VariantPageContent() {
               id: String(v.id),
               productId: String(v.product_id || selectedProductId),
               variantType: (v.variant_type as 'set_size' | 'individual') || 'set_size',
-              size: String(v.size || 'Free Size'),
+              size: String(v.size || '').split(',').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'free size').join(', '),
               piecesPerSet: Number(v.pieces_per_set) || 1,
               pricePerPiece: Number(v.price_per_piece) || 0,
               totalSetPrice: Number(v.total_set_price) || 0,
@@ -316,6 +389,18 @@ function VariantPageContent() {
               customSpecifications: Array.isArray(v.custom_specifications)
                 ? (v.custom_specifications as CustomSpec[])
                 : [],
+              youtubeUrl: String(v.youtube_url || ''),
+              facebookUrl: String(v.facebook_url || ''),
+              instagramUrl: String(v.instagram_url || ''),
+              deliveryType: (v.delivery_type === 'low_margin' ? 'low_margin' : 'standard') as 'standard' | 'low_margin',
+              deliveryChargeAmount: Number(v.delivery_charge_amount) || 0,
+              isNonReturnable: Boolean(v.is_non_returnable),
+              isNewArrival: Boolean(v.is_new_arrival),
+              isBestSeller: Boolean(v.is_best_seller),
+              isPremium: Boolean(v.is_premium),
+              isGold: Boolean(v.is_gold),
+              tags: Array.isArray(v.tags) ? (v.tags as string[]) : [],
+              active: v.active !== false,
             }));
             setExistingVariants(mapped);
 
@@ -331,8 +416,10 @@ function VariantPageContent() {
                     editorRef.current.innerHTML = toEdit.description;
                   }
                 }
-                if (Array.isArray(toEdit.images) && toEdit.images.length > 0) {
+                if (Array.isArray(toEdit.images)) {
                   setUploadedImages(toEdit.images);
+                } else {
+                  setUploadedImages([]);
                 }
                 if (toEdit.sizeChart && Array.isArray(toEdit.sizeChart.metrics) && Array.isArray(toEdit.sizeChart.rows)) {
                   setSizeChartMetrics(toEdit.sizeChart.metrics);
@@ -398,7 +485,11 @@ function VariantPageContent() {
       });
       if (res.ok) {
         setSizesList((prev) => [...prev, sizeName]);
-        setVariantForm((prev) => ({ ...prev, size: sizeName }));
+        setVariantForm((prev) => {
+          const prevSizes = prev.size.split(',').map((x) => x.trim()).filter(Boolean);
+          if (!prevSizes.includes(sizeName)) prevSizes.push(sizeName);
+          return { ...prev, size: prevSizes.join(', ') };
+        });
         setNewSizeInput('');
         toast.success(`Size "${sizeName}" added!`);
       } else {
@@ -417,8 +508,10 @@ function VariantPageContent() {
       });
       if (res.ok) {
         setSizesList((prev) => prev.filter((s) => s !== sizeName));
-        if (variantForm.size === sizeName) {
-          setVariantForm((prev) => ({ ...prev, size: sizesList[0] || 'Free Size' }));
+        const selectedSizes = variantForm.size.split(',').map((x) => x.trim()).filter(Boolean);
+        if (selectedSizes.includes(sizeName)) {
+          const remaining = selectedSizes.filter((x) => x !== sizeName);
+          setVariantForm((prev) => ({ ...prev, size: remaining.join(', ') }));
         }
         toast.success(`Size "${sizeName}" deleted.`);
       }
@@ -439,8 +532,10 @@ function VariantPageContent() {
       });
       if (res.ok) {
         setSizesList((prev) => prev.map((s) => (s === oldSizeName ? trimmed : s)));
-        if (variantForm.size === oldSizeName) {
-          setVariantForm((prev) => ({ ...prev, size: trimmed }));
+        const selectedSizes = variantForm.size.split(',').map((x) => x.trim()).filter(Boolean);
+        if (selectedSizes.includes(oldSizeName)) {
+          const updated = selectedSizes.map((x) => (x === oldSizeName ? trimmed : x));
+          setVariantForm((prev) => ({ ...prev, size: updated.join(', ') }));
         }
         setSizeChartRows((prev) =>
           prev.map((r) => (r.size === oldSizeName ? { ...r, size: trimmed } : r))
@@ -572,14 +667,14 @@ function VariantPageContent() {
         ...prev,
         id: `var-${Date.now()}`,
         skuId: `SKU-${Date.now().toString().slice(-6)}`,
-        size: 'Free Size',
+        size: '',
       }));
     } else {
       setVariantForm((prev) => ({
         ...prev,
         id: `var-${Date.now()}`,
         skuId: `SKU-${Date.now().toString().slice(-6)}`,
-        size: 'Free Size',
+        size: '',
         piecesPerSet: 6,
         pricePerPiece: 0,
         totalSetPrice: 0,
@@ -596,6 +691,18 @@ function VariantPageContent() {
         length: '',
         occasion: '',
         customSpecifications: [],
+        youtubeUrl: '',
+        facebookUrl: '',
+        instagramUrl: '',
+        deliveryType: 'standard',
+        deliveryChargeAmount: 0,
+        isNonReturnable: false,
+        isNewArrival: false,
+        isBestSeller: false,
+        isPremium: false,
+        isGold: false,
+        tags: [],
+        active: true,
       }));
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -605,6 +712,41 @@ function VariantPageContent() {
   const handleSave = async () => {
     if (!selectedProductId && !isDraftMode) {
       toast.error('Please select a parent product.');
+      return;
+    }
+
+    // Required fields validation
+    if (!uploadedImages || uploadedImages.length === 0) {
+      toast.error('Please upload at least one image for this variant.');
+      window.scrollTo({ top: 400, behavior: 'smooth' });
+      return;
+    }
+    if (!variantForm.colour || !variantForm.colour.trim()) {
+      toast.error('Please enter Colour for this variant.');
+      return;
+    }
+    if (!variantForm.fabric || !variantForm.fabric.trim()) {
+      toast.error('Please enter Fabric for this variant.');
+      return;
+    }
+    if (!variantForm.work || !variantForm.work.trim()) {
+      toast.error('Please enter Work for this variant.');
+      return;
+    }
+    if (!variantForm.length || !variantForm.length.trim()) {
+      toast.error('Please enter Length for this variant.');
+      return;
+    }
+    if (!variantForm.occasion || !variantForm.occasion.trim()) {
+      toast.error('Please enter Occasion for this variant.');
+      return;
+    }
+    if (!variantForm.fitShape || !variantForm.fitShape.trim()) {
+      toast.error('Please enter Fit / Shape for this variant.');
+      return;
+    }
+    if (!variantForm.sleeveLength || !variantForm.sleeveLength.trim()) {
+      toast.error('Please enter Sleeve Length for this variant.');
       return;
     }
 
@@ -641,6 +783,18 @@ function VariantPageContent() {
             rows: sizeChartRows,
           },
           custom_specifications: variantForm.customSpecifications,
+          youtube_url: variantForm.youtubeUrl || '',
+          facebook_url: variantForm.facebookUrl || '',
+          instagram_url: variantForm.instagramUrl || '',
+          delivery_type: variantForm.deliveryType || 'standard',
+          delivery_charge_amount: variantForm.deliveryChargeAmount || 0,
+          is_non_returnable: variantForm.isNonReturnable || false,
+          is_new_arrival: variantForm.isNewArrival || false,
+          is_best_seller: variantForm.isBestSeller || false,
+          is_premium: variantForm.isPremium || false,
+          is_gold: variantForm.isGold || false,
+          tags: variantForm.tags || [],
+          active: variantForm.active !== false,
         };
 
         const method = editingVariantId ? 'PUT' : 'POST';
@@ -695,6 +849,26 @@ function VariantPageContent() {
       });
       if (res.ok) {
         setExistingVariants((prev) => prev.filter((v) => v.id !== variantId));
+        if (editingVariantId === variantId) {
+          setEditingVariantId(null);
+          setVariantForm((prev) => ({
+            ...prev,
+            id: `var-${Date.now()}`,
+            skuId: `SKU-${Date.now().toString().slice(-6)}`,
+            colour: '',
+            size: '',
+            pricePerPiece: 0,
+            totalSetPrice: 0,
+            totalStockPieces: 0,
+            availablePieces: 0,
+            availableSets: 0,
+            images: [],
+          }));
+          setUploadedImages([]);
+          if (editorRef.current) editorRef.current.innerHTML = '';
+          setDescription('');
+          setDescCharCount(0);
+        }
         toast.success('Variant deleted.');
       } else {
         toast.error('Failed to delete variant.');
@@ -702,6 +876,78 @@ function VariantPageContent() {
     } catch {
       toast.error('Network error deleting variant.');
     }
+  };
+
+  // Direct image handling for variants in the list
+  const handleUpdateVariantImages = async (variantId: string, nextImages: string[]) => {
+    setIsUpdatingVariantImages(true);
+    try {
+      const res = await fetch(`/api/products/${selectedProductId}/variants`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: variantId,
+          images: nextImages,
+        }),
+      });
+      if (res.ok) {
+        setExistingVariants((prev) =>
+          prev.map((v) => (v.id === variantId ? { ...v, images: nextImages } : v))
+        );
+        if (editingVariantId === variantId) {
+          setUploadedImages(nextImages);
+        }
+        if (imageModalVariant && imageModalVariant.id === variantId) {
+          setImageModalVariant((prev) => (prev ? { ...prev, images: nextImages } : null));
+        }
+        toast.success('Variant images updated!');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to update variant images.');
+      }
+    } catch {
+      toast.error('Network error updating images.');
+    } finally {
+      setIsUpdatingVariantImages(false);
+    }
+  };
+
+  const handleTableImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetVariantId: string) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUpdatingVariantImages(true);
+    try {
+      const urls = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('folder', '/products');
+          fd.append('fileName', `product_${Date.now()}`);
+          const res = await fetch('/api/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
+          return data.url as string;
+        })
+      );
+
+      const target = existingVariants.find((v) => v.id === targetVariantId);
+      const currentImgs = target ? (Array.isArray(target.images) ? target.images : []) : [];
+      const combined = [...currentImgs, ...urls];
+      await handleUpdateVariantImages(targetVariantId, combined);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Image upload failed');
+      setIsUpdatingVariantImages(false);
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleDeleteVariantSingleImage = async (variantId: string, imageIndex: number) => {
+    const target = existingVariants.find((v) => v.id === variantId);
+    if (!target) return;
+    const currentImgs = Array.isArray(target.images) ? target.images : [];
+    const nextImages = currentImgs.filter((_, i) => i !== imageIndex);
+    await handleUpdateVariantImages(variantId, nextImages);
   };
 
   const isSetSize = variantForm.variantType === 'set_size';
@@ -890,7 +1136,7 @@ function VariantPageContent() {
           {/* Images & Size */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             <div>
-              <FieldLabel>Product Images</FieldLabel>
+              <FieldLabel><span className="text-red-500 mr-0.5">*</span> Variant Images</FieldLabel>
               {/* Hidden file input */}
               <input
                 ref={imageInputRef}
@@ -967,29 +1213,30 @@ function VariantPageContent() {
                   </button>
                 </div>
               </div>
-              <select
-                value={variantForm.size}
-                onChange={(e) => setVariantForm({ ...variantForm, size: e.target.value })}
-                className={inputCls()}
+              <button
+                type="button"
+                onClick={() => setShowManageSizesModal(true)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-700 hover:border-[#083028] hover:bg-emerald-50/30 transition text-left cursor-pointer"
               >
-                {sizesList.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-gray-400 mt-1">Choose product size or add custom sizes</p>
+                <span className={variantForm.size ? 'font-semibold text-gray-900' : 'text-gray-400'}>
+                  {variantForm.size ? Array.from(new Set(variantForm.size.split(',').map((x) => x.trim()).filter(Boolean))).join(', ') : 'Click to select sizes'}
+                </span>
+                <ChevronDown size={14} className="text-gray-400 ml-2 flex-shrink-0" />
+              </button>
+              <p className="text-[10px] text-gray-400 mt-1">Sizes selected via Manage Sizes</p>
             </div>
           </div>
         </SectionCard>
 
         {/* ══════════════ PRODUCT SPECIFICATIONS ══════════════ */}
         <SectionCard
-          title="Product Specifications"
-          subtitle="Add product specifications for this product."
+          title="Product Specifications *"
+          subtitle="Add product specifications for this product (all fields required)."
           icon={<Tag size={18} />}
         >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <FieldLabel icon={<Scissors size={13} />}>Fabric</FieldLabel>
+              <FieldLabel icon={<Scissors size={13} />}><span className="text-red-500 mr-0.5">*</span> Fabric</FieldLabel>
               <input
                 type="text"
                 value={variantForm.fabric}
@@ -999,7 +1246,7 @@ function VariantPageContent() {
               />
             </div>
             <div>
-              <FieldLabel icon={<Palette size={13} />}>Colour</FieldLabel>
+              <FieldLabel icon={<Palette size={13} />}><span className="text-red-500 mr-0.5">*</span> Colour</FieldLabel>
               <input
                 type="text"
                 value={variantForm.colour}
@@ -1009,7 +1256,7 @@ function VariantPageContent() {
               />
             </div>
             <div>
-              <FieldLabel icon={<Star size={13} />}>Work</FieldLabel>
+              <FieldLabel icon={<Star size={13} />}><span className="text-red-500 mr-0.5">*</span> Work</FieldLabel>
               <input
                 type="text"
                 value={variantForm.work}
@@ -1019,7 +1266,7 @@ function VariantPageContent() {
               />
             </div>
             <div>
-              <FieldLabel icon={<Ruler size={13} />}>Length</FieldLabel>
+              <FieldLabel icon={<Ruler size={13} />}><span className="text-red-500 mr-0.5">*</span> Length</FieldLabel>
               <input
                 type="text"
                 value={variantForm.length}
@@ -1032,7 +1279,7 @@ function VariantPageContent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <FieldLabel icon={<Star size={13} />}>Occasion</FieldLabel>
+              <FieldLabel icon={<Star size={13} />}><span className="text-red-500 mr-0.5">*</span> Occasion</FieldLabel>
               <input
                 type="text"
                 value={variantForm.occasion}
@@ -1042,7 +1289,7 @@ function VariantPageContent() {
               />
             </div>
             <div>
-              <FieldLabel icon={<Shirt size={13} />}>Fit / Shape</FieldLabel>
+              <FieldLabel icon={<Shirt size={13} />}><span className="text-red-500 mr-0.5">*</span> Fit / Shape</FieldLabel>
               <input
                 type="text"
                 value={variantForm.fitShape}
@@ -1052,7 +1299,7 @@ function VariantPageContent() {
               />
             </div>
             <div>
-              <FieldLabel icon={<Scissors size={13} />}>Sleeve Length</FieldLabel>
+              <FieldLabel icon={<Scissors size={13} />}><span className="text-red-500 mr-0.5">*</span> Sleeve Length</FieldLabel>
               <input
                 type="text"
                 value={variantForm.sleeveLength}
@@ -1483,7 +1730,294 @@ function VariantPageContent() {
           )}
         </SectionCard>
 
-        {/* ══════════════ EXISTING VARIANTS LIST ══════════════ */}
+        {/* ════ SOCIAL MEDIA LINKS ════ */}
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-2.5">
+              <LinkIcon size={18} className="text-[#083028]" />
+              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
+                Product Social Media Links
+              </h2>
+            </div>
+            <span className="text-[11px] text-gray-400">Optional product video/post URLs</span>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-1">
+                <span className="w-5 h-5 rounded-md bg-[#FF0000] flex items-center justify-center text-white text-[10px]">▶</span>
+                <span>YouTube Video / Short URL</span>
+              </label>
+              <input
+                type="url"
+                value={variantForm.youtubeUrl}
+                onChange={(e) => setVariantForm({ ...variantForm, youtubeUrl: e.target.value })}
+                placeholder="https://www.youtube.com/watch?v=... or https://youtube.com/shorts/..."
+                className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-1">
+                <span className="w-5 h-5 rounded-full bg-[#1877F2] flex items-center justify-center text-white text-[10px] font-bold">f</span>
+                <span>Facebook Post / Reel URL</span>
+              </label>
+              <input
+                type="url"
+                value={variantForm.facebookUrl}
+                onChange={(e) => setVariantForm({ ...variantForm, facebookUrl: e.target.value })}
+                placeholder="https://www.facebook.com/reel/... or https://facebook.com/..."
+                className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-1">
+                <span className="w-5 h-5 rounded-md bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center text-white text-[10px]">📷</span>
+                <span>Instagram Reel / Post URL</span>
+              </label>
+              <input
+                type="url"
+                value={variantForm.instagramUrl}
+                onChange={(e) => setVariantForm({ ...variantForm, instagramUrl: e.target.value })}
+                placeholder="https://www.instagram.com/reel/... or https://instagram.com/p/..."
+                className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ════ DELIVERY TYPE ════ */}
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
+            <Truck size={18} className="text-[#083028]" />
+            <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
+              Delivery Type
+            </h2>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+                Select Delivery Type
+              </label>
+              <div className="relative">
+                <select
+                  value={variantForm.deliveryType}
+                  onChange={(e) => setVariantForm({ ...variantForm, deliveryType: e.target.value as 'standard' | 'low_margin' })}
+                  className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#083028] focus:bg-white transition appearance-none cursor-pointer"
+                >
+                  <option value="standard">Standard Item (Free Delivery - Green Tag)</option>
+                  <option value="low_margin">Low Margin / Wholesale (+ Delivery - Orange Tag)</option>
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Preview Tag:</span>
+              {variantForm.deliveryType === 'standard' ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <Truck size={11} className="shrink-0" /> Free Delivery
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
+                  <Package size={11} className="shrink-0" /> + Delivery Charge
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-400 leading-relaxed">
+              <strong>Standard Item:</strong> Follows zone-based free delivery thresholds (green tag shown when eligible).<br/>
+              <strong>Low Margin / Wholesale:</strong> Always shows a delivery charge (orange tag). This product does NOT count towards the free delivery threshold, even if the cart total is high.
+            </p>
+          </div>
+        </div>
+
+        {/* ── NON-RETURNABLE PRODUCT SETTING ── */}
+        <div className="bg-amber-50/70 rounded-2xl border-2 border-amber-300 p-4 sm:p-6 shadow-xs space-y-3">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-amber-200">
+            <AlertCircle size={18} className="text-amber-800 shrink-0" />
+            <h2 className="text-xs font-black text-amber-950 uppercase tracking-wide">
+              Product Return Policy
+            </h2>
+          </div>
+          <label className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3.5 bg-white rounded-xl border border-amber-200 cursor-pointer hover:border-amber-400 transition-all shadow-xs">
+            <div className="flex items-start gap-3 w-full sm:w-auto sm:flex-1">
+              <input
+                type="checkbox"
+                checked={variantForm.isNonReturnable}
+                onChange={(e) => setVariantForm({ ...variantForm, isNonReturnable: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <span className="text-xs sm:text-sm font-extrabold text-gray-900 block break-words">
+                  MAKE THIS PRODUCT NON-RETURNABLE
+                </span>
+                <span className="text-[11px] sm:text-xs text-gray-600 block mt-1 leading-relaxed">
+                  When checked, customers will see a red <span className="font-bold text-red-700">🚫 NON-RETURNABLE</span> warning badge on the product page and cart before purchase. Returns will be strictly disallowed for this item.
+                </span>
+              </div>
+            </div>
+            {variantForm.isNonReturnable && (
+              <span className="self-start sm:self-center shrink-0 bg-red-100 text-red-700 font-black text-[10px] px-2.5 py-1 rounded-full border border-red-300 mt-1 sm:mt-0">
+                NON-RETURNABLE
+              </span>
+            )}
+          </label>
+        </div>
+
+        {/* ════ SHOW ON HOMEPAGE SECTIONS & PRODUCT TAGS ════ */}
+        <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2.5">
+              <Home size={18} className="text-[#083028]" />
+              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wide">
+                Show on Homepage Sections & Tags
+              </h2>
+            </div>
+            <span className="text-[11px] text-gray-400">
+              Select homepage badges & custom tags for this variant
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* New Arrivals */}
+            <label className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-[#083028] transition-colors">
+              <input
+                type="checkbox"
+                checked={variantForm.isNewArrival}
+                onChange={(e) => setVariantForm({ ...variantForm, isNewArrival: e.target.checked })}
+                className="w-4 h-4 accent-[#083028] cursor-pointer"
+              />
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <Sparkles size={16} className="text-emerald-600" /> New Arrivals
+              </span>
+            </label>
+
+            {/* Premium */}
+            <label className="flex items-center gap-3 p-3 bg-amber-50/30 rounded-xl border border-amber-200/70 cursor-pointer hover:border-amber-400 transition-colors">
+              <input
+                type="checkbox"
+                checked={variantForm.isPremium}
+                onChange={(e) => setVariantForm({ ...variantForm, isPremium: e.target.checked })}
+                className="w-4 h-4 accent-amber-600 cursor-pointer"
+              />
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <Crown size={16} className="text-amber-500" /> Premium
+              </span>
+            </label>
+
+            {/* Gold */}
+            <label className="flex items-center gap-3 p-3 bg-amber-50/20 rounded-xl border border-amber-200 cursor-pointer hover:border-amber-400 transition-colors">
+              <input
+                type="checkbox"
+                checked={variantForm.isGold}
+                onChange={(e) => setVariantForm({ ...variantForm, isGold: e.target.checked })}
+                className="w-4 h-4 accent-amber-600 cursor-pointer"
+              />
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <Award size={16} className="text-amber-600" /> Gold
+              </span>
+            </label>
+
+            {/* Best Sellers */}
+            <label className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-[#083028] transition-colors">
+              <input
+                type="checkbox"
+                checked={variantForm.isBestSeller}
+                onChange={(e) => setVariantForm({ ...variantForm, isBestSeller: e.target.checked })}
+                className="w-4 h-4 accent-[#083028] cursor-pointer"
+              />
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <Flame size={16} className="text-amber-600" /> Best Sellers
+              </span>
+            </label>
+
+            {/* Custom Created Tags */}
+            {availableTags.map((tag) => {
+              const isChecked = (variantForm.tags || []).includes(tag);
+              return (
+                <div
+                  key={tag}
+                  className={`flex items-center justify-between gap-2 p-3 rounded-xl border transition-colors ${
+                    isChecked
+                      ? 'bg-emerald-50/40 border-emerald-400'
+                      : 'bg-white border-gray-200 hover:border-[#083028]'
+                  }`}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const nextTags = e.target.checked
+                          ? [...(variantForm.tags || []), tag]
+                          : (variantForm.tags || []).filter((t) => t !== tag);
+                        setVariantForm({ ...variantForm, tags: nextTags });
+                      }}
+                      className="w-4 h-4 accent-[#083028] cursor-pointer shrink-0"
+                    />
+                    <span className="flex items-center gap-2 text-xs font-bold text-gray-800 min-w-0">
+                      <Tag size={15} className="text-[#083028] shrink-0" />
+                      <span className="truncate">{tag}</span>
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAvailableTag(tag)}
+                    className="shrink-0 text-gray-300 hover:text-red-500 p-1 text-xs transition"
+                    title={`Delete tag "${tag}"`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Active on Storefront */}
+            <label className="sm:col-span-2 flex items-center gap-3 p-3 bg-gray-50/60 rounded-xl border border-gray-200 cursor-pointer hover:border-[#083028] transition-colors">
+              <input
+                type="checkbox"
+                checked={variantForm.active}
+                onChange={(e) => setVariantForm({ ...variantForm, active: e.target.checked })}
+                className="w-4 h-4 accent-[#083028] cursor-pointer"
+              />
+              <span className="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <Store size={16} className="text-emerald-700" /> Active on Storefront
+              </span>
+            </label>
+          </div>
+
+          {/* Add New Tag Input Row */}
+          <div className="pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag size={14} className="text-[#083028]" />
+              <span className="text-xs font-bold text-gray-700">Add New Tag:</span>
+              <span className="text-[10px] text-gray-400">(will appear above as an option to tick/untick)</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                placeholder="Type tag name (e.g. test, Trending, Festive)..."
+                className="flex-1 px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#083028]/30 focus:border-[#083028]/40"
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#083028]/90 transition shadow-xs"
+              >
+                <Plus size={13} /> Add Tag
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ══════════════ EXISTING VARIANTS LIST (LAST IN PAGE) ══════════════ */}
         {selectedProductId && selectedProductId !== 'draft' && (
           <SectionCard
             title={`All Configured Variants (${existingVariants.length})`}
@@ -1504,6 +2038,7 @@ function VariantPageContent() {
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase font-semibold text-[10px]">
                     <tr>
+                      <th className="px-4 py-2.5 text-left">Images</th>
                       <th className="px-4 py-2.5 text-left">SKU / Type</th>
                       <th className="px-4 py-2.5 text-left">Size & Pieces</th>
                       <th className="px-4 py-2.5 text-left">Colour / Fabric</th>
@@ -1513,8 +2048,57 @@ function VariantPageContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {existingVariants.map((v) => (
+                    {existingVariants.map((v) => {
+                      const variantImages = Array.isArray(v.images) ? v.images : [];
+                      return (
                       <tr key={v.id} className="hover:bg-gray-50/70 transition">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap max-w-[220px]">
+                            {variantImages.length === 0 ? (
+                              <div className="w-10 h-10 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-300">
+                                <ImageIcon size={16} />
+                              </div>
+                            ) : (
+                              variantImages.slice(0, 3).map((img, idx) => (
+                                <div key={idx} className="relative group w-10 h-10 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+                                  <Image
+                                    src={img}
+                                    alt={`Variant image ${idx + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                  <button
+                                    type="button"
+                                    title="Delete image"
+                                    onClick={() => handleDeleteVariantSingleImage(v.id, idx)}
+                                    className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                  >
+                                    <Trash2 size={12} className="text-red-400" />
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                            {variantImages.length > 3 && (
+                              <button
+                                type="button"
+                                onClick={() => setImageModalVariant(v)}
+                                className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[10px] flex items-center justify-center transition flex-shrink-0"
+                              >
+                                +{variantImages.length - 3}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setImageModalVariant(v)}
+                              title="Manage & Add Images"
+                              className="w-10 h-10 rounded-lg border border-dashed border-emerald-400 hover:border-emerald-600 bg-emerald-50/50 hover:bg-emerald-50 text-[#083028] flex flex-col items-center justify-center transition flex-shrink-0"
+                            >
+                              <Plus size={14} />
+                              <span className="text-[8px] font-bold leading-none mt-0.5">Add</span>
+                            </button>
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
                             {v.skuId || '—'}
@@ -1582,7 +2166,8 @@ function VariantPageContent() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1657,7 +2242,10 @@ function VariantPageContent() {
 
             {/* List with Add/Remove buttons matching the reference image */}
             <div className="max-h-72 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-1">
-              {sizesList.map((s) => (
+              {sizesList.map((s) => {
+                const selectedSizes = variantForm.size.split(',').map((x) => x.trim()).filter(Boolean);
+                const isSelected = selectedSizes.includes(s);
+                return (
                 <div key={s} className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
                     <span className="text-sm font-semibold text-gray-800 truncate">{s}</span>
@@ -1674,16 +2262,21 @@ function VariantPageContent() {
                     <button
                       type="button"
                       onClick={() => {
-                        setVariantForm((prev) => ({ ...prev, size: s }));
-                        toast.success(`Selected size "${s}"`);
+                        setVariantForm((prev) => {
+                          const prevSizes = Array.from(new Set(prev.size.split(',').map((x) => x.trim()).filter(Boolean)));
+                          const nextSizes = isSelected
+                            ? prevSizes.filter((x) => x !== s)
+                            : [...prevSizes, s];
+                          return { ...prev, size: nextSizes.join(', ') };
+                        });
                       }}
                       className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition ${
-                        variantForm.size === s
+                        isSelected
                           ? 'bg-[#083028] text-white border-[#083028]'
                           : 'border-[#083028] text-[#083028] hover:bg-emerald-50'
                       }`}
                     >
-                      {variantForm.size === s ? 'Selected' : 'Add'}
+                      {isSelected ? 'Selected' : 'Add'}
                     </button>
                     <button
                       type="button"
@@ -1695,7 +2288,8 @@ function VariantPageContent() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <button
@@ -1901,11 +2495,22 @@ function VariantPageContent() {
                 type="button"
                 onClick={async () => {
                   try {
-                    if (selectedProductId && selectedProductId !== 'draft') {
-                      await fetch(`/api/products?id=${selectedProductId}`, {
-                        method: 'PATCH',
+                    // Update variant's own size chart state
+                    setVariantForm((prev) => ({
+                      ...prev,
+                      sizeChart: {
+                        metrics: sizeChartMetrics,
+                        rows: sizeChartRows,
+                      },
+                    }));
+
+                    // If editing an existing variant, also immediately update the variant in DB
+                    if (editingVariantId && selectedProductId && selectedProductId !== 'draft') {
+                      await fetch(`/api/products/${selectedProductId}/variants`, {
+                        method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
+                          id: editingVariantId,
                           size_chart: {
                             metrics: sizeChartMetrics,
                             rows: sizeChartRows,
@@ -1913,15 +2518,16 @@ function VariantPageContent() {
                         }),
                       });
                     }
-                    toast.success('Size chart saved and applied to product!');
+
+                    toast.success('Size chart updated for this variant!');
                     setShowSizeChartModal(false);
                   } catch {
-                    toast.error('Failed to save size chart.');
+                    toast.error('Failed to update size chart.');
                   }
                 }}
                 className="w-full py-3 bg-[#083028] text-white rounded-xl text-xs font-bold hover:bg-[#051e19] transition flex items-center justify-center gap-2 shadow-md"
               >
-                <Check size={15} /> Save & Apply to Product
+                <Check size={15} /> Save Size Chart for this Variant
               </button>
             </div>
           </div>
@@ -1964,6 +2570,130 @@ function VariantPageContent() {
                   <Check size={14} className="text-[#083028] opacity-0 group-hover:opacity-100 transition" />
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ MODAL: MANAGE VARIANT IMAGES DIRECTLY ══════════════ */}
+      {imageModalVariant && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#083028] flex items-center justify-center font-bold">
+                  <ImageIcon size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    Manage Variant Images
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    {imageModalVariant.colour || 'Variant'} • SKU: {imageModalVariant.skuId || '—'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setImageModalVariant(null)}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Images Gallery */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Current Images ({Array.isArray(imageModalVariant.images) ? imageModalVariant.images.length : 0})
+                </label>
+                {isUpdatingVariantImages && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+                    <Loader2 size={12} className="animate-spin" /> Saving...
+                  </span>
+                )}
+              </div>
+
+              {(!imageModalVariant.images || imageModalVariant.images.length === 0) ? (
+                <div className="p-6 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+                  <ImageIcon size={28} className="mx-auto text-gray-300 mb-1.5" />
+                  <p className="text-xs text-gray-500">No images uploaded for this variant yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-60 overflow-y-auto p-1">
+                  {imageModalVariant.images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-sm"
+                    >
+                      <Image
+                        src={img}
+                        alt={`Variant photo ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5 p-1">
+                        <button
+                          type="button"
+                          disabled={isUpdatingVariantImages}
+                          onClick={() => handleDeleteVariantSingleImage(imageModalVariant.id, idx)}
+                          title="Delete this image"
+                          className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                      <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">
+                        #{idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Upload More Images */}
+            <div className="pt-2 border-t border-gray-100">
+              <input
+                ref={tableImageInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => handleTableImageUpload(e, imageModalVariant.id)}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={isUpdatingVariantImages}
+                onClick={() => tableImageInputRef.current?.click()}
+                className="w-full py-3 border-2 border-dashed border-emerald-500 hover:border-emerald-700 bg-emerald-50/40 hover:bg-emerald-50 text-[#083028] rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isUpdatingVariantImages ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-[#083028]" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} />
+                    <span>Upload & Add More Images</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setImageModalVariant(null)}
+                className="px-5 py-2 bg-[#083028] text-white rounded-xl text-xs font-semibold hover:bg-[#0c4035] transition"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

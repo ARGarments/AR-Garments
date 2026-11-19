@@ -11,13 +11,10 @@ import {
 import { getServiceSupabase } from '@/lib/supabase';
 import { ShippingAddress } from '@/lib/orders';
 import { resolveDispatchRouting } from '@/lib/deliveryPartners';
+import { generateNextOrderId } from '@/lib/orderIdGenerator';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function createApplicationOrderId(): string {
-  return `ORD-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-}
 
 function parseShippingAddress(value: unknown): ShippingAddress {
   if (!value || typeof value !== 'object') {
@@ -85,7 +82,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const applicationOrderId = createApplicationOrderId();
+    const supabase = getServiceSupabase();
+    const applicationOrderId = await generateNextOrderId(supabase);
     const razorpayOrder = await createRazorpayOrder({
       amount: Math.round(pricing.total * 100),
       receipt: applicationOrderId,
@@ -95,7 +93,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const supabase = getServiceSupabase();
     const { error: orderError } = await supabase.from('orders').insert({
       id: applicationOrderId,
       user_id: user.id,

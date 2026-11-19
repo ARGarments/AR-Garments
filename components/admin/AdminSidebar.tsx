@@ -21,12 +21,14 @@ import {
   MessageSquare,
   Truck,
   Bike,
+  UserCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { adminAuth } from '@/lib/adminData';
 
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { label: 'Search Customer', href: '/admin/customers/search', icon: UserCheck },
   { label: 'Orders', href: '/admin/orders', icon: Package },
   { label: 'Customer Queries', href: '/admin/contacts', icon: MessageSquare },
   { label: 'Registered Users', href: '/admin/users', icon: Users },

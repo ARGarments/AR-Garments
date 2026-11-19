@@ -37,6 +37,7 @@ interface AuthContextType {
     phone?: string
   ) => Promise<AuthActionResult>;
   logout: () => Promise<void>;
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -273,6 +274,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // updateUser: immediately patches the in-memory user + localStorage
+  const updateUser = (patch: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      try {
+        localStorage.setItem('ar_user', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -285,6 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         registerWithEmailCode,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

@@ -87,7 +87,7 @@ export default function ShippingLabelModal({ order, isOpen, onClose }: ShippingL
             </div>
             <div>
               <h2 className="text-base font-black tracking-tight">Order Shipping Label Generator</h2>
-              <p className="text-xs text-white/70">Order #{order.id} • Customer: {order.shippingAddress.fullName || order.userName}</p>
+              <p className="text-xs text-white/70">Order {order.id} • Customer: {order.shippingAddress.fullName || order.userName}</p>
             </div>
           </div>
           <button
@@ -287,7 +287,7 @@ export default function ShippingLabelModal({ order, isOpen, onClose }: ShippingL
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="font-mono font-black text-[10px] block">Order #{order.id.slice(-8)}</span>
+                          <span className="font-mono font-black text-[10px] block">{order.id}</span>
                           <span className="text-[9px] text-gray-500 font-bold">{new Date().toLocaleDateString('en-IN')}</span>
                         </div>
                       </div>

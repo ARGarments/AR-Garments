@@ -100,6 +100,8 @@ function CategoryContent() {
             categoryId: (product.category_id as string) || undefined,
             subcategoryId: (product.subcategory_id as string) || undefined,
             image: product.image as string,
+            deliveryType: (product.delivery_type as 'standard' | 'low_margin') || 'standard',
+            deliveryChargeAmount: Number(product.delivery_charge_amount || 0),
           }));
 
         if (!cancelled) setAllProducts(mapped);

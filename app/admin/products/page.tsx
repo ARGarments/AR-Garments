@@ -9,7 +9,7 @@ import {
   Info, Truck, ArrowLeft, Check, Box, Tag, Ruler,
   Shirt, DollarSign, Scale, Percent, FileCheck,
   Link as LinkIcon, Home, Crown, Award, Store,
-  Layers, Package, CheckCircle2, Bookmark, AlertCircle, Settings
+  Layers, Package, CheckCircle2, Bookmark, AlertCircle, Settings, ChevronDown
 } from 'lucide-react';
 import { Product } from '@/lib/adminData';
 import { useToast } from '@/context/ToastContext';
@@ -151,7 +151,7 @@ const initialFormData = (): ProductFormData => ({
   fitShape: '',
   sleeveLength: '',
   customSpecifications: [],
-  size: 'Free Size',
+  size: '',
   piecesPerSet: 6,
   pricePerPiece: 135,
   totalSetPrice: 810,
@@ -186,7 +186,7 @@ const initialFormData = (): ProductFormData => ({
 const defaultVariant = (parentForm: ProductFormData): VariantRecord => ({
   id: `var-${Date.now()}`,
   variantType: 'set_size',
-  size: parentForm.size || 'Free Size',
+  size: parentForm.size || '',
   piecesPerSet: parentForm.piecesPerSet || 6,
   pricePerPiece: parentForm.pricePerPiece || 135,
   totalSetPrice: (parentForm.piecesPerSet || 6) * (parentForm.pricePerPiece || 135),
@@ -302,7 +302,7 @@ export default function AdminProductsPage() {
 
   // Dynamic sizes list from DB & modals
   const [sizesList, setSizesList] = useState<string[]>([
-    'Free Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
+    'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL',
     'Set of All Sizes (S, M, L, XL, XXL)', 'Unstitched'
   ]);
   const [showManageSizesModal, setShowManageSizesModal] = useState(false);
@@ -317,7 +317,6 @@ export default function AdminProductsPage() {
     { size: 'M', values: { 'Top Chest': '38 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '24 in', 'Inseam (Custom)': '30 in' } },
     { size: 'S', values: { 'Top Chest': '39 in', 'Top Waist': '32 in', 'Top Length': '24 in', 'Shoulder': '26 in', 'Inseam (Custom)': '30 in' } },
     { size: 'L', values: { 'Top Chest': '32 in', 'Top Waist': '32 in', 'Top Length': '25 in', 'Shoulder': '26 in', 'Inseam (Custom)': '37 in' } },
-    { size: 'Free Size', values: { 'Top Chest': '34 in', 'Top Waist': '32 in', 'Top Length': '26 in', 'Shoulder': '26 in', 'Inseam (Custom)': '26 in' } },
   ]);
 
   // Load Sizes from DB
@@ -354,7 +353,11 @@ export default function AdminProductsPage() {
       });
       if (res.ok) {
         setSizesList((prev) => [...prev, sizeName]);
-        setFormData((prev) => ({ ...prev, size: sizeName }));
+        setFormData((prev) => {
+          const prevSizes = prev.size.split(',').map((x) => x.trim()).filter(Boolean);
+          if (!prevSizes.includes(sizeName)) prevSizes.push(sizeName);
+          return { ...prev, size: prevSizes.join(', ') };
+        });
         setNewSizeInput('');
         toast.success(`Size "${sizeName}" added!`);
       } else {
@@ -373,8 +376,10 @@ export default function AdminProductsPage() {
       });
       if (res.ok) {
         setSizesList((prev) => prev.filter((s) => s !== sizeName));
-        if (formData.size === sizeName) {
-          setFormData((prev) => ({ ...prev, size: sizesList[0] || 'Free Size' }));
+        const selectedSizes = formData.size.split(',').map((x) => x.trim()).filter(Boolean);
+        if (selectedSizes.includes(sizeName)) {
+          const remaining = selectedSizes.filter((x) => x !== sizeName);
+          setFormData((prev) => ({ ...prev, size: remaining.join(', ') }));
         }
         toast.success(`Size "${sizeName}" deleted.`);
       }
@@ -395,8 +400,10 @@ export default function AdminProductsPage() {
       });
       if (res.ok) {
         setSizesList((prev) => prev.map((s) => (s === oldSizeName ? trimmed : s)));
-        if (formData.size === oldSizeName) {
-          setFormData((prev) => ({ ...prev, size: trimmed }));
+        const selectedSizes = formData.size.split(',').map((x) => x.trim()).filter(Boolean);
+        if (selectedSizes.includes(oldSizeName)) {
+          const updated = selectedSizes.map((x) => (x === oldSizeName ? trimmed : x));
+          setFormData((prev) => ({ ...prev, size: updated.join(', ') }));
         }
         // Also update size chart if it uses this size
         setSizeChartRows((prev) =>
@@ -467,7 +474,7 @@ export default function AdminProductsPage() {
         fitShape: d.fit_shape ? String(d.fit_shape) : '',
         sleeveLength: d.sleeve_length ? String(d.sleeve_length) : '',
         customSpecifications: Array.isArray(d.custom_specifications) ? d.custom_specifications : [],
-        size: d.size ? String(d.size) : 'Free Size',
+        size: d.size ? String(d.size) : '',
         piecesPerSet: Number(d.pieces_per_set) || 1,
         pricePerPiece: Number(d.price_per_piece) || 0,
         totalSetPrice: Number(d.total_set_price) || 0,
@@ -548,7 +555,12 @@ export default function AdminProductsPage() {
     const pieces = p.piecesPerSet || 6;
     const ppp = p.pricePerPiece || (p.numericPrice ? Math.round(p.numericPrice / pieces) : 135);
     const totalSet = p.totalSetPrice || (pieces * ppp);
-    const totalStock = p.totalStockPieces || (p.stock || 10) * pieces;
+    const totalStock = p.totalStockPieces !== undefined && p.totalStockPieces !== null
+      ? p.totalStockPieces
+      : (p.stock !== undefined && p.stock !== null ? p.stock * pieces : 0);
+    const stockSetsVal = p.stock !== undefined && p.stock !== null
+      ? p.stock
+      : Math.floor(totalStock / (pieces || 1));
 
     // Load any existing variants from product_variants table
     let loadedVariants: VariantRecord[] = [];
@@ -560,7 +572,7 @@ export default function AdminProductsPage() {
           loadedVariants = vData.map((v: Record<string, unknown>) => ({
             id: String(v.id),
             variantType: (v.variant_type as 'set_size' | 'individual') || 'set_size',
-            size: String(v.size || 'Free Size'),
+            size: String(v.size || '').split(',').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'free size').join(', '),
             piecesPerSet: Number(v.pieces_per_set) || pieces,
             pricePerPiece: Number(v.price_per_piece) || ppp,
             totalSetPrice: Number(v.total_set_price) || totalSet,
@@ -629,13 +641,13 @@ export default function AdminProductsPage() {
       fitShape: p.fitShape || '',
       sleeveLength: p.sleeveLength || '',
       customSpecifications: p.customSpecifications || [],
-      size: p.size || 'Free Size',
+      size: (p.size || '').split(',').map((x: string) => x.trim()).filter((x: string) => x && x.toLowerCase() !== 'free size').join(', '),
       piecesPerSet: pieces,
       pricePerPiece: ppp,
       totalSetPrice: totalSet,
       purchasePrice: p.purchasePrice || 0,
       totalStockPieces: totalStock,
-      stockSets: Math.floor(totalStock / (pieces || 1)) || 25,
+      stockSets: stockSetsVal,
       weight: p.weight || '5',
       weightUnit: p.weightUnit || 'kg',
       gstRate: p.gstRate || '5%',
@@ -919,7 +931,7 @@ export default function AdminProductsPage() {
           ? `Fabric: ${formData.fabric} | Colour: ${formData.colour} | Work: ${formData.work} | Occasion: ${formData.occasion}`
           : '',
         shippingCare: formData.shippingCare,
-        stock: formData.stockSets || 10,
+        stock: typeof formData.stockSets === 'number' ? formData.stockSets : 0,
         active: statusActive,
         isNewArrival: formData.isNewArrival,
         isBestSeller: formData.isBestSeller,
@@ -1709,16 +1721,17 @@ export default function AdminProductsPage() {
                   </button>
                 </div>
               </div>
-              <select
-                value={formData.size}
-                onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#083028]"
+              <button
+                type="button"
+                onClick={() => setShowManageSizesModal(true)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-700 hover:border-[#083028] hover:bg-emerald-50/30 transition text-left cursor-pointer"
               >
-                {sizesList.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-gray-400 mt-1">Choose product size or add custom sizes</p>
+                <span className={formData.size ? 'font-semibold text-gray-900' : 'text-gray-400'}>
+                  {formData.size ? Array.from(new Set(formData.size.split(',').map((x) => x.trim()).filter(Boolean))).join(', ') : 'Click to select sizes'}
+                </span>
+                <ChevronDown size={14} className="text-gray-400 ml-2 flex-shrink-0" />
+              </button>
+              <p className="text-[10px] text-gray-400 mt-1">Sizes selected via Manage Sizes</p>
             </div>
 
             <div>
@@ -2381,7 +2394,10 @@ export default function AdminProductsPage() {
 
               {/* List with Add/Remove buttons */}
               <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 pr-1 space-y-0.5">
-                {sizesList.map((s) => (
+                {sizesList.map((s) => {
+                  const selectedSizes = formData.size.split(',').map((x) => x.trim()).filter(Boolean);
+                  const isSelected = selectedSizes.includes(s);
+                  return (
                   <div key={s} className="flex items-center justify-between py-1.5">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-2">
                       <span className="text-xs sm:text-sm font-semibold text-gray-800 truncate">{s}</span>
@@ -2398,16 +2414,21 @@ export default function AdminProductsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData((prev) => ({ ...prev, size: s }));
-                          toast.success(`Selected size "${s}"`);
+                          setFormData((prev) => {
+                            const prevSizes = Array.from(new Set(prev.size.split(',').map((x) => x.trim()).filter(Boolean)));
+                            const nextSizes = isSelected
+                              ? prevSizes.filter((x) => x !== s)
+                              : [...prevSizes, s];
+                            return { ...prev, size: nextSizes.join(', ') };
+                          });
                         }}
                         className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${
-                          formData.size === s
+                          isSelected
                             ? 'bg-[#083028] text-white border-[#083028]'
                             : 'border-[#083028] text-[#083028] hover:bg-emerald-50'
                         }`}
                       >
-                        {formData.size === s ? 'Selected' : 'Add'}
+                        {isSelected ? 'Selected' : 'Add'}
                       </button>
                       <button
                         type="button"
@@ -2419,7 +2440,8 @@ export default function AdminProductsPage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               <button
@@ -2890,7 +2912,7 @@ export default function AdminProductsPage() {
                           {product.piecesPerSet ? `${product.piecesPerSet} pcs/set` : '1 pc'}
                         </span>
                         <span className="text-[11px] text-gray-400">
-                          Size: {product.size || 'Free Size'}
+                          Size: {product.size || '—'}
                         </span>
                       </div>
                     </td>
