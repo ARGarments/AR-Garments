@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
   MessageSquare,
@@ -22,6 +23,8 @@ import {
   FileText,
   Inbox,
   Sparkles,
+  Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { ContactMessage, ContactStatus } from '@/lib/contactMessages';
@@ -61,6 +64,82 @@ export default function AdminContactsPage() {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [adminNotesInput, setAdminNotesInput] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+
+  // Official Company Email (support@argarment.com) Reply Modal State
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replySubject, setReplySubject] = useState('');
+  const [replyBody, setReplyBody] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (selectedMessage || replyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedMessage, replyModalOpen]);
+
+  const openReplyModal = (msg: ContactMessage) => {
+    setReplySubject(
+      msg.subject.startsWith('Re:') ? msg.subject : `Re: ${msg.subject} - AR Garment Support`
+    );
+    setReplyBody(
+      `Dear ${msg.name},\n\nThank you for reaching out to AR Garment wholesale support.\n\nRegarding your inquiry: "${msg.message.slice(0, 120)}${msg.message.length > 120 ? '...' : ''}"\n\nWe would be delighted to assist you with your bulk requirements and wholesale catalog.\n\n\nBest regards,\nAR Garment Wholesale Support Team\nEmail: support@argarment.com\nPhone: +91 98765 43210`
+    );
+    setReplyModalOpen(true);
+  };
+
+  const handleSendOfficialReply = async () => {
+    if (!selectedMessage || !replyBody.trim()) {
+      toast.warning('Please enter a reply message before sending.');
+      return;
+    }
+
+    setSendingReply(true);
+    try {
+      const res = await fetch('/api/contact/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: selectedMessage.id,
+          customerEmail: selectedMessage.email,
+          customerName: selectedMessage.name,
+          subject: replySubject,
+          replyMessage: replyBody,
+          originalMessage: selectedMessage.message,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send reply email');
+      }
+
+      toast.success(`Official reply sent to ${selectedMessage.email} from support@argarment.com!`, {
+        title: 'Reply Sent Successfully',
+      });
+
+      // Update message status locally
+      setSelectedMessage((prev) => (prev ? { ...prev, status: 'replied' } : null));
+      setMessages((prev) =>
+        prev.map((m) => (m.id === selectedMessage.id ? { ...m, status: 'replied' } : m))
+      );
+      setReplyModalOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error sending email';
+      toast.error(msg, { title: 'Sending Failed' });
+    } finally {
+      setSendingReply(false);
+    }
+  };
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -481,8 +560,8 @@ export default function AdminContactsPage() {
       </div>
 
       {/* QUERY DETAILS MODAL */}
-      {selectedMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+      {mounted && selectedMessage && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b border-gray-100">
@@ -614,15 +693,25 @@ export default function AdminContactsPage() {
 
             {/* Modal Actions */}
             <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-              <a
-                href={`mailto:${selectedMessage.email}?subject=${encodeURIComponent(
-                  `Re: ${selectedMessage.subject} - AR Garment Support`
-                )}`}
-                className="inline-flex items-center gap-2 bg-[#083028] hover:bg-[#051e19] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-xs"
-              >
-                <Send size={14} />
-                Reply to Customer via Email
-              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openReplyModal(selectedMessage)}
+                  className="inline-flex items-center gap-2 bg-[#083028] hover:bg-[#051e19] text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Send size={14} />
+                  Reply via support@argarment.com
+                </button>
+                <a
+                  href={`mailto:${selectedMessage.email}?subject=${encodeURIComponent(
+                    `Re: ${selectedMessage.subject} - AR Garment Support`
+                  )}`}
+                  title="Open mailto client as fallback"
+                  className="p-2.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+                >
+                  <ExternalLink size={14} />
+                </a>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
@@ -640,7 +729,133 @@ export default function AdminContactsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Official Email Reply Composer Modal (Sent from support@argarment.com) ── */}
+      {mounted && replyModalOpen && selectedMessage && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-xl bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            {/* Close Button */}
+            <button
+              onClick={() => setReplyModalOpen(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-200 shrink-0">
+                <Mail size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Reply to Customer Inquiry</h3>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[11px] font-semibold text-gray-500">Official Sender:</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-300">
+                    <ShieldCheck size={11} /> support@argarment.com
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recipient Details Card */}
+            <div className="bg-gray-50 rounded-2xl p-3.5 border border-gray-200/80 mb-4 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-400 font-semibold">Recipient:</span>
+                <span className="font-bold text-gray-900">{selectedMessage.name} &lt;{selectedMessage.email}&gt;</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400 font-semibold">Inquiry Subject:</span>
+                <span className="font-medium text-gray-700">{selectedMessage.subject}</span>
+              </div>
+            </div>
+
+            {/* Subject Input */}
+            <div className="mb-3">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Subject</label>
+              <input
+                type="text"
+                value={replySubject}
+                onChange={(e) => setReplySubject(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#083028]"
+              />
+            </div>
+
+            {/* Quick Template Fillers */}
+            <div className="mb-3">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Quick Templates</span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyBody(`Dear ${selectedMessage.name},\n\nThank you for reaching out to AR Garment.\n\nWe have received your custom order request and our wholesale sales team would be delighted to assist you. Please find our complete catalog and wholesale pricing structure at https://argarment.com/category.\n\nFor bulk volume discounts (50+ sets) or personalized stitching, our wholesale manager will connect with you shortly.\n\nBest regards,\nAR Garment Wholesale Support\nEmail: support@argarment.com | +91 98765 43210`);
+                  }}
+                  className="text-[11px] px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition cursor-pointer"
+                >
+                  📦 Wholesale Catalog &amp; Pricing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyBody(`Dear ${selectedMessage.name},\n\nThank you for inquiring about your wholesale order.\n\nWe have verified your query regarding your order and dispatch status. All confirmed orders are dispatched within 24-48 business hours with live carrier tracking.\n\nPlease share your Order ID (#ARG26xx) so we can update you with live shipment details.\n\nBest regards,\nAR Garment Customer Support\nEmail: support@argarment.com | +91 98765 43210`);
+                  }}
+                  className="text-[11px] px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition cursor-pointer"
+                >
+                  🚚 Order &amp; Dispatch Status
+                </button>
+              </div>
+            </div>
+
+            {/* Message Textarea */}
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Message Content</label>
+              <textarea
+                rows={7}
+                value={replyBody}
+                onChange={(e) => setReplyBody(e.target.value)}
+                placeholder="Type your official reply here..."
+                className="w-full p-3.5 text-xs border border-gray-200 rounded-xl leading-relaxed text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#083028]"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                The message will be sent with official AR Garment branding from <strong className="text-emerald-800">support@argarment.com</strong>.
+              </p>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setReplyModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendOfficialReply}
+                disabled={sendingReply}
+                className="inline-flex items-center gap-2 bg-[#083028] hover:bg-[#051e19] text-white px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+              >
+                {sendingReply ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Sending from support@argarment.com...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    <span>Send Official Reply</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

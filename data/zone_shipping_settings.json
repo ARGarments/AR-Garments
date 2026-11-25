@@ -3,9 +3,12 @@
     "id": "zone_nagar_nigam",
     "zoneName": "Zone 1: Prayagraj Nagar Nigam",
     "zoneNameHi": "प्रयागराज नगर निगम",
-    "isActive": true,
+    "isActive": false,
+    "isFreeDeliveryEnabled": true,
     "freeDeliveryThreshold": 600,
     "standardDeliveryFee": 50,
+    "allowCod": true,
+    "isOnlineDiscountEnabled": true,
     "onlinePaymentDiscount": 2,
     "customPincodes": [
       "211001",
@@ -26,15 +29,18 @@
       "211019"
     ],
     "sortOrder": 1,
-    "updatedAt": "2026-10-31T16:41:57.791Z"
+    "updatedAt": "2026-11-25T15:08:38.911Z"
   },
   {
     "id": "zone_dehat",
     "zoneName": "Zone 2: Prayagraj Dehat",
     "zoneNameHi": "प्रयागराज देहात",
     "isActive": true,
+    "isFreeDeliveryEnabled": true,
     "freeDeliveryThreshold": 2000,
     "standardDeliveryFee": 100,
+    "allowCod": true,
+    "isOnlineDiscountEnabled": true,
     "onlinePaymentDiscount": 3,
     "customPincodes": [
       "212101",
@@ -72,18 +78,21 @@
       "212412"
     ],
     "sortOrder": 2,
-    "updatedAt": "2026-10-31T16:41:57.791Z"
+    "updatedAt": "2026-11-25T15:08:38.911Z"
   },
   {
     "id": "zone_pan_india",
     "zoneName": "Zone 3: Pan India",
     "zoneNameHi": "पैन इंडिया",
     "isActive": true,
+    "isFreeDeliveryEnabled": true,
     "freeDeliveryThreshold": 1600,
     "standardDeliveryFee": 170,
+    "allowCod": true,
+    "isOnlineDiscountEnabled": true,
     "onlinePaymentDiscount": 5,
     "customPincodes": [],
     "sortOrder": 3,
-    "updatedAt": "2026-10-31T16:41:57.791Z"
+    "updatedAt": "2026-11-25T15:08:38.911Z"
   }
 ]

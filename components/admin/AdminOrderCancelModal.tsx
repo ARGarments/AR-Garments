@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle, RefreshCw, X, ShieldAlert, MessageSquare } from 'lucide-react';
 import type { Order } from '@/lib/orders';
 
@@ -66,8 +67,24 @@ export default function AdminOrderCancelModal({
   const [customNote, setCustomNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen || !order) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !order || !mounted) return null;
 
   const currentReasonObj = REASONS.find((r) => r.value === selectedReason) || REASONS[0];
   const willRestock = currentReasonObj.restock;
@@ -105,8 +122,8 @@ export default function AdminOrderCancelModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-red-50 to-white px-5 py-4">
@@ -246,6 +263,7 @@ export default function AdminOrderCancelModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

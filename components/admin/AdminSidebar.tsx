@@ -38,7 +38,7 @@ const navItems = [
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },
   { label: 'Product Reviews', href: '/admin/reviews', icon: Star },
   { label: 'Coupons & Discounts', href: '/admin/coupons', icon: Ticket },
-  { label: 'Zone Active / Shipping', href: '/admin/shipping-settings', icon: Truck },
+  { label: 'Zone Active', href: '/admin/zone-active', icon: Truck },
   { label: 'Delivery Partners', href: '/admin/delivery-partners', icon: Bike },
   { label: 'Newsletter', href: '/admin/newsletter', icon: Mail },
   { label: 'Home Page', href: '/admin/homepage', icon: Home },
@@ -82,11 +82,10 @@ export default function AdminSidebar() {
             key={href}
             href={href}
             onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
-              isActive(href)
-                ? 'translate-x-1 bg-white text-[#083028] shadow-sm'
-                : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
-            }`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${isActive(href)
+              ? 'translate-x-1 bg-white text-[#083028] shadow-sm'
+              : 'text-white/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
+              }`}
           >
             <Icon size={17} className="transition-transform duration-200 group-hover:scale-110" />
             <span className="flex-1">{label}</span>
@@ -101,7 +100,7 @@ export default function AdminSidebar() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-white/80 hover:bg-white/10 transition-colors"
           >
             <Layers size={15} />
-            <span>View Live Website â†—</span>
+            <span>View Live Website</span>
           </Link>
         </div>
       </nav>

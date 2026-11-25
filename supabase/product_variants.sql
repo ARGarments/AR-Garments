@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS public.product_variants (
     images                TEXT[] DEFAULT '{}',
     size_chart            JSONB DEFAULT NULL,
     custom_specifications JSONB DEFAULT '[]',
+    party_involved        BOOLEAN DEFAULT false,
+    party_id              UUID REFERENCES public.parties(id) ON DELETE SET NULL,
+    party_name            TEXT DEFAULT '',
+    party_cost_price      NUMERIC DEFAULT 0,
     created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -43,6 +47,10 @@ ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS occasion TEXT DEFAU
 ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
 ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
 ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS size_chart JSONB DEFAULT NULL;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS party_involved BOOLEAN DEFAULT false;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS party_id UUID REFERENCES public.parties(id) ON DELETE SET NULL;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS party_name TEXT DEFAULT '';
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS party_cost_price NUMERIC DEFAULT 0;
 
 -- Enable Row Level Security
 ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;

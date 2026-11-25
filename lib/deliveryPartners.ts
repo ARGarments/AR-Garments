@@ -126,6 +126,30 @@ export const DEFAULT_ZONES: DeliveryZone[] = [
   },
 ];
 
+let sharedMemoryZones: DeliveryZone[] = [...DEFAULT_ZONES];
+
+export function getSharedMemoryZones(): DeliveryZone[] {
+  return sharedMemoryZones;
+}
+
+export function updateMemoryZoneActive(zoneKeyOrShippingId: string, isActive: boolean) {
+  const s = String(zoneKeyOrShippingId || '').toLowerCase();
+  for (const z of sharedMemoryZones) {
+    const zk = (z.zoneKey || '').toLowerCase();
+    const zid = (z.id || '').toLowerCase();
+    if (
+      (s.includes('city') && (zk.includes('city') || zid.includes('city'))) ||
+      (s.includes('rural') && (zk.includes('rural') || zid.includes('rural'))) ||
+      (s.includes('pan') && (zk.includes('pan') || zid.includes('pan'))) ||
+      (s === 'zone_nagar_nigam' && (zk.includes('city') || zid.includes('city'))) ||
+      (s === 'zone_dehat' && (zk.includes('rural') || zid.includes('rural'))) ||
+      (s === 'zone_pan_india' && (zk.includes('pan') || zid.includes('pan')))
+    ) {
+      z.isActive = Boolean(isActive);
+    }
+  }
+}
+
 // ─── Tracking Link Generator ────────────────────────────────────────────────
 
 export function generateTrackingLink(template: string | null | undefined, awbNumber: string): string | null {

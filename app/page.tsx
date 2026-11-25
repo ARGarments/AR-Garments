@@ -8,7 +8,7 @@ import CollectionBanners from "@/components/CollectionBanners";
 import BestSellers from "@/components/BestSellers";
 import PromotionalBanners from "@/components/PromotionalBanners";
 import WhyChooseUs from "@/components/WhyChooseUs";
-import Newsletter from "@/components/Newsletter";
+import WhatsAppCommunity from "@/components/WhatsAppCommunity";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -24,7 +24,7 @@ export default function Home() {
       <BestSellers />
       <PromotionalBanners />
       <WhyChooseUs />
-      <Newsletter />
+      <WhatsAppCommunity />
       <Footer />
     </main>
   );

@@ -9,7 +9,7 @@ import {
   FileCheck, Shirt, Trash2, Edit2, Plus, Info,
   Search, Layers, ImageIcon, Loader2, Package, Palette,
   Scissors, Ruler, Star, RefreshCw, X, Settings, ChevronDown,
-  LinkIcon, Truck, AlertCircle, Home, Sparkles, Crown, Award, Flame, Store
+  LinkIcon, Truck, AlertCircle, Home, Sparkles, Crown, Award, Flame, Store, CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
@@ -61,6 +61,10 @@ export type VariantFormData = {
   isGold: boolean;
   tags: string[];
   active: boolean;
+  partyInvolved?: boolean;
+  partyId?: string;
+  partyName?: string;
+  partyCostPrice?: number;
 };
 
 type ParentProduct = {
@@ -287,7 +291,31 @@ function VariantPageContent() {
     isGold: false,
     tags: [],
     active: true,
+    partyInvolved: false,
+    partyId: '',
+    partyName: '',
+    partyCostPrice: 0,
   });
+
+  // Available Parties for Party-Wise Stock Meter
+  const [availableParties, setAvailableParties] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    async function loadParties() {
+      try {
+        const res = await fetch('/api/admin/parties?activeOnly=true', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.parties)) {
+            setAvailableParties(data.parties);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load parties:', err);
+      }
+    }
+    loadParties();
+  }, []);
 
   // Fetch sizes from DB
   useEffect(() => {
@@ -401,6 +429,10 @@ function VariantPageContent() {
               isGold: Boolean(v.is_gold),
               tags: Array.isArray(v.tags) ? (v.tags as string[]) : [],
               active: v.active !== false,
+              partyInvolved: Boolean(v.party_involved),
+              partyId: v.party_id ? String(v.party_id) : '',
+              partyName: v.party_name ? String(v.party_name) : '',
+              partyCostPrice: Number(v.party_cost_price) || 0,
             }));
             setExistingVariants(mapped);
 
@@ -795,6 +827,10 @@ function VariantPageContent() {
           is_gold: variantForm.isGold || false,
           tags: variantForm.tags || [],
           active: variantForm.active !== false,
+          party_involved: Boolean(variantForm.partyInvolved),
+          party_id: variantForm.partyInvolved ? (variantForm.partyId || null) : null,
+          party_name: variantForm.partyInvolved ? (variantForm.partyName || '') : '',
+          party_cost_price: variantForm.partyInvolved ? (variantForm.partyCostPrice || variantForm.purchasePrice || 0) : 0,
         };
 
         const method = editingVariantId ? 'PUT' : 'POST';
@@ -1729,6 +1765,110 @@ function VariantPageContent() {
             </div>
           )}
         </SectionCard>
+
+        {/* ════ PARTY STOCK ALLOCATION (Party-Wise Stock Meter Integration) ════ */}
+        <div className="bg-amber-50/70 border-2 border-amber-300 rounded-2xl p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-amber-200">
+            <div className="flex items-center gap-2">
+              <Store size={18} className="text-amber-800" />
+              <div>
+                <h4 className="text-sm font-black text-amber-950">
+                  Party Stock Allocation
+                </h4>
+                <p className="text-xs text-amber-800/80">
+                  Assign this variant&apos;s stock to an individual party or directly to Main Store
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs">
+              <span className="text-xs font-bold text-gray-700">Party Involved?</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setVariantForm((prev) => ({
+                    ...prev,
+                    partyInvolved: !prev.partyInvolved,
+                    partyCostPrice: !prev.partyInvolved ? (prev.partyCostPrice || prev.purchasePrice || 0) : 0,
+                  }))
+                }
+                className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  variantForm.partyInvolved
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {variantForm.partyInvolved ? 'YES (Party Assigned)' : 'NO (Main Store)'}
+              </button>
+            </div>
+          </div>
+
+          {variantForm.partyInvolved ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-amber-900 mb-1.5">
+                  Select Party <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={variantForm.partyId || ''}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const p = availableParties.find((x) => x.id === selectedId);
+                    setVariantForm((prev) => ({
+                      ...prev,
+                      partyId: selectedId,
+                      partyName: p ? p.name : '',
+                    }));
+                  }}
+                  className="w-full px-3 py-2.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="">-- Choose an existing Party --</option>
+                  {availableParties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-amber-700 mt-1">
+                  Select the vendor/party supplying this variant stock batch.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-amber-900 mb-1.5">
+                  Party Cost Price (₹) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={variantForm.partyCostPrice || ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setVariantForm((prev) => ({
+                        ...prev,
+                        partyCostPrice: val,
+                        purchasePrice: val || prev.purchasePrice,
+                      }));
+                    }}
+                    placeholder="Enter party cost price"
+                    className="w-full pl-8 pr-3 py-2.5 bg-white border border-amber-300 rounded-xl text-xs sm:text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-700 mt-1">
+                  Internal cost price per piece. Customers will NEVER see this.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-white/70 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span>
+                <strong>Scenario B (Direct Main Store)</strong>: Variant stock ({variantForm.totalStockPieces} pcs) will be added directly to the main store inventory without party ownership.
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* ════ SOCIAL MEDIA LINKS ════ */}
         <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4">

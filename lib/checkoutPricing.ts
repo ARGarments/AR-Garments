@@ -253,15 +253,18 @@ async function getZoneShippingSettings(): Promise<ZoneShippingSetting[]> {
         zoneName: String(row.zone_name || ''),
         zoneNameHi: String(row.zone_name_hi || ''),
         isActive: Boolean(row.is_active),
+        isFreeDeliveryEnabled: row.is_free_delivery_enabled !== undefined ? Boolean(row.is_free_delivery_enabled) : true,
         freeDeliveryThreshold: Number(row.free_delivery_threshold) || 0,
         standardDeliveryFee: Number(row.standard_delivery_fee) || 0,
+        allowCod: row.allow_cod !== undefined ? Boolean(row.allow_cod) : true,
+        isOnlineDiscountEnabled: row.is_online_discount_enabled !== undefined ? Boolean(row.is_online_discount_enabled) : true,
         onlinePaymentDiscount: Number(row.online_payment_discount) || 0,
         customPincodes: Array.isArray(row.custom_pincodes) ? (row.custom_pincodes as string[]) : [],
         sortOrder: Number(row.sort_order) || 0,
         updatedAt: row.updated_at ? String(row.updated_at) : null,
       }));
 
-      // Cross-sync onlinePaymentDiscount from local file if DB had 0 or not yet migrated
+      // Cross-sync toggles & onlinePaymentDiscount from local file if DB had 0 or not yet migrated
       try {
         const fs = await import('fs');
         const path = await import('path');
@@ -271,8 +274,14 @@ async function getZoneShippingSettings(): Promise<ZoneShippingSetting[]> {
           if (Array.isArray(fileData)) {
             for (const item of fileData) {
               const m = mapped.find((x) => x.id === item.id);
-              if (m && item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
-                m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+              if (m) {
+                if (item.isActive !== undefined) m.isActive = Boolean(item.isActive);
+                if (item.isFreeDeliveryEnabled !== undefined) m.isFreeDeliveryEnabled = Boolean(item.isFreeDeliveryEnabled);
+                if (item.allowCod !== undefined) m.allowCod = Boolean(item.allowCod);
+                if (item.isOnlineDiscountEnabled !== undefined) m.isOnlineDiscountEnabled = Boolean(item.isOnlineDiscountEnabled);
+                if (item.onlinePaymentDiscount !== undefined && !m.onlinePaymentDiscount) {
+                  m.onlinePaymentDiscount = Number(item.onlinePaymentDiscount) || 0;
+                }
               }
             }
           }
@@ -483,16 +492,26 @@ export async function calculateCheckoutPricing(
     }
   }
 
-  // Calculate Zone Online Payment Discount if user chooses online payment
+  // Enforce Zone COD & Online Payment Discount rules
   let onlineDiscount = 0;
   let onlineDiscountPercent = 0;
-  if (paymentMethod === 'online' && rawPincode) {
+  if (rawPincode) {
     const zoneSettings = await getZoneShippingSettings();
     const zone = resolveZoneByPincode(rawPincode, zoneSettings);
-    onlineDiscountPercent = Number(zone.onlinePaymentDiscount) || 0;
-    if (onlineDiscountPercent > 0) {
-      const discountableBase = Math.max(0, subtotal - couponResult.discount);
-      onlineDiscount = Math.round((discountableBase * onlineDiscountPercent) / 100);
+
+    if (paymentMethod === 'cod' && zone.allowCod === false) {
+      throw new CheckoutPricingError(
+        `Cash on Delivery is disabled for ${zone.zoneName}. Please select Online Payment.`
+      );
+    }
+
+    if (paymentMethod === 'online') {
+      const isDiscountEnabled = zone.isOnlineDiscountEnabled !== false;
+      onlineDiscountPercent = isDiscountEnabled ? (Number(zone.onlinePaymentDiscount) || 0) : 0;
+      if (onlineDiscountPercent > 0) {
+        const discountableBase = Math.max(0, subtotal - couponResult.discount);
+        onlineDiscount = Math.round((discountableBase * onlineDiscountPercent) / 100);
+      }
     }
   }
 

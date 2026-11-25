@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
-import { Ban, ExternalLink, Loader2, MapPin, Package, Truck, X } from 'lucide-react';
+import { Ban, ExternalLink, Loader2, MapPin, Package, Truck, X, FileText } from 'lucide-react';
+import OrderInvoiceModal from '@/components/invoice/OrderInvoiceModal';
 import {
   canCustomerCancelOrder,
   type Order,
@@ -337,6 +338,7 @@ export function OrderShipmentTracking({ order }: { order: Order }) {
 }
 
 export function CustomerOrderCard({ order, onCancelled }: CustomerOrderCardProps) {
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [showCancellation, setShowCancellation] = useState(false);
   const [reason, setReason] = useState<string>(CANCELLATION_REASONS[0]);
   const [customReason, setCustomReason] = useState('');
@@ -419,6 +421,26 @@ export function CustomerOrderCard({ order, onCancelled }: CustomerOrderCardProps
         <OrderItems items={order.items} />
         <OrderTotals order={order} />
         <OrderFulfillmentProgress order={order} />
+
+        {/* Customer Tax Invoice Download Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 rounded-xl border border-emerald-200/70">
+          <div>
+            <p className="text-xs font-black text-emerald-950">
+              Tax Invoice / बिल (Single-Page PDF)
+            </p>
+            <p className="text-[11px] text-gray-500">
+              Download or print the official wholesale tax bill for this order.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInvoiceModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 shrink-0"
+          >
+            <FileText size={14} className="text-[#C9972B]" />
+            <span>Download Invoice / बिल</span>
+          </button>
+        </div>
 
         {cancellable && !showCancellation && (
           <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -519,6 +541,14 @@ export function CustomerOrderCard({ order, onCancelled }: CustomerOrderCardProps
           </section>
         )}
       </div>
+      {/* Official Tax Invoice Modal */}
+      {invoiceModalOpen && (
+        <OrderInvoiceModal
+          order={order}
+          isOpen={invoiceModalOpen}
+          onClose={() => setInvoiceModalOpen(false)}
+        />
+      )}
     </article>
   );
 }

@@ -219,6 +219,118 @@ export default function AdminProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Homepage Badges column expansion state (product ID -> expanded)
+  const [expandedBadges, setExpandedBadges] = useState<Record<string, boolean>>({});
+
+  const toggleBadges = (productId: string) => {
+    setExpandedBadges((prev) => ({
+      ...prev,
+      [productId]: !prev[productId],
+    }));
+  };
+
+  // Helper to render homepage badges with "+X more" expandable toggle
+  const renderHomepageBadges = (product: Product) => {
+    const badges: { key: string; el: React.ReactNode }[] = [];
+    if (product.isNewArrival) {
+      badges.push({
+        key: 'new',
+        el: (
+          <span key="new" className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+            <Sparkles size={10} /> New
+          </span>
+        ),
+      });
+    }
+    if (product.isBestSeller) {
+      badges.push({
+        key: 'best',
+        el: (
+          <span key="best" className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+            <Flame size={10} /> Best
+          </span>
+        ),
+      });
+    }
+    if (product.isPremium) {
+      badges.push({
+        key: 'premium',
+        el: (
+          <span key="premium" className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+            <Crown size={10} /> Premium
+          </span>
+        ),
+      });
+    }
+    if (product.isGold) {
+      badges.push({
+        key: 'gold',
+        el: (
+          <span key="gold" className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800">
+            <Award size={10} /> Gold
+          </span>
+        ),
+      });
+    }
+    if (Array.isArray(product.tags)) {
+      product.tags.forEach((t, i) => {
+        badges.push({
+          key: `tag-${i}-${t}`,
+          el: (
+            <span key={`tag-${i}-${t}`} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#083028]/10 text-[#083028] border border-[#083028]/20">
+              <Tag size={9} /> {t}
+            </span>
+          ),
+        });
+      });
+    }
+
+    if (badges.length === 0) {
+      return <span className="text-gray-300 text-xs">—</span>;
+    }
+
+    if (badges.length === 1) {
+      return <div className="inline-flex items-center justify-center">{badges[0].el}</div>;
+    }
+
+    const isExpanded = !!expandedBadges[product.id];
+    if (!isExpanded) {
+      return (
+        <div className="inline-flex items-center gap-1.5 justify-center">
+          {badges[0].el}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleBadges(product.id);
+            }}
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer shadow-xs active:scale-95"
+            title={`Show all ${badges.length} badges`}
+          >
+            +{badges.length - 1} more
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="inline-flex items-center gap-1.5 flex-wrap justify-center max-w-[210px]">
+        {badges.map((b) => b.el)}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleBadges(product.id);
+          }}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all cursor-pointer shadow-xs active:scale-95"
+          title="Show less"
+        >
+          Less
+        </button>
+      </div>
+    );
+  };
+
   // Page view mode: 'list' (catalog table) or 'form' (add/edit form)
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -2806,15 +2918,7 @@ export default function AdminProductsPage() {
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${product.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {product.active ? '● Active' : '● Draft'}
                         </span>
-                        {product.isNewArrival && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">✦ New</span>}
-                        {product.isBestSeller && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">🔥 Best</span>}
-                        {product.isPremium && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">👑 Premium</span>}
-                        {product.isGold && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800">⭐ Gold</span>}
-                        {Array.isArray(product.tags) && product.tags.map((t, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#083028]/10 text-[#083028]">
-                            🏷️ {t}
-                          </span>
-                        ))}
+                        {renderHomepageBadges(product)}
                       </div>
 
                       <div className="mt-1.5 flex items-center gap-3 text-xs">
@@ -2917,33 +3021,7 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <div className="inline-flex items-center gap-1.5 flex-wrap justify-center max-w-[180px]">
-                        {product.isNewArrival && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            <Sparkles size={10} /> New
-                          </span>
-                        )}
-                        {product.isBestSeller && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                            <Flame size={10} /> Best
-                          </span>
-                        )}
-                        {product.isPremium && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
-                            <Crown size={10} /> Premium
-                          </span>
-                        )}
-                        {product.isGold && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800">
-                            <Award size={10} /> Gold
-                          </span>
-                        )}
-                        {Array.isArray(product.tags) && product.tags.map((t, i) => (
-                          <span key={i} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#083028]/10 text-[#083028] border border-[#083028]/20">
-                            <Tag size={9} /> {t}
-                          </span>
-                        ))}
-                      </div>
+                      {renderHomepageBadges(product)}
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${

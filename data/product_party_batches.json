@@ -1,5 +1,21 @@
 [
   {
+    "id": "2bdcf44d-0628-4192-8955-9e6ab5d73738",
+    "partyId": "6542ea1a-642d-4c12-a24d-a49b233be36b",
+    "productId": "prod-1793757961883",
+    "productName": "Variant (Black)",
+    "variantId": "e6fb3a4b-2bb6-41e5-b76b-3af9a8cb1170",
+    "sku": "SKU-229472",
+    "inwardQuantity": 66,
+    "availableQuantity": 66,
+    "partyCostPrice": 100,
+    "sellingPrice": 120,
+    "batchNumber": "BATCH-301478",
+    "notes": "Variant Party Stock Inward (Ram G Bhai)",
+    "createdAt": "2026-11-25T07:05:01.478Z",
+    "updatedAt": "2026-11-25T07:05:01.478Z"
+  },
+  {
     "id": "6ae25644-c55a-4bac-a5e3-9ab965d2bed5",
     "partyId": "6542ea1a-642d-4c12-a24d-a49b233be36b",
     "productId": "prod-1794338422218",

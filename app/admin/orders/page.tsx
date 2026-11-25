@@ -15,9 +15,11 @@ import {
   ExternalLink,
   Save,
   Printer,
+  FileText,
   XCircle,
 } from 'lucide-react';
 import ShippingLabelModal from '@/components/admin/ShippingLabelModal';
+import OrderInvoiceModal from '@/components/invoice/OrderInvoiceModal';
 import AdminOrderCancelModal from '@/components/admin/AdminOrderCancelModal';
 import {
   OrderFulfillmentProgress,
@@ -230,6 +232,7 @@ function AdminOrderCard({
   onToggle,
   onStatusChange,
   onOpenShippingLabel,
+  onOpenInvoice,
   onOpenCancelModal,
 }: {
   order: Order;
@@ -238,6 +241,7 @@ function AdminOrderCard({
   onToggle: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onOpenShippingLabel: (order: Order) => void;
+  onOpenInvoice: (order: Order) => void;
   onOpenCancelModal: (order: Order) => void;
 }) {
   const address = order.shippingAddress;
@@ -309,24 +313,34 @@ function AdminOrderCard({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenShippingLabel(order)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Printer size={14} className="text-[#C9972B]" />
-              <span>Generate &amp; Print Shipping Label</span>
-            </button>
-            {order.status !== 'Cancelled' && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => onOpenCancelModal(order)}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => onOpenInvoice(order)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#083028] border border-emerald-300 rounded-xl text-xs font-black shadow-xs transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
-                <XCircle size={15} />
-                <span>Cancel Order (ऑर्डर कैंसिल करें)</span>
+                <FileText size={14} className="text-emerald-700" />
+                <span>Download Tax Invoice (बिल)</span>
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => onOpenShippingLabel(order)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              >
+                <Printer size={14} className="text-[#C9972B]" />
+                <span>Generate &amp; Print Shipping Label</span>
+              </button>
+              {order.status !== 'Cancelled' && (
+                <button
+                  type="button"
+                  onClick={() => onOpenCancelModal(order)}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-md transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  <XCircle size={15} />
+                  <span>Cancel Order (ऑर्डर कैंसिल करें)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -478,6 +492,10 @@ export default function AdminOrdersPage() {
   const [selectedOrderForLabel, setSelectedOrderForLabel] = useState<Order | null>(null);
   const [labelModalOpen, setLabelModalOpen] = useState(false);
 
+  // Official Tax Invoice Modal State
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+
   // Cancellation Modal State
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -605,6 +623,10 @@ export default function AdminOrdersPage() {
                 setSelectedOrderForLabel(o);
                 setLabelModalOpen(true);
               }}
+              onOpenInvoice={(o) => {
+                setSelectedOrderForInvoice(o);
+                setInvoiceModalOpen(true);
+              }}
               onOpenCancelModal={(o) => {
                 setSelectedOrderForCancel(o);
                 setCancelModalOpen(true);
@@ -622,6 +644,18 @@ export default function AdminOrdersPage() {
           onClose={() => {
             setLabelModalOpen(false);
             setSelectedOrderForLabel(null);
+          }}
+        />
+      )}
+
+      {/* Official Order Tax Invoice (Bill) Modal */}
+      {selectedOrderForInvoice && (
+        <OrderInvoiceModal
+          order={selectedOrderForInvoice}
+          isOpen={invoiceModalOpen}
+          onClose={() => {
+            setInvoiceModalOpen(false);
+            setSelectedOrderForInvoice(null);
           }}
         />
       )}

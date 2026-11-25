@@ -3,43 +3,51 @@ import { SupabaseClient } from '@supabase/supabase-js';
 const PREFIX = '#ARG';
 
 /**
- * Generates the next sequential gap-free order ID using atomic DB counter.
- * Uses a dedicated `order_counters` table with row-level locking.
- * Format: #ARG2601, #ARG2602, #ARG2603...
+ * Generates the next sequential gap-free order ID.
+ * First inspects the DB to find the highest existing #ARG number,
+ * then increments it by 1: #ARG2630 → #ARG2631 → #ARG2632 → #ARG2633...
  */
 export async function generateNextOrderId(supabase: SupabaseClient): Promise<string> {
   try {
-    // Try calling the Supabase RPC function (if set up via SQL editor)
-    const { data: rpcData, error: rpcError } = await supabase.rpc('get_next_order_id');
-    if (!rpcError && rpcData) {
-      return String(rpcData);
-    }
-  } catch {
-    // fall through to fallback
-  }
-
-  // Fallback: query max existing #ARG ID and increment
-  try {
+    // 1. Directly query database for existing order IDs
     const { data, error } = await supabase
       .from('orders')
       .select('id')
-      .like('id', '#ARG%');
-
-    if (error || !data || data.length === 0) {
-      return `${PREFIX}2601`;
-    }
+      .order('created_at', { ascending: false });
 
     let maxNum = 2600;
-    for (const row of data) {
-      // Handle both #ARG2601 and #ARG-2601 formats
-      const match = String(row.id).match(/#ARG-?(\d+)/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) maxNum = num;
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      for (const row of data) {
+        // Extract sequence number from #ARG2630, #ARG-2630, ARG2630, etc.
+        const match = String(row.id || '').match(/(?:#?ARG-?|#)(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
       }
     }
-    return `${PREFIX}${maxNum + 1}`;
-  } catch {
+
+    // 2. Also check RPC sequence if configured
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_next_order_id');
+      if (!rpcError && rpcData) {
+        const rpcMatch = String(rpcData).match(/(?:#?ARG-?|#)(\d+)/i);
+        if (rpcMatch) {
+          const rpcNum = parseInt(rpcMatch[1], 10);
+          if (!isNaN(rpcNum) && rpcNum > maxNum) {
+            maxNum = rpcNum - 1;
+          }
+        }
+      }
+    } catch {}
+
+    const nextNumber = maxNum + 1;
+    return `${PREFIX}${nextNumber}`;
+  } catch (err) {
+    console.warn('generateNextOrderId error, defaulting to #ARG2601:', err);
     return `${PREFIX}2601`;
   }
 }

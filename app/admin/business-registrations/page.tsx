@@ -107,6 +107,14 @@ function DetailModal({
     setBusy(false);
   }
 
+  const isExpired48h =
+    reg.status === 'approved' &&
+    Boolean(reg.reviewed_at) &&
+    Date.now() - new Date(reg.reviewed_at!).getTime() >= 48 * 60 * 60 * 1000;
+
+  const [imageClearedInCloud, setImageClearedInCloud] = useState(false);
+  const isImagePurged = Boolean(docUrl?.startsWith('DELETED')) || isExpired48h || imageClearedInCloud;
+
   async function handleDeletePhoto() {
     if (!confirm('Are you sure you want to permanently delete this verification document from ImageKit cloud storage to free up space?')) {
       return;
@@ -250,7 +258,7 @@ function DetailModal({
               <p className="text-[10px] font-bold text-[#083028] uppercase tracking-wider">
                 Verification Document (Shop Front / Visiting Card / Pheri Photo)
               </p>
-              {docUrl && docUrl.startsWith('http') && (
+              {docUrl && docUrl.startsWith('http') && !isImagePurged && (
                 <a
                   href={docUrl}
                   target="_blank"
@@ -262,13 +270,22 @@ function DetailModal({
               )}
             </div>
 
-            {docUrl && docUrl.startsWith('http') ? (
+            {docUrl && docUrl.startsWith('http') && !isImagePurged ? (
               <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-white">
                 <a href={docUrl} target="_blank" rel="noopener noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={docUrl}
                     alt="Verification document"
+                    onError={() => {
+                      setImageClearedInCloud(true);
+                      setDocUrl('DELETED_AUTO_48H');
+                      fetch('/api/admin/business-registrations/cleanup-docs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: reg.id }),
+                      }).catch(() => {});
+                    }}
                     className="w-full max-h-56 sm:max-h-64 object-contain bg-gray-950/5 mx-auto hover:opacity-95 transition cursor-zoom-in"
                   />
                 </a>
@@ -293,15 +310,15 @@ function DetailModal({
                   </button>
                 </div>
               </div>
-            ) : docUrl?.startsWith('DELETED') ? (
+            ) : isImagePurged ? (
               <div className="flex items-center gap-2.5 p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-800 text-xs">
                 <ShieldCheck size={18} className="text-emerald-600 flex-shrink-0" />
                 <div>
                   <p className="font-semibold">Document Photo Purged to Free Up Cloud Storage</p>
                   <p className="text-[11px] text-emerald-700/90 mt-0.5">
-                    {docUrl === 'DELETED_AUTO_48H'
-                      ? 'Auto-deleted after 48 hours per privacy and storage retention policy.'
-                      : 'Manually deleted by admin after verification.'}
+                    {docUrl === 'DELETED_MANUALLY'
+                      ? 'Manually deleted by admin after verification.'
+                      : 'Auto-deleted after 48 hours or cleared from ImageKit storage.'}
                   </p>
                 </div>
               </div>

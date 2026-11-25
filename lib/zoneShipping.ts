@@ -5,12 +5,15 @@ export interface ZoneShippingSetting {
   zoneName: string;
   zoneNameHi: string;
   isActive: boolean;
+  isFreeDeliveryEnabled?: boolean;
   freeDeliveryThreshold: number;
   standardDeliveryFee: number;
+  allowCod?: boolean;
   customPincodes?: string[];
   sortOrder: number;
   updatedAt?: string | null;
   /** Online payment discount % for this zone (0 = no discount). Admin-configurable. */
+  isOnlineDiscountEnabled?: boolean;
   onlinePaymentDiscount?: number;
 }
 
@@ -34,8 +37,11 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 1: Prayagraj Nagar Nigam',
     zoneNameHi: 'प्रयागराज नगर निगम',
     isActive: true,
+    isFreeDeliveryEnabled: true,
     freeDeliveryThreshold: 600,
     standardDeliveryFee: 50,
+    allowCod: true,
+    isOnlineDiscountEnabled: true,
     onlinePaymentDiscount: 2,
     customPincodes: DEFAULT_NAGAR_NIGAM_PINCODES,
     sortOrder: 1,
@@ -45,8 +51,11 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 2: Prayagraj Dehat',
     zoneNameHi: 'प्रयागराज देहात',
     isActive: true,
+    isFreeDeliveryEnabled: true,
     freeDeliveryThreshold: 2000,
     standardDeliveryFee: 100,
+    allowCod: true,
+    isOnlineDiscountEnabled: true,
     onlinePaymentDiscount: 3,
     customPincodes: DEFAULT_DEHAT_PINCODES,
     sortOrder: 2,
@@ -56,8 +65,11 @@ export const DEFAULT_ZONE_SETTINGS: ZoneShippingSetting[] = [
     zoneName: 'Zone 3: Pan India',
     zoneNameHi: 'पैन इंडिया',
     isActive: true,
+    isFreeDeliveryEnabled: true,
     freeDeliveryThreshold: 1600,
     standardDeliveryFee: 170,
+    allowCod: false,
+    isOnlineDiscountEnabled: true,
     onlinePaymentDiscount: 5,
     customPincodes: [],
     sortOrder: 3,
@@ -164,8 +176,9 @@ export function calculateZoneDelivery(
     };
   }
 
-  // Zone is ON: Check threshold
-  if (subtotal >= zone.freeDeliveryThreshold) {
+  // Zone is ON: Check if Free Delivery Threshold is enabled for this zone
+  const freeDeliveryOn = zone.isFreeDeliveryEnabled !== false;
+  if (freeDeliveryOn && subtotal >= zone.freeDeliveryThreshold) {
     return {
       zone,
       zoneType,
@@ -177,7 +190,7 @@ export function calculateZoneDelivery(
     };
   }
 
-  // Below threshold
+  // Below threshold or Free Delivery Threshold is OFF
   return {
     zone,
     zoneType,
@@ -185,29 +198,29 @@ export function calculateZoneDelivery(
     zoneLabelHi: zone.zoneNameHi,
     isFreeDelivery: false,
     deliveryFee: zone.standardDeliveryFee,
-    amountNeededForFreeDelivery: Math.max(0, zone.freeDeliveryThreshold - subtotal),
+    amountNeededForFreeDelivery: freeDeliveryOn ? Math.max(0, zone.freeDeliveryThreshold - subtotal) : 0,
   };
 }
 
 /**
  * Global Kill Switch helper:
- * Returns true if ANY zone has Free Delivery turned ON.
- * If admin turns OFF all zones, this returns false.
+ * Returns true if ANY zone has Zone Delivery AND Free Delivery Threshold turned ON.
+ * If admin turns OFF all zones or disables Free Delivery Threshold on all, this returns false.
  */
 export function isFreeDeliveryGloballyActive(
   settings: ZoneShippingSetting[] = DEFAULT_ZONE_SETTINGS
 ): boolean {
   if (!Array.isArray(settings) || settings.length === 0) return false;
-  return settings.some((z) => Boolean(z.isActive));
+  return settings.some((z) => Boolean(z.isActive) && z.isFreeDeliveryEnabled !== false);
 }
 
 /**
- * Returns the lowest active threshold among all active zones.
+ * Returns the lowest active threshold among all active zones where Free Delivery Threshold is ON.
  */
 export function getLowestActiveFreeDeliveryThreshold(
   settings: ZoneShippingSetting[] = DEFAULT_ZONE_SETTINGS
 ): number | null {
-  const active = settings.filter((z) => Boolean(z.isActive));
+  const active = settings.filter((z) => Boolean(z.isActive) && z.isFreeDeliveryEnabled !== false);
   if (active.length === 0) return null;
   return Math.min(...active.map((z) => z.freeDeliveryThreshold));
 }

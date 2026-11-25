@@ -609,8 +609,19 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
+  const isCodAllowed = useMemo(() => {
+    return checkoutZoneResult?.zone?.allowCod !== false;
+  }, [checkoutZoneResult]);
+
+  useEffect(() => {
+    if (!isCodAllowed && paymentMethod === 'cod') {
+      setPaymentMethod('online');
+    }
+  }, [isCodAllowed, paymentMethod]);
+
   // Zone-specific Online Payment Discount
   const zoneOnlineDiscountPercent = useMemo(() => {
+    if (checkoutZoneResult?.zone?.isOnlineDiscountEnabled === false) return 0;
     return Number(checkoutZoneResult?.zone?.onlinePaymentDiscount) || 0;
   }, [checkoutZoneResult]);
 
@@ -1049,26 +1060,33 @@ export default function CheckoutPage() {
                 <div className="p-5 space-y-3">
                   {/* COD */}
                   <label
-                    className={`flex items-center gap-4 border-2 rounded-xl px-4 py-3.5 cursor-pointer transition-all select-none
-                      ${paymentMethod === 'cod'
-                        ? 'border-[#083028] bg-[#083028]/5'
-                        : 'border-[#083028]/15 hover:border-[#083028]/40'
+                    className={`flex items-center gap-4 border-2 rounded-xl px-4 py-3.5 transition-all select-none
+                      ${!isCodAllowed
+                        ? 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
+                        : paymentMethod === 'cod'
+                          ? 'border-[#083028] bg-[#083028]/5 cursor-pointer'
+                          : 'border-[#083028]/15 hover:border-[#083028]/40 cursor-pointer'
                       }`}
                   >
                     <input
                       type="radio"
                       name="payment"
                       value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
-                      className="accent-[#083028] w-4 h-4"
+                      disabled={!isCodAllowed}
+                      checked={paymentMethod === 'cod' && isCodAllowed}
+                      onChange={() => { if (isCodAllowed) setPaymentMethod('cod'); }}
+                      className="accent-[#083028] w-4 h-4 disabled:cursor-not-allowed"
                     />
                     <Truck size={22} className="text-[#083028] shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-[#083028]">Cash on Delivery</p>
-                      <p className="text-xs text-[#083028]/55">Pay when your order arrives</p>
+                      <p className="text-xs text-[#083028]/55">
+                        {isCodAllowed
+                          ? 'Pay when your order arrives'
+                          : 'COD is disabled for this zone (Online payment only)'}
+                      </p>
                     </div>
-                    {paymentMethod === 'cod' && (
+                    {paymentMethod === 'cod' && isCodAllowed && (
                       <CheckCircle2 size={18} className="text-[#083028] ml-auto" />
                     )}
                   </label>

@@ -31,7 +31,7 @@ export function ShippingSettingsProvider({ children }: { children: ReactNode }) 
     setError(null);
 
     try {
-      const response = await fetch('/api/shipping-settings', { cache: 'no-store' });
+      const response = await fetch('/api/zone-active', { cache: 'no-store' });
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || 'Unable to load shipping settings.');

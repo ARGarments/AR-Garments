@@ -156,6 +156,18 @@ export async function PUT(
     if (body.active !== undefined) {
       record.active = body.active !== false;
     }
+    if (body.party_involved !== undefined || body.partyInvolved !== undefined) {
+      record.party_involved = Boolean(body.party_involved ?? body.partyInvolved);
+    }
+    if (body.party_id !== undefined || body.partyId !== undefined) {
+      record.party_id = body.party_id || body.partyId || null;
+    }
+    if (body.party_name !== undefined || body.partyName !== undefined) {
+      record.party_name = String(body.party_name || body.partyName || '');
+    }
+    if (body.party_cost_price !== undefined || body.partyCostPrice !== undefined) {
+      record.party_cost_price = Number(body.party_cost_price ?? body.partyCostPrice) || 0;
+    }
 
     if (Object.keys(record).length === 0) {
       return NextResponse.json({ error: 'No fields provided to update.' }, { status: 400 });
@@ -171,12 +183,24 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot save an empty variant. Colour or Images required.' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let updateRes = await supabase
       .from('product_variants')
       .update(record)
       .eq('id', variantId)
       .eq('product_id', id)
       .select('*');
+
+    if (updateRes.error && updateRes.error.message.includes('party_')) {
+      const { party_involved: _pi, party_id: _pid, party_name: _pn, party_cost_price: _pcp, ...cleanRecord } = record;
+      updateRes = await supabase
+        .from('product_variants')
+        .update(cleanRecord)
+        .eq('id', variantId)
+        .eq('product_id', id)
+        .select('*');
+    }
+
+    const { data, error } = updateRes;
 
     if (error) {
       console.error('Update variant error:', error);
@@ -209,7 +233,33 @@ export async function PUT(
       return NextResponse.json(inserted);
     }
 
-    return NextResponse.json(data[0]);
+    const savedVariant = data[0];
+
+    // Record Party Stock batch if partyInvolved is active on variant update
+    try {
+      const partyInvolved = Boolean(body.party_involved ?? body.partyInvolved);
+      const assignedPartyId = partyInvolved ? (body.party_id || body.partyId || null) : null;
+      const inwardQty = Number(body.total_stock_pieces ?? body.totalStockPieces ?? savedVariant.total_stock_pieces ?? 0);
+      if (partyInvolved && assignedPartyId && inwardQty > 0) {
+        const { createPartyBatch } = await import('@/lib/partyService');
+        await createPartyBatch({
+          partyId: String(assignedPartyId),
+          productId: String(id),
+          variantId: String(savedVariant.id),
+          sku: String(savedVariant.sku_id || ''),
+          productName: `Variant (${savedVariant.colour || savedVariant.size || 'Item'})`,
+          inwardQuantity: inwardQty,
+          availableQuantity: inwardQty,
+          partyCostPrice: Number(body.party_cost_price ?? body.partyCostPrice ?? savedVariant.purchase_price ?? 0),
+          sellingPrice: Number(savedVariant.price_per_piece || 0),
+          notes: `Variant Party Stock Inward (${body.party_name || body.partyName || 'Party'})`,
+        });
+      }
+    } catch (batchErr) {
+      console.warn('Could not record party batch on variant update:', batchErr);
+    }
+
+    return NextResponse.json(savedVariant);
   } catch (err) {
     console.error('Error in PUT /api/products/[id]/variants:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -272,16 +322,61 @@ export async function POST(
       is_gold: Boolean(v.is_gold ?? v.isGold),
       tags: Array.isArray(v.tags) ? v.tags : [],
       active: v.active !== false,
+      party_involved: Boolean(v.party_involved ?? v.partyInvolved),
+      party_id: (v.party_involved ?? v.partyInvolved) ? (v.party_id || v.partyId || null) : null,
+      party_name: (v.party_involved ?? v.partyInvolved) ? String(v.party_name || v.partyName || '') : '',
+      party_cost_price: Number(v.party_cost_price ?? v.partyCostPrice ?? v.purchase_price ?? v.purchasePrice) || 0,
     }));
 
-    const { data, error } = await supabase
+    let insertRes = await supabase
       .from('product_variants')
       .insert(records)
       .select('*');
 
+    if (insertRes.error && insertRes.error.message.includes('party_')) {
+      const cleanRecords = records.map(({ party_involved: _pi, party_id: _pid, party_name: _pn, party_cost_price: _pcp, ...rest }) => rest);
+      insertRes = await supabase
+        .from('product_variants')
+        .insert(cleanRecords)
+        .select('*');
+    }
+
+    const { data, error } = insertRes;
+
     if (error) {
       console.error('Insert variants error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Record Party Stock batches for newly created variants
+    try {
+      const { createPartyBatch } = await import('@/lib/partyService');
+      for (let i = 0; i < (data || []).length; i++) {
+        const saved = data![i];
+        const raw = rawList[i] || {};
+        const partyInvolved = Boolean(raw.party_involved ?? raw.partyInvolved);
+        const assignedPartyId = partyInvolved ? (raw.party_id || raw.partyId || null) : null;
+        const inwardQty = Number(saved.total_stock_pieces ?? raw.total_stock_pieces ?? raw.totalStockPieces ?? 0);
+
+        if (inwardQty > 0) {
+          await createPartyBatch({
+            partyId: assignedPartyId ? String(assignedPartyId) : null,
+            productId: String(id),
+            variantId: String(saved.id),
+            sku: String(saved.sku_id || ''),
+            productName: `Variant (${saved.colour || saved.size || 'Item'})`,
+            inwardQuantity: inwardQty,
+            availableQuantity: inwardQty,
+            partyCostPrice: Number(raw.party_cost_price ?? raw.partyCostPrice ?? saved.purchase_price ?? 0),
+            sellingPrice: Number(saved.price_per_piece || 0),
+            notes: partyInvolved
+              ? `Variant Party Stock Inward (${raw.party_name || raw.partyName || 'Party'})`
+              : 'Variant Direct Store Inward (No Party)',
+          });
+        }
+      }
+    } catch (batchErr) {
+      console.warn('Could not record party batch on variant insert:', batchErr);
     }
 
     return NextResponse.json(data || [], { status: 201 });

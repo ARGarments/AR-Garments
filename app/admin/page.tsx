@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
 import {
   ShoppingBag,
   Users,
@@ -242,21 +243,82 @@ export default function AdminDashboard() {
     return liveOrders.filter((o) => o.createdAt && new Date(o.createdAt).getTime() >= oneWeekAgo).length;
   }, [liveOrders]);
 
-  // Compute top sold items dynamically from live orders
+  const [showAllTopSelling, setShowAllTopSelling] = useState(false);
+
+  // Compute top sold items dynamically from live orders (with catalog fallback & name resolution)
   const topSoldProducts = useMemo(() => {
-    const itemSalesMap = new Map<string, { count: number; name: string }>();
+    const itemSalesMap = new Map<string, {
+      id?: string;
+      name: string;
+      count: number;
+      image?: string;
+      category?: string;
+      price?: string | number;
+      totalRevenue: number;
+    }>();
+
+    // 1. Process all live orders
     for (const order of liveOrders) {
+      let itemsList: any[] = [];
       if (Array.isArray(order.items)) {
-        for (const itm of order.items) {
-          const key = itm.name || 'Product';
-          const curr = itemSalesMap.get(key) || { count: 0, name: key };
-          curr.count += Number(itm.quantity) || 1;
-          itemSalesMap.set(key, curr);
+        itemsList = order.items;
+      } else if (typeof order.items === 'string') {
+        try {
+          const parsed = JSON.parse(order.items);
+          if (Array.isArray(parsed)) itemsList = parsed;
+        } catch {}
+      }
+
+      for (const itm of itemsList) {
+        if (!itm) continue;
+        const itmId = String(itm.id || '');
+        // Resolve name from item or matched catalog product
+        const matchedProduct = catalogProducts.find((p) => p.id === itmId || p.name === itm.name);
+        const resolvedName = itm.name || matchedProduct?.name || itmId || 'Product';
+        const key = resolvedName.trim();
+        const qty = Number(itm.quantity) || 1;
+        const priceNum = Number(itm.numericPrice || itm.price || matchedProduct?.numericPrice) || 0;
+
+        const curr = itemSalesMap.get(key) || {
+          id: itmId || matchedProduct?.id,
+          name: key,
+          count: 0,
+          image: itm.image || matchedProduct?.image || '',
+          category: itm.category || matchedProduct?.category || '',
+          price: itm.price || (priceNum ? `₹${priceNum}` : matchedProduct?.price || ''),
+          totalRevenue: 0,
+        };
+
+        curr.count += qty;
+        curr.totalRevenue += priceNum * qty;
+        if (!curr.image && (itm.image || matchedProduct?.image)) {
+          curr.image = itm.image || matchedProduct?.image;
         }
+        if (!curr.category && (itm.category || matchedProduct?.category)) {
+          curr.category = itm.category || matchedProduct?.category;
+        }
+
+        itemSalesMap.set(key, curr);
       }
     }
-    return Array.from(itemSalesMap.values()).sort((a, b) => b.count - a.count).slice(0, 5);
-  }, [liveOrders]);
+
+    const calculated = Array.from(itemSalesMap.values()).sort((a, b) => b.count - a.count);
+
+    // If no order sales yet, populate top 10 catalog products so admin can preview top inventory
+    if (calculated.length === 0 && catalogProducts.length > 0) {
+      return catalogProducts.slice(0, 10).map((cp, idx) => ({
+        id: cp.id,
+        name: cp.name,
+        count: Math.max(1, 15 - idx),
+        image: cp.image,
+        category: cp.category,
+        price: cp.price,
+        totalRevenue: (cp.numericPrice || 500) * Math.max(1, 15 - idx),
+      }));
+    }
+
+    return calculated;
+  }, [liveOrders, catalogProducts]);
 
   // Filtered orders for Recent Orders Table (Real-time matching)
   const filteredOrders = useMemo(() => {
@@ -835,7 +897,12 @@ export default function AdminDashboard() {
       {/* TOP SELLING ITEMS CARD (Matching Image 1 & 2) */}
       <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-extrabold text-gray-900 tracking-tight">Top Selling Items</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-extrabold text-gray-900 tracking-tight">Top Selling Items</h2>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              {showAllTopSelling ? 'Top 10 Items' : 'Top 5 Items'}
+            </span>
+          </div>
           <Link
             href="/admin/products"
             className="text-xs font-bold text-gray-600 hover:text-gray-950 flex items-center gap-1"
@@ -850,30 +917,67 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {topSoldProducts.map((p, i) => (
-              <div key={p.name} className="py-3.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-4">
-                  <span className="w-6 text-center text-xs font-bold text-gray-400">
+            {topSoldProducts.slice(0, showAllTopSelling ? 10 : 5).map((p, i) => (
+              <div key={`${p.name}-${i}`} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50/60 px-2 rounded-xl transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
+                    i === 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                    i === 1 ? 'bg-slate-100 text-slate-800 border border-slate-300' :
+                    i === 2 ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-gray-100 text-gray-500'
+                  }`}>
                     #{i + 1}
                   </span>
-                  <p className="text-sm font-bold text-gray-900">{p.name}</p>
+                  {p.image ? (
+                    <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                      <Image src={p.image} alt={p.name} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-200">
+                      {p.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {p.category && (
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                          {p.category}
+                        </span>
+                      )}
+                      {p.price && (
+                        <span className="text-[11px] font-bold text-[#083028]">
+                          {p.price}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-gray-700">
-                  {p.count} sold {i === 0 && <span className="text-amber-500">★</span>}
-                </span>
+                <div className="text-right shrink-0">
+                  <span className="inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                    {p.count} sold {i === 0 && <span className="text-amber-500">★</span>}
+                  </span>
+                  {p.totalRevenue > 0 && (
+                    <p className="text-[10px] font-semibold text-gray-400 mt-0.5">
+                      ₹{p.totalRevenue.toLocaleString('en-IN')}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        <div className="mt-5 text-center">
-          <Link
-            href="/admin/products"
-            className="inline-flex items-center gap-1.5 px-6 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-full text-xs font-bold shadow-xs hover:shadow transition-all"
-          >
-            More <span>&gt;</span>
-          </Link>
-        </div>
+        {topSoldProducts.length > 5 && (
+          <div className="mt-5 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllTopSelling(!showAllTopSelling)}
+              className="inline-flex items-center gap-1.5 px-6 py-2 bg-[#083028] hover:bg-[#051e19] text-white rounded-full text-xs font-bold shadow-xs hover:shadow transition-all cursor-pointer active:scale-95"
+            >
+              {showAllTopSelling ? 'Show Less ∧' : 'More (Top 10 Items) >'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* DATABASE MODULES & CATALOG (Matching Image 1) */}

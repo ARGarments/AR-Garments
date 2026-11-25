@@ -63,6 +63,8 @@ export default function DeliveryPartnersPage() {
   const [loadingZones, setLoadingZones] = useState(true);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [savingZone, setSavingZone] = useState(false);
+  const [savingAllZones, setSavingAllZones] = useState(false);
+  const [hasUnsavedZoneChanges, setHasUnsavedZoneChanges] = useState(false);
   const [zoneForm, setZoneForm] = useState({
     defaultPartnerId: '',
     fallbackPartnerId: '',
@@ -277,34 +279,39 @@ export default function DeliveryPartnersPage() {
     }
   };
 
-  const handleToggleZoneStatus = async (zone: DeliveryZone) => {
+  const handleToggleZoneStatus = (zone: DeliveryZone) => {
     const nextStatus = !zone.isActive;
-    // Optimistic UI update
+    // Pure local state toggle — does not reload or bounce back
     setZones((prev) =>
       prev.map((z) => (z.id === zone.id ? { ...z, isActive: nextStatus } : z))
     );
+    setHasUnsavedZoneChanges(true);
+    toast.info(`${zone.name}: Set to ${nextStatus ? 'ON' : 'OFF'}. Click 'Save Changes' to apply.`, {
+      title: 'Zone Toggled',
+    });
+  };
 
+  const handleSaveAllZones = async () => {
+    setSavingAllZones(true);
     try {
       const res = await fetch('/api/admin/delivery-zones', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: zone.id, isActive: nextStatus }),
+        body: JSON.stringify(zones),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(
-          nextStatus
-            ? `${zone.name}: Delivery enabled (Delivery ON)`
-            : `${zone.name}: Delivery disabled (Delivery OFF - Checkout Blocked)`
-        );
-        fetchZones();
+        setHasUnsavedZoneChanges(false);
+        toast.success('All delivery zones & dispatch rules saved successfully!', {
+          title: 'Settings Saved',
+        });
       } else {
-        toast.error(data.error || 'Failed to update zone status');
-        fetchZones();
+        toast.error(data.error || 'Failed to save delivery zones');
       }
     } catch {
-      toast.error('Network error toggling zone status');
-      fetchZones();
+      toast.error('Network error saving delivery zones');
+    } finally {
+      setSavingAllZones(false);
     }
   };
 
@@ -540,12 +547,29 @@ export default function DeliveryPartnersPage() {
       {activeTab === 'zones' && (
         <div className="space-y-4">
           <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
               <div>
                 <h2 className="text-base font-black text-gray-900">3 Configurable Delivery Zones</h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Orders are routed automatically based on the destination pincode. Local orders stay in-house; Pan India orders go to external couriers.
                 </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                {hasUnsavedZoneChanges && (
+                  <span className="text-xs font-bold text-amber-600 animate-pulse bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                    ● Unsaved changes
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={savingAllZones}
+                  onClick={handleSaveAllZones}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#083028] hover:bg-[#051e19] text-white rounded-2xl text-xs sm:text-sm font-bold transition shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {savingAllZones ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  <span>Save Changes</span>
+                </button>
               </div>
             </div>
 
@@ -555,7 +579,8 @@ export default function DeliveryPartnersPage() {
                 <span className="text-sm font-semibold">Loading zones...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {zones.map((zone) => {
                   const isEditing = editingZoneId === zone.id;
                   const activePartnerList = partners.filter((p) => p.isActive);
@@ -784,7 +809,31 @@ export default function DeliveryPartnersPage() {
                   );
                 })}
               </div>
-            )}
+
+              {/* Bottom Action Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-6 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Any changes to zone switches will automatically update the store checkout and sync with Zone Active settings.
+                </p>
+                <div className="flex items-center gap-3">
+                  {hasUnsavedZoneChanges && (
+                    <span className="text-xs font-bold text-amber-600 animate-pulse bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                      ● Unsaved changes pending
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={savingAllZones}
+                    onClick={handleSaveAllZones}
+                    className="inline-flex items-center gap-2 px-8 py-3 bg-[#083028] hover:bg-[#051e19] text-white rounded-2xl text-xs sm:text-sm font-bold transition shadow-md disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingAllZones ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           </div>
         </div>
       )}

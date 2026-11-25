@@ -784,7 +784,7 @@ export default function CartPage() {
                   <div className="flex flex-col items-center">
                     <Truck size={14} className="text-[#083028] mb-0.5" />
                     <span>
-                      {cartActiveZone.zone.isActive
+                      {cartActiveZone.zone.isActive && cartActiveZone.zone.isFreeDeliveryEnabled !== false
                         ? `Free over ₹${cartActiveZone.zone.freeDeliveryThreshold.toLocaleString('en-IN')}`
                         : `Shipping ₹${cartActiveZone.zone.standardDeliveryFee.toLocaleString('en-IN')}`}
                     </span>

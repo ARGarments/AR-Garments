@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Order } from '@/lib/orders';
 import { ShippingLabelRecord } from '@/lib/shippingLabels';
 import {
@@ -33,8 +34,24 @@ export default function ShippingLabelModal({ order, isOpen, onClose }: ShippingL
   const [activeLabel, setActiveLabel] = useState<ShippingLabelRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   // Generate label via API
   const handleGenerateLabel = async (type: 'local' | 'third_party') => {
@@ -76,8 +93,8 @@ export default function ShippingLabelModal({ order, isOpen, onClose }: ShippingL
   const isCod = order.paymentMethod === 'cod';
   const totalPcs = order.items.reduce((acc, i) => acc + i.quantity, 0);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
       <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-gray-100 flex flex-col">
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#083028] text-white rounded-t-3xl">
@@ -493,6 +510,7 @@ export default function ShippingLabelModal({ order, isOpen, onClose }: ShippingL
           }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
